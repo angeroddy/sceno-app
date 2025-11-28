@@ -1,15 +1,102 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const ttFirsNeue = localFont({
+  src: [
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Thin.ttf",
+      weight: "100",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Thin Italic.ttf",
+      weight: "100",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial ExtraLight.ttf",
+      weight: "200",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial ExtraLight Italic.ttf",
+      weight: "200",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Light.ttf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Light Italic.ttf",
+      weight: "300",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Medium Italic.ttf",
+      weight: "500",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial DemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial DemiBold Italic.ttf",
+      weight: "600",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Bold Italic.ttf",
+      weight: "700",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial ExtraBold.ttf",
+      weight: "800",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial ExtraBold Italic.ttf",
+      weight: "800",
+      style: "italic",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Black.ttf",
+      weight: "900",
+      style: "normal",
+    },
+    {
+      path: "./assets/fonts/tt_firs_neue/TT Firs Neue Trial Black Italic.ttf",
+      weight: "900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-tt-firs-neue",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +112,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${ttFirsNeue.variable} antialiased`}
       >
         {children}
       </body>
