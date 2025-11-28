@@ -240,7 +240,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
             </Button>
             <Button
               size="sm"
-              className="rounded-none cursor-pointer text-sm font-medium px-4 h-9 shadow-sm"
+              className="rounded-none  text-sm font-medium px-4 h-9 shadow-sm"
               onClick={(e) => {
                 e.preventDefault();
                 if (onCtaClick) onCtaClick();

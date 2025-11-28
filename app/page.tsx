@@ -81,7 +81,7 @@ export default function Home() {
             viewport={{ once: false }}
           >
             <h1 className="font-bold text-4xl">Recevez les offres par mail</h1>
-            <p className="text-[25px]" style={{ width: 500 }}>Dès qu'une opportunité correspond à vos critères, vous recevez une notification. Pré-ventes et  dernières minutes, directement dans votre boîte.</p>
+            <p className="text-[25px]" style={{ width: 500 }}>Dès qu&apos;une opportunité correspond à vos critères, vous recevez une notification. Pré-ventes et  dernières minutes, directement dans votre boîte.</p>
           </motion.div>
 
         </motion.div>
@@ -146,11 +146,11 @@ export default function Home() {
       </div>
       <div className="cta-section p-25">
         <div className="card-cta bg-[#E6DAD0] flex rounded-lg items-center justify-center p-20 flex-col">
-          <h1 className="font-bold text-4xl">Les bons plans formation pour comédiens, c'est ici</h1>
+          <h1 className="font-bold text-4xl">Les bons plans formation pour comédiens, c&apos;est ici</h1>
           <p className="text-[25px] text-center">Comédiens, inscrivez-vous pour recevoir des offres exclusives à prix réduit. <br></br>Organismes de formation, publiez vos pré-ventes et dernières minutes pour remplir vos stages. </p>
           <div className="btnGroup gap-3 flex">
-            <Button variant="outline" className="cursor-pointer mt-5 bg-[#E63832] text-white rounded-none border-none text-[20px] p-8">Je m'inscris comme comédien <ChevronRight className="w-5 h-5" /></Button>
-            <Button variant="outline" className="cursor-pointer mt-5 bg-black text-white rounded-none border-none text-[20px] p-8">Je m'inscris comme Annonceur <ChevronRight className="w-5 h-5" /></Button>
+            <Button variant="outline" className="cursor-pointer mt-5 bg-[#E63832] text-white rounded-none border-none text-[20px] p-8">Je m&apos;inscris comme comédien <ChevronRight className="w-5 h-5" /></Button>
+            <Button variant="outline" className="cursor-pointer mt-5 bg-black text-white rounded-none border-none text-[20px] p-8">Je m&apos;inscris comme Annonceur <ChevronRight className="w-5 h-5" /></Button>
           </div>
         </div>
 
