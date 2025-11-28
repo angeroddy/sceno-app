@@ -1,6 +1,7 @@
 'use client';
 import * as React from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 import { Button } from '../../button';
 
@@ -98,18 +99,19 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
     {
       className,
       logo = <Image src={Logo2} alt="Logo" height={100} width={100} />,
-      logoHref = '#',
+      logoHref = '/',
       navigationLinks = defaultNavigationLinks,
       signInText = 'Se connecter',
-      signInHref = '#signin',
+      signInHref = '/connexion',
       ctaText = 'Publier une annonce',
-      ctaHref = '#get-started',
+      ctaHref = '/inscription/annonceur',
       onSignInClick,
       onCtaClick,
       ...props
     },
     ref
   ) => {
+    const router = useRouter();
     const [isMobile, setIsMobile] = useState(false);
     const containerRef = useRef<HTMLElement>(null);
 
@@ -173,11 +175,11 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     {navigationLinks.map((link, index) => (
                       <NavigationMenuItem key={index} className="w-full">
                         <button
-                          onClick={(e) => e.preventDefault()}
+                          onClick={() => router.push(link.href)}
                           className={cn(
                             "flex w-full items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer no-underline",
-                            link.active 
-                              ? "bg-accent text-accent-foreground" 
+                            link.active
+                              ? "bg-accent text-accent-foreground"
                               : "text-foreground/80"
                           )}
                         >
@@ -192,8 +194,8 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
             )}
             {/* Main nav */}
             <div className="flex items-center gap-6">
-              <button 
-                onClick={(e) => e.preventDefault()}
+              <button
+                onClick={() => router.push(logoHref)}
                 className="flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
               >
                 <div className="text-2xl">
@@ -208,11 +210,11 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                   {navigationLinks.map((link, index) => (
                     <NavigationMenuItem key={index}>
                       <button
-                        onClick={(e) => e.preventDefault()}
+                        onClick={() => router.push(link.href)}
                         className={cn(
                           "group inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer no-underline",
-                          link.active 
-                            ? "bg-accent text-accent-foreground" 
+                          link.active
+                            ? "bg-accent text-accent-foreground"
                             : "text-foreground/80 hover:text-foreground"
                         )}
                       >
@@ -233,7 +235,11 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
               className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
               onClick={(e) => {
                 e.preventDefault();
-                if (onSignInClick) onSignInClick();
+                if (onSignInClick) {
+                  onSignInClick();
+                } else {
+                  router.push(signInHref);
+                }
               }}
             >
               {signInText}
@@ -243,7 +249,11 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
               className="rounded-none text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
               onClick={(e) => {
                 e.preventDefault();
-                if (onCtaClick) onCtaClick();
+                if (onCtaClick) {
+                  onCtaClick();
+                } else {
+                  router.push(ctaHref);
+                }
               }}
             >
               {ctaText}
