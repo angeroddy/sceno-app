@@ -53,7 +53,7 @@ export default function Home() {
             </TextAnimate>
           </div>
 
-          <Button variant="outline" className="cursor-pointer mt-5 bg-[#E63832] text-white rounded-none border-none text-base sm:text-lg md:text-xl px-4 py-2 sm:px-6 sm:py-3">Commencer  <ChevronRight className="w-5 h-5" /></Button>
+          <Button variant="outline" className="cursor-pointer mt-5 bg-[#E63832] text-white rounded-none border-none text-sm sm:text-base md:text-lg px-3 py-2 sm:px-5 sm:py-2.5">Commencer  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
         </div>
       </div>
       <div className="infos-sections mt-10 p-5 flex flex-col justify-center">
@@ -149,8 +149,8 @@ export default function Home() {
           <h1 className="font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-center mb-4">Les bons plans formation pour comédiens, c&apos;est ici</h1>
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-[25px] text-center max-w-3xl">Comédiens, inscrivez-vous pour recevoir des offres exclusives à prix réduit. Organismes de formation, publiez vos pré-ventes et dernières minutes pour remplir vos stages. </p>
           <div className="btnGroup gap-3 flex flex-col sm:flex-row mt-6">
-            <Button variant="outline" className="cursor-pointer bg-[#E63832] text-white rounded-none border-none text-sm sm:text-base md:text-lg lg:text-xl px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-5 whitespace-nowrap">Je m&apos;inscris comme comédien <ChevronRight className="w-5 h-5" /></Button>
-            <Button variant="outline" className="cursor-pointer bg-black text-white rounded-none border-none text-sm sm:text-base md:text-lg lg:text-xl px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-5 whitespace-nowrap">Je m&apos;inscris comme Annonceur <ChevronRight className="w-5 h-5" /></Button>
+            <Button variant="outline" className="cursor-pointer bg-[#E63832] text-white rounded-none border-none text-xs sm:text-sm md:text-base lg:text-lg px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-3.5 whitespace-nowrap">Je m&apos;inscris comme comédien <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
+            <Button variant="outline" className="cursor-pointer bg-black text-white rounded-none border-none text-xs sm:text-sm md:text-base lg:text-lg px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-3.5 whitespace-nowrap">Je m&apos;inscris comme Annonceur <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
           </div>
         </div>
 

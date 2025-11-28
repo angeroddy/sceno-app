@@ -86,7 +86,7 @@
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: hidden !important;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-tt-firs-neue), system-ui, -apple-system, sans-serif;

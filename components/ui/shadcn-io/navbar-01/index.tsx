@@ -230,7 +230,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-none cursor-pointer  text-white px-4 h-9 text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+              className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
               onClick={(e) => {
                 e.preventDefault();
                 if (onSignInClick) onSignInClick();
@@ -240,7 +240,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
             </Button>
             <Button
               size="sm"
-              className="rounded-none  text-sm font-medium px-4 h-9 shadow-sm"
+              className="rounded-none text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
               onClick={(e) => {
                 e.preventDefault();
                 if (onCtaClick) onCtaClick();
