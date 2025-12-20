@@ -11,6 +11,11 @@ import { createClient } from "@/app/lib/supabase-client";
 import type { OpportunityType } from "@/app/types";
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types";
 
+// Interface pour typer la réponse Supabase
+interface ComedienPreferences {
+  preferences_opportunites: OpportunityType[] | null;
+}
+
 export default function PreferencesPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -39,7 +44,7 @@ export default function PreferencesPage() {
           .from('comediens')
           .select('preferences_opportunites')
           .eq('auth_user_id', user.id)
-          .single();
+          .single<ComedienPreferences>();
 
         if (error) throw error;
 
