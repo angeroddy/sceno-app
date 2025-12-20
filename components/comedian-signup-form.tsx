@@ -2,18 +2,21 @@
 
 import * as React from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Stepper } from "@/components/ui/stepper"
-import { Upload } from "lucide-react"
+import { Upload, Loader2 } from "lucide-react"
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
+import { createClient } from "@/app/lib/supabase-client"
+import type { OpportunityType } from "@/app/types"
 
 const STEPS = [
   "Préférences",
@@ -46,6 +49,7 @@ export function ComedianSignupForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [preferences, setPreferences] = useState<OpportunityPreferences>({
     stages: false,
@@ -67,6 +71,9 @@ export function ComedianSignupForm({
   })
   const [error, setError] = useState<string>("")
   const [photoPreview, setPhotoPreview] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [photoUploadWarning, setPhotoUploadWarning] = useState(false)
 
   const handlePreferenceChange = (key: keyof OpportunityPreferences) => {
     setPreferences((prev) => ({
@@ -175,16 +182,143 @@ export function ComedianSignupForm({
     setError("")
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Mapper les préférences vers les types de la base de données
+  const mapPreferencesToOpportunityTypes = (): OpportunityType[] => {
+    const types: OpportunityType[] = []
+    if (preferences.stages) types.push('stages_ateliers')
+    if (preferences.formations) types.push('ecoles_formations')
+    if (preferences.coachs) types.push('coachs_independants')
+    if (preferences.services) types.push('communication')
+    return types
+  }
+
+  // Upload de la photo vers Supabase Storage
+  const uploadPhoto = async (file: File, userId: string): Promise<string | null> => {
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userId}-${Date.now()}.${fileExt}`
+      const filePath = `comediens/${fileName}`
+
+      console.log('Tentative d\'upload de la photo:', { fileName, filePath, fileSize: file.size })
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Erreur upload photo:', {
+          message: uploadError.message,
+          error: uploadError
+        })
+        // Ne pas bloquer l'inscription si l'upload échoue
+        return null
+      }
+
+      console.log('Photo uploadée avec succès:', uploadData)
+
+      // Récupérer l'URL publique
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      console.log('URL publique générée:', data.publicUrl)
+      return data.publicUrl
+    } catch (error) {
+      console.error('Erreur lors de l\'upload (catch):', error)
+      // Ne pas bloquer l'inscription si l'upload échoue
+      return null
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (currentStep === 3 && validateStep3()) {
-      // Logique de soumission finale
-      console.log("Form submitted", {
-        preferences,
-        personalInfo,
-        accountInfo,
-      })
-      // Ici vous pouvez envoyer les données au backend
+      setIsLoading(true)
+      setError("")
+
+      try {
+        const supabase = createClient()
+
+        // 1. Créer l'utilisateur dans Supabase Auth
+        console.log('Tentative de création de compte pour:', accountInfo.email)
+
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: accountInfo.email,
+          password: accountInfo.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          }
+        })
+
+        if (authError) {
+          console.error('Erreur d\'authentification:', authError)
+          setError(`Erreur d'inscription: ${authError.message}`)
+          setIsLoading(false)
+          return
+        }
+
+        console.log('Compte créé:', authData)
+
+        if (!authData.user) {
+          setError("Erreur lors de la création du compte")
+          setIsLoading(false)
+          return
+        }
+
+        // 2. Upload de la photo si présente
+        let photoUrl: string | null = null
+        if (personalInfo.photo) {
+          photoUrl = await uploadPhoto(personalInfo.photo, authData.user.id)
+          // Si l'upload a échoué mais qu'on continue quand même
+          if (!photoUrl) {
+            setPhotoUploadWarning(true)
+          }
+        }
+
+        // 3. Créer le profil comédien dans la table
+        console.log('Création du profil comédien...')
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('comediens')
+          .insert({
+            auth_user_id: authData.user.id,
+            nom: personalInfo.lastName,
+            prenom: personalInfo.firstName,
+            email: accountInfo.email,
+            photo_url: photoUrl,
+            lien_demo: personalInfo.demoLink || null,
+            preferences_opportunites: mapPreferencesToOpportunityTypes(),
+          })
+          .select()
+
+        if (profileError) {
+          console.error('Erreur lors de la création du profil:', profileError)
+          setError(`Erreur lors de la création du profil: ${profileError.message}. Veuillez contacter le support.`)
+          setIsLoading(false)
+          return
+        }
+
+        console.log('Profil créé avec succès:', profileData)
+
+        // 4. Succès !
+        setIsSuccess(true)
+        setIsLoading(false)
+
+        // Redirection vers la page de confirmation email après 2 secondes
+        setTimeout(() => {
+          router.push('/inscription-reussie')
+        }, 2000)
+
+      } catch (error) {
+        console.error('Erreur inscription:', error)
+        setError("Une erreur inattendue s'est produite. Veuillez réessayer.")
+        setIsLoading(false)
+      }
     }
   }
 
@@ -206,7 +340,7 @@ export function ComedianSignupForm({
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-lg font-semibold mb-2">
-                Quels types d'opportunités voulez-vous recevoir ?
+                Quels types d&apos;opportunités voulez-vous recevoir ?
               </h2>
               <p className="text-sm text-muted-foreground">
                 Sélectionnez au moins une option
@@ -393,14 +527,14 @@ export function ComedianSignupForm({
         )}
 
         {/* Étape 3 : Création du compte */}
-        {currentStep === 3 && (
+        {currentStep === 3 && !isSuccess && (
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-lg font-semibold mb-2">
                 Dernière étape !
               </h2>
               <p className="text-sm text-muted-foreground">
-                Créez votre compte pour finaliser l'inscription
+                Créez votre compte pour finaliser l&apos;inscription
               </p>
             </div>
 
@@ -464,7 +598,7 @@ export function ComedianSignupForm({
                   htmlFor="acceptTerms"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  J'accepte les conditions générales d'utilisation <span className="text-red-500">*</span>
+                  J&apos;accepte les conditions générales d&apos;utilisation <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
                   En cochant cette case, vous acceptez nos{" "}
@@ -488,35 +622,82 @@ export function ComedianSignupForm({
           </div>
         )}
 
-        {/* Navigation buttons */}
-        <div className="flex justify-between gap-4 mt-8">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={currentStep === 1}
-            className="flex-1"
-          >
-            Précédent
-          </Button>
+        {/* Message de succès */}
+        {isSuccess && (
+          <div className="space-y-6 text-center py-8">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-green-600 mb-2">
+                Compte créé avec succès !
+              </h2>
+              <p className="text-muted-foreground">
+                Bienvenue {personalInfo.firstName} ! Vous allez être redirigé vers la page de confirmation..
+              </p>
+              {photoUploadWarning && (
+                <p className="text-sm text-orange-600 mt-4 bg-orange-50 p-3 rounded-md">
+                  Note : Votre photo n&apos;a pas pu être uploadée. Vous pourrez l&apos;ajouter plus tard dans vos paramètres.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
-          {currentStep < STEPS.length ? (
+        {/* Navigation buttons */}
+        {!isSuccess && (
+          <div className="flex justify-between gap-4 mt-8">
             <Button
               type="button"
-              onClick={handleNext}
-              className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90"
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 1 || isLoading}
+              className="flex-1"
             >
-              Suivant
+              Précédent
             </Button>
-          ) : (
-            <Button
-              type="submit"
-              className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90"
-            >
-              Créer mon compte
-            </Button>
-          )}
-        </div>
+
+            {currentStep < STEPS.length ? (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={isLoading}
+                className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90"
+              >
+                Suivant
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Création en cours...
+                  </>
+                ) : (
+                  "Créer mon compte"
+                )}
+              </Button>
+            )}
+          </div>
+        )}
       </FieldGroup>
     </form>
   )

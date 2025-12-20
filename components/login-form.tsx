@@ -1,65 +1,193 @@
+"use client"
+
+import * as React from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Loader2 } from "lucide-react"
 import {
   Field,
   FieldDescription,
-  FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { createClient } from "@/app/lib/supabase-client"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
+
+    // Validation
+    if (!email.trim()) {
+      setError("L'adresse e-mail est obligatoire")
+      setIsLoading(false)
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError("Veuillez entrer une adresse e-mail valide")
+      setIsLoading(false)
+      return
+    }
+
+    if (!password) {
+      setError("Le mot de passe est obligatoire")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+
+      console.log('Tentative de connexion pour:', email)
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      })
+
+      if (signInError) {
+        console.error('Erreur de connexion:', signInError)
+        
+        // Messages d'erreur plus clairs
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError("Identifiants incorrects. Vérifiez votre email et mot de passe.")
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError("Veuillez confirmer votre adresse e-mail avant de vous connecter.")
+        } else {
+          setError(`Erreur de connexion: ${signInError.message}`)
+        }
+        setIsLoading(false)
+        return
+      }
+
+      if (!data.user) {
+        setError("Erreur lors de la connexion")
+        setIsLoading(false)
+        return
+      }
+
+      console.log('Connexion réussie:', data.user)
+
+      // Vérifier si le profil comédien existe
+      const { data: profileData, error: profileError } = await supabase
+        .from('comediens')
+        .select('*')
+        .eq('auth_user_id', data.user.id)
+        .single()
+
+      if (profileError) {
+        console.error('Erreur lors de la récupération du profil:', profileError)
+      }
+
+      // Redirection vers le dashboard
+      setIsLoading(false)
+      router.push('/dashboard')
+
+    } catch (error) {
+      console.error('Erreur inattendue:', error)
+      setError("Une erreur inattendue s'est produite. Veuillez réessayer.")
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
-            Enter your email below to login to your account
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-2xl font-bold">Connexion</h1>
+          <p className="text-balance text-sm text-muted-foreground">
+            Connectez-vous à votre compte pour accéder à votre espace
           </p>
         </div>
-        <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input id="email" type="email" placeholder="m@example.com" required />
-        </Field>
-        <Field>
-          <div className="flex items-center">
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <a
-              href="#"
-              className="ml-auto text-sm underline-offset-4 hover:underline"
-            >
-              Forgot your password?
-            </a>
-          </div>
-          <Input id="password" type="password" required />
-        </Field>
-        <Field>
-          <Button type="submit">Login</Button>
-        </Field>
-        <FieldSeparator>Or continue with</FieldSeparator>
-        <Field>
-          <Button variant="outline" type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-                fill="currentColor"
-              />
-            </svg>
-            Login with GitHub
+
+        <div className="space-y-4">
+          <Field>
+            <FieldLabel htmlFor="email">
+              Adresse e-mail
+            </FieldLabel>
+            <Input
+              id="email"
+              type="email"
+              placeholder="exemple@email.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setError("")
+              }}
+              required
+              disabled={isLoading}
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="password">
+              Mot de passe
+            </FieldLabel>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setError("")
+              }}
+              required
+              disabled={isLoading}
+            />
+            <FieldDescription>
+              <a 
+                href="/mot-de-passe-oublie" 
+                className="text-sm underline hover:text-primary"
+              >
+                Mot de passe oublié ?
+              </a>
+            </FieldDescription>
+          </Field>
+
+          {error && (
+            <div className="text-sm text-red-500 text-center bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full bg-[#E63832] hover:bg-[#E63832]/90"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Connexion en cours...
+              </>
+            ) : (
+              "Se connecter"
+            )}
           </Button>
-          <FieldDescription className="text-center">
-            Don&apos;t have an account?{" "}
-            <a href="#" className="underline underline-offset-4">
-              Sign up
-            </a>
-          </FieldDescription>
-        </Field>
-      </FieldGroup>
+        </div>
+
+        <div className="text-center text-sm">
+          Pas encore de compte ?{" "}
+          <a href="/inscription" className="underline underline-offset-4 hover:text-primary">
+            Créer un compte
+          </a>
+        </div>
+      </div>
     </form>
   )
 }

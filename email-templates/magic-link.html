@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion à Scenio - Lien magique</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 40px 40px 30px; text-align: center; background: linear-gradient(135deg, #E63832 0%, #c42f2a 100%); border-radius: 12px 12px 0 0;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">
+                                Scenio
+                            </h1>
+                            <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
+                                Plateforme dédiée aux comédiens
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Icône -->
+                    <tr>
+                        <td style="padding: 40px 40px 0; text-align: center;">
+                            <div style="display: inline-block; width: 80px; height: 80px; background-color: #F3F4F6; border-radius: 50%; line-height: 80px;">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                                    <path d="M15 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H15" stroke="#E63832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M10 17L15 12L10 7" stroke="#E63832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M15 12H3" stroke="#E63832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Contenu principal -->
+                    <tr>
+                        <td style="padding: 30px 40px;">
+                            <h2 style="margin: 0 0 16px; color: #1a1a1a; font-size: 24px; font-weight: 600; text-align: center;">
+                                Connexion rapide à votre compte
+                            </h2>
+
+                            <p style="margin: 0 0 24px; color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">
+                                Cliquez sur le bouton ci-dessous pour vous connecter instantanément à votre compte Scenio. Pas besoin de saisir votre mot de passe !
+                            </p>
+
+                            <!-- Bouton CTA -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center; padding: 0 0 24px;">
+                                        <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #E63832 0%, #c42f2a 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px; box-shadow: 0 4px 12px rgba(230, 56, 50, 0.3);">
+                                            Se connecter à Scenio
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 16px; color: #6b7280; font-size: 14px; line-height: 1.6; text-align: center;">
+                                Ou copiez-collez ce lien dans votre navigateur :
+                            </p>
+
+                            <div style="padding: 12px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; word-break: break-all; text-align: center;">
+                                <a href="{{ .ConfirmationURL }}" style="color: #E63832; font-size: 13px; text-decoration: none;">
+                                    {{ .ConfirmationURL }}
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Informations -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <div style="padding: 20px; background-color: #F3F4F6; border-left: 4px solid #6B7280; border-radius: 6px;">
+                                <p style="margin: 0 0 12px; color: #1a1a1a; font-size: 14px; font-weight: 600;">
+                                    ✨ C'est quoi un lien magique ?
+                                </p>
+                                <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                                    Un lien magique vous permet de vous connecter sans saisir votre mot de passe. Cliquez simplement sur le lien et vous serez connecté automatiquement. Ce lien est valable <strong>15 minutes</strong> et ne peut être utilisé qu'une seule fois.
+                                </p>
+                            </div>
+
+                            <div style="margin-top: 16px; padding: 20px; background-color: #FEF3F2; border-left: 4px solid #E63832; border-radius: 6px;">
+                                <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                                    <strong style="color: #1a1a1a;">🔒 Sécurité :</strong><br>
+                                    Si vous n'avez pas demandé cette connexion, ignorez cet e-mail. Personne ne pourra accéder à votre compte sans ce lien.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Séparateur -->
+                    <tr>
+                        <td style="padding: 0 40px;">
+                            <div style="height: 1px; background-color: #e5e7eb;"></div>
+                        </td>
+                    </tr>
+
+                    <!-- Conseils -->
+                    <tr>
+                        <td style="padding: 30px 40px;">
+                            <p style="margin: 0 0 16px; color: #1a1a1a; font-size: 15px; font-weight: 600; text-align: center;">
+                                💡 Astuce
+                            </p>
+                            <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5; text-align: center;">
+                                Pour plus de sécurité, assurez-vous d'ouvrir ce lien sur l'appareil depuis lequel vous avez demandé la connexion.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Section aide -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <div style="height: 1px; background-color: #e5e7eb; margin-bottom: 30px;"></div>
+                            <p style="margin: 0 0 12px; color: #1a1a1a; font-size: 15px; font-weight: 600; text-align: center;">
+                                Besoin d'aide ?
+                            </p>
+                            <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5; text-align: center;">
+                                Notre équipe est disponible pour vous aider.<br>
+                                <a href="mailto:support@scenio.com" style="color: #E63832; text-decoration: none;">support@scenio.com</a>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f9fafb; border-radius: 0 0 12px 12px; text-align: center;">
+                            <p style="margin: 0 0 12px; color: #9ca3af; font-size: 12px; line-height: 1.5;">
+                                Cet e-mail a été envoyé par <strong style="color: #6b7280;">Scenio</strong><br>
+                                Plateforme dédiée aux opportunités pour comédiens
+                            </p>
+
+                            <div style="margin: 16px 0;">
+                                <a href="#" style="display: inline-block; margin: 0 8px; color: #9ca3af; text-decoration: none; font-size: 12px;">À propos</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="display: inline-block; margin: 0 8px; color: #9ca3af; text-decoration: none; font-size: 12px;">Confidentialité</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="display: inline-block; margin: 0 8px; color: #9ca3af; text-decoration: none; font-size: 12px;">CGU</a>
+                            </div>
+
+                            <p style="margin: 16px 0 0; color: #9ca3af; font-size: 11px;">
+                                © 2024 Scenio. Tous droits réservés.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmez votre inscription - Scenio</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+                    <!-- Header avec logo -->
+                    <tr>
+                        <td style="padding: 40px 40px 30px; text-align: center; background: linear-gradient(135deg, #E63832 0%, #c42f2a 100%); border-radius: 12px 12px 0 0;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">
+                                Scenio
+                            </h1>
+                            <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
+                                Plateforme dédiée aux comédiens
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Icône de succès -->
+                    <tr>
+                        <td style="padding: 40px 40px 0; text-align: center;">
+                            <div style="display: inline-block; width: 80px; height: 80px; background-color: #E6F7ED; border-radius: 50%; line-height: 80px;">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+                                    <path d="M20 6L9 17L4 12" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Contenu principal -->
+                    <tr>
+                        <td style="padding: 30px 40px;">
+                            <h2 style="margin: 0 0 16px; color: #1a1a1a; font-size: 24px; font-weight: 600; text-align: center;">
+                                Bienvenue sur Scenio ! 🎭
+                            </h2>
+
+                            <p style="margin: 0 0 24px; color: #4b5563; font-size: 16px; line-height: 1.6; text-align: center;">
+                                Nous sommes ravis de vous compter parmi nous. Pour finaliser votre inscription et accéder à toutes les opportunités, veuillez confirmer votre adresse e-mail.
+                            </p>
+
+                            <!-- Bouton CTA -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center; padding: 0 0 24px;">
+                                        <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #E63832 0%, #c42f2a 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px; box-shadow: 0 4px 12px rgba(230, 56, 50, 0.3); transition: transform 0.2s;">
+                                            Confirmer mon adresse e-mail
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 16px; color: #6b7280; font-size: 14px; line-height: 1.6; text-align: center;">
+                                Ou copiez-collez ce lien dans votre navigateur :
+                            </p>
+
+                            <div style="padding: 12px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; word-break: break-all; text-align: center;">
+                                <a href="{{ .ConfirmationURL }}" style="color: #E63832; font-size: 13px; text-decoration: none;">
+                                    {{ .ConfirmationURL }}
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Informations supplémentaires -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <div style="padding: 20px; background-color: #FEF3F2; border-left: 4px solid #E63832; border-radius: 6px;">
+                                <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                                    <strong style="color: #1a1a1a;">💡 Bon à savoir :</strong><br>
+                                    Ce lien de confirmation expire dans <strong>24 heures</strong>. Si vous n'avez pas demandé cette inscription, vous pouvez ignorer cet e-mail en toute sécurité.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Séparateur -->
+                    <tr>
+                        <td style="padding: 0 40px;">
+                            <div style="height: 1px; background-color: #e5e7eb;"></div>
+                        </td>
+                    </tr>
+
+                    <!-- Section aide -->
+                    <tr>
+                        <td style="padding: 30px 40px;">
+                            <p style="margin: 0 0 12px; color: #1a1a1a; font-size: 15px; font-weight: 600; text-align: center;">
+                                Besoin d'aide ?
+                            </p>
+                            <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5; text-align: center;">
+                                Notre équipe est là pour vous accompagner.<br>
+                                Contactez-nous à <a href="mailto:support@scenio.com" style="color: #E63832; text-decoration: none;">support@scenio.com</a>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f9fafb; border-radius: 0 0 12px 12px; text-align: center;">
+                            <p style="margin: 0 0 12px; color: #9ca3af; font-size: 12px; line-height: 1.5;">
+                                Cet e-mail a été envoyé par <strong style="color: #6b7280;">Scenio</strong><br>
+                                Plateforme dédiée aux opportunités pour comédiens
+                            </p>
+
+                            <div style="margin: 16px 0;">
+                                <a href="#" style="display: inline-block; margin: 0 8px; color: #9ca3af; text-decoration: none; font-size: 12px;">À propos</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="display: inline-block; margin: 0 8px; color: #9ca3af; text-decoration: none; font-size: 12px;">Confidentialité</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="display: inline-block; margin: 0 8px; color: #9ca3af; text-decoration: none; font-size: 12px;">CGU</a>
+                            </div>
+
+                            <p style="margin: 16px 0 0; color: #9ca3af; font-size: 11px;">
+                                © 2024 Scenio. Tous droits réservés.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

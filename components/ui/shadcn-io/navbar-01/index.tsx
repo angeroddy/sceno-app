@@ -87,12 +87,14 @@ export interface Navbar01Props extends React.HTMLAttributes<HTMLElement> {
   ctaHref?: string;
   onSignInClick?: () => void;
   onCtaClick?: () => void;
+  isAuthenticated?: boolean;
+  userType?: 'comedian' | 'advertiser';
+  onLogout?: () => void;
+  loading?: boolean;
 }
 
 // Default navigation links
-const defaultNavigationLinks: Navbar01NavLink[] = [
- 
-];
+const defaultNavigationLinks: Navbar01NavLink[] = [];
 
 export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
   (
@@ -107,6 +109,10 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
       ctaHref = '/inscription/annonceur',
       onSignInClick,
       onCtaClick,
+      isAuthenticated = false,
+      userType = 'comedian',
+      onLogout,
+      loading = false,
       ...props
     },
     ref
@@ -170,25 +176,25 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-48 p-2">
-                <NavigationMenu className="max-w-none">
-                  <NavigationMenuList className="flex-col items-start gap-1">
-                    {navigationLinks.map((link, index) => (
-                      <NavigationMenuItem key={index} className="w-full">
-                        <button
-                          onClick={() => router.push(link.href)}
-                          className={cn(
-                            "flex w-full items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer no-underline",
-                            link.active
-                              ? "bg-accent text-accent-foreground"
-                              : "text-foreground/80"
-                          )}
-                        >
-                          {link.label}
-                        </button>
-                      </NavigationMenuItem>
-                    ))}
-                  </NavigationMenuList>
-                </NavigationMenu>
+                  <NavigationMenu className="max-w-none">
+                    <NavigationMenuList className="flex-col items-start gap-1">
+                      {navigationLinks.map((link, index) => (
+                        <NavigationMenuItem key={index} className="w-full">
+                          <button
+                            onClick={() => router.push(link.href)}
+                            className={cn(
+                              "flex w-full items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer no-underline",
+                              link.active
+                                ? "bg-accent text-accent-foreground"
+                                : "text-foreground/80"
+                            )}
+                          >
+                            {link.label}
+                          </button>
+                        </NavigationMenuItem>
+                      ))}
+                    </NavigationMenuList>
+                  </NavigationMenu>
                 </PopoverContent>
               </Popover>
             )}
@@ -201,63 +207,109 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 <div className="text-2xl">
                   {logo}
                 </div>
-
               </button>
               {/* Navigation menu */}
               {!isMobile && (
                 <NavigationMenu className="flex">
-                <NavigationMenuList className="gap-1">
-                  {navigationLinks.map((link, index) => (
-                    <NavigationMenuItem key={index}>
-                      <button
-                        onClick={() => router.push(link.href)}
-                        className={cn(
-                          "group inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer no-underline",
-                          link.active
-                            ? "bg-accent text-accent-foreground"
-                            : "text-foreground/80 hover:text-foreground"
-                        )}
-                      >
-                        {link.label}
-                      </button>
-                    </NavigationMenuItem>
-                  ))}
-                </NavigationMenuList>
+                  <NavigationMenuList className="gap-1">
+                    {navigationLinks.map((link, index) => (
+                      <NavigationMenuItem key={index}>
+                        <button
+                          onClick={() => router.push(link.href)}
+                          className={cn(
+                            "group inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer no-underline",
+                            link.active
+                              ? "bg-accent text-accent-foreground"
+                              : "text-foreground/80 hover:text-foreground"
+                          )}
+                        >
+                          {link.label}
+                        </button>
+                      </NavigationMenuItem>
+                    ))}
+                  </NavigationMenuList>
                 </NavigationMenu>
               )}
             </div>
           </div>
+          
           {/* Right side */}
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
-              onClick={(e) => {
-                e.preventDefault();
-                if (onSignInClick) {
-                  onSignInClick();
-                } else {
-                  router.push(signInHref);
-                }
-              }}
-            >
-              {signInText}
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-none text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
-              onClick={(e) => {
-                e.preventDefault();
-                if (onCtaClick) {
-                  onCtaClick();
-                } else {
-                  router.push(ctaHref);
-                }
-              }}
-            >
-              {ctaText}
-            </Button>
+          <div className="flex items-center gap-3 min-h-[36px]">
+            {loading ? (
+              // État de chargement : afficher des skeletons pour éviter le flash
+              <>
+                <div className="h-8 sm:h-9 w-20 sm:w-24 bg-gray-200 animate-pulse rounded-none" />
+                <div className="h-8 sm:h-9 w-24 sm:w-32 bg-gray-200 animate-pulse rounded-none" />
+              </>
+            ) : !isAuthenticated ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onSignInClick) {
+                      onSignInClick();
+                    } else {
+                      router.push(signInHref);
+                    }
+                  }}
+                >
+                  {signInText}
+                </Button>
+                <Button
+                  size="sm"
+                  className="rounded-none text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onCtaClick) {
+                      onCtaClick();
+                    } else {
+                      router.push(ctaHref);
+                    }
+                  }}
+                >
+                  {ctaText}
+                </Button>
+              </>
+            ) : (
+              <>
+                {userType === 'comedian' && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-none cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                      onClick={() => router.push('/dashboard/profil')}
+                    >
+                      Mon profil
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-none cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                      onClick={() => router.push('/dashboard/preferences')}
+                    >
+                      Préférences
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onLogout) {
+                      onLogout();
+                    }
+                  }}
+                >
+                  Se déconnecter
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
