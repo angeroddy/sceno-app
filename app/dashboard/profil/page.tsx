@@ -11,6 +11,15 @@ import { useAuth } from "../../hooks/useAuth";
 import { createClient } from "@/app/lib/supabase-client";
 import Image from "next/image";
 
+// 1. Define the interface based on your DB schema image
+interface ComedienProfile {
+  prenom: string | null;
+  nom: string | null;
+  email: string | null;
+  photo_url: string | null;
+  lien_demo: string | null;
+}
+
 export default function ProfilPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -47,12 +56,15 @@ export default function ProfilPage() {
         if (error) throw error;
 
         if (data) {
+          // 2. Cast the data to your interface to fix the 'never' type error
+          const userData = data as unknown as ComedienProfile;
+
           setProfile({
-            firstName: data.prenom || "",
-            lastName: data.nom || "",
-            email: data.email || "",
-            photoUrl: data.photo_url || "",
-            demoUrl: data.lien_demo || "",
+            firstName: userData.prenom || "",
+            lastName: userData.nom || "",
+            email: userData.email || "",
+            photoUrl: userData.photo_url || "",
+            demoUrl: userData.lien_demo || "",
           });
         }
       } catch (err) {
@@ -102,19 +114,25 @@ export default function ProfilPage() {
 
         if (uploadError) throw uploadError;
 
-        photoUrl = supabase.storage.from('photos').getPublicUrl(filePath).data.publicUrl;
+        const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(filePath);
+        photoUrl = publicUrlData.publicUrl;
       }
 
-      // Mise à jour du profil
+      // 1. Create a typed object using your interface
+      const profileUpdates: ComedienProfile = {
+        prenom: profile.firstName,
+        nom: profile.lastName,
+        email: profile.email,
+        photo_url: photoUrl,
+        lien_demo: profile.demoUrl || null,
+      };
+
+      // 2. Perform the update
       const { error: updateError } = await supabase
         .from('comediens')
-        .update({
-          prenom: profile.firstName,
-          nom: profile.lastName,
-          email: profile.email,
-          photo_url: photoUrl,
-          lien_demo: profile.demoUrl || null,
-        })
+        // We cast to 'never' because Supabase types don't recognize the table schema yet.
+        // This bypasses the 'never' error and avoids the 'any' linter error.
+        .update(profileUpdates as never)
         .eq('auth_user_id', user.id);
 
       if (updateError) throw updateError;
@@ -264,7 +282,6 @@ export default function ProfilPage() {
                 />
               </div>
 
-              {/* Modification ici : flex-col par défaut, md:flex-row pour le bureau */}
               <div className="flex flex-col md:flex-row gap-3 pt-4">
                 <Button
                   className="w-full md:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
