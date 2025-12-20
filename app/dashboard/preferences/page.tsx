@@ -11,15 +11,24 @@ import { createClient } from "@/app/lib/supabase-client";
 import type { OpportunityType } from "@/app/types";
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types";
 
-// Interface pour typer la réponse Supabase
-interface ComedienPreferences {
-  preferences_opportunites: OpportunityType[] | null;
-}
-
 export default function PreferencesPage() {
   const router = useRouter();
   const { user } = useAuth();
   const supabase = createClient();
+
+  type ComedienRow = {
+    id: string;
+    auth_user_id: string;
+    nom: string;
+    prenom: string;
+    email: string;
+    photo_url: string | null;
+    lien_demo: string | null;
+    preferences_opportunites: OpportunityType[];
+    email_verifie: boolean;
+    created_at: string;
+    updated_at: string;
+  };
 
   // États pour les préférences
   const [preferences, setPreferences] = useState({
@@ -40,17 +49,20 @@ export default function PreferencesPage() {
       if (!user) return;
 
       try {
-        const { data, error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase as any)
           .from('comediens')
-          .select('preferences_opportunites')
+          .select('*')
           .eq('auth_user_id', user.id)
-          .single<ComedienPreferences>();
+          .single();
 
         if (error) throw error;
 
-        if (data && data.preferences_opportunites) {
+        const comedienData = data as ComedienRow | null;
+
+        if (comedienData && comedienData.preferences_opportunites) {
           // Convertir le format de base de données vers le format de l'interface
-          const prefs = data.preferences_opportunites as OpportunityType[];
+          const prefs = comedienData.preferences_opportunites;
           setPreferences({
             stages_ateliers: prefs.includes('stages_ateliers'),
             ecoles_formations: prefs.includes('ecoles_formations'),
@@ -88,7 +100,8 @@ export default function PreferencesPage() {
       if (preferences.coachs_independants) preferencesArray.push('coachs_independants');
       if (preferences.communication) preferencesArray.push('communication');
 
-      const { error: updateError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase as any)
         .from('comediens')
         .update({
           preferences_opportunites: preferencesArray,
@@ -109,35 +122,35 @@ export default function PreferencesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            className="mb-6 flex items-center gap-2"
-            onClick={() => router.push('/dashboard')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retour au tableau de bord
-          </Button>
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          className="mb-6 flex items-center gap-2"
+          onClick={() => router.push('/dashboard')}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retour au tableau de bord
+        </Button>
 
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              Mes Préférences
-            </h1>
-            <p className="text-gray-600 text-lg">
-              Personnalisez les opportunités que vous recevez
-            </p>
-          </div>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            Mes Préférences
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Personnalisez les opportunités que vous recevez
+          </p>
+        </div>
 
-          {/* Preferences Card */}
-          {preferencesLoading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#E63832]" />
-              </CardContent>
-            </Card>
-          ) : (
+        {/* Preferences Card */}
+        {preferencesLoading ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[#E63832]" />
+            </CardContent>
+          </Card>
+        ) : (
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Mes Préférences</CardTitle>
@@ -204,7 +217,7 @@ export default function PreferencesPage() {
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-4 flex flex-col md:flex-row gap-3">
                 <Button
                   className="w-full md:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
                   onClick={handleSave}
@@ -222,6 +235,7 @@ export default function PreferencesPage() {
                     </>
                   )}
                 </Button>
+
                 <Button
                   variant="outline"
                   className="w-full md:w-auto"
@@ -233,8 +247,8 @@ export default function PreferencesPage() {
               </div>
             </CardContent>
           </Card>
-          )}
-        </div>
+        )}
+      </div>
     </div>
   );
 }

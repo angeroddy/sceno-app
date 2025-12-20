@@ -137,34 +137,34 @@ export default function ProfilPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            className="mb-6 flex items-center gap-2"
-            onClick={() => router.push('/dashboard')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retour au tableau de bord
-          </Button>
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          className="mb-6 flex items-center gap-2"
+          onClick={() => router.push('/dashboard')}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retour au tableau de bord
+        </Button>
 
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              Mon Profil
-            </h1>
-            <p className="text-gray-600 text-lg">
-              Gérez vos informations personnelles
-            </p>
-          </div>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            Mon Profil
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Gérez vos informations personnelles
+          </p>
+        </div>
 
-          {profileLoading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#E63832]" />
-              </CardContent>
-            </Card>
-          ) : (
+        {profileLoading ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[#E63832]" />
+            </CardContent>
+          </Card>
+        ) : (
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Modification du Profil</CardTitle>
@@ -221,14 +221,14 @@ export default function ProfilPage() {
               <div className="space-y-2">
                 <Label htmlFor="photo">Photo de profil</Label>
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-full bg-[#E6DAD0] flex items-center justify-center overflow-hidden">
-                    {photoPreview || profile.photoUrl ? (
+                  <div className="relative w-20 h-20 rounded-full bg-[#E6DAD0] flex items-center justify-center overflow-hidden">
+                    {(photoPreview || (profile.photoUrl && profile.photoUrl.trim())) ? (
                       <Image
                         src={photoPreview || profile.photoUrl}
                         alt="Photo de profil"
-                        width={80}
-                        height={80}
-                        className="object-cover w-full h-full"
+                        fill
+                        className="object-cover"
+                        unoptimized={photoPreview ? true : false}
                       />
                     ) : (
                       <User className="w-10 h-10 text-gray-600" />
@@ -264,7 +264,8 @@ export default function ProfilPage() {
                 />
               </div>
 
-              <div className="flex gap-3">
+              {/* Modification ici : flex-col par défaut, md:flex-row pour le bureau */}
+              <div className="flex flex-col md:flex-row gap-3 pt-4">
                 <Button
                   className="w-full md:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
                   onClick={handleSave}
@@ -279,6 +280,7 @@ export default function ProfilPage() {
                     'Enregistrer les modifications'
                   )}
                 </Button>
+
                 <Button
                   variant="outline"
                   className="w-full md:w-auto"
@@ -290,8 +292,8 @@ export default function ProfilPage() {
               </div>
             </CardContent>
           </Card>
-          )}
-        </div>
+        )}
+      </div>
     </div>
   );
 }
