@@ -293,7 +293,7 @@ export function ComedianSignupForm({
             photo_url: photoUrl,
             lien_demo: personalInfo.demoLink || null,
             preferences_opportunites: mapPreferencesToOpportunityTypes(),
-          })
+          } as any)
           .select()
 
         if (profileError) {
