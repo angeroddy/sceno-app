@@ -221,14 +221,14 @@ export default function ProfilPage() {
               <div className="space-y-2">
                 <Label htmlFor="photo">Photo de profil</Label>
                 <div className="flex items-center gap-4">
-                  <div className="relative w-20 h-20 rounded-full bg-[#E6DAD0] flex items-center justify-center overflow-hidden">
-                    {(photoPreview || (profile.photoUrl && profile.photoUrl.trim())) ? (
+                  <div className="w-20 h-20 rounded-full bg-[#E6DAD0] flex items-center justify-center overflow-hidden">
+                    {photoPreview || profile.photoUrl ? (
                       <Image
                         src={photoPreview || profile.photoUrl}
                         alt="Photo de profil"
-                        fill
-                        className="object-cover"
-                        unoptimized={photoPreview ? true : false}
+                        width={80}
+                        height={80}
+                        className="object-cover w-full h-full"
                       />
                     ) : (
                       <User className="w-10 h-10 text-gray-600" />
