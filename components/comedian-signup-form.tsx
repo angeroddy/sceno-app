@@ -182,6 +182,32 @@ export function ComedianSignupForm({
     setError("")
   }
 
+  // Traduire les erreurs Supabase en messages user-friendly
+  const translateAuthError = (errorMessage: string): string => {
+    // Vérifier les erreurs de duplication d'email
+    if (errorMessage.toLowerCase().includes('already') ||
+        errorMessage.toLowerCase().includes('duplicate') ||
+        errorMessage.toLowerCase().includes('exists')) {
+      return "Un compte existe déjà avec cet email"
+    }
+
+    // Autres erreurs courantes
+    if (errorMessage.toLowerCase().includes('invalid email')) {
+      return "L'adresse email n'est pas valide"
+    }
+
+    if (errorMessage.toLowerCase().includes('password')) {
+      return "Le mot de passe ne respecte pas les critères de sécurité"
+    }
+
+    if (errorMessage.toLowerCase().includes('network')) {
+      return "Erreur de connexion. Veuillez vérifier votre connexion internet"
+    }
+
+    // Message par défaut si l'erreur n'est pas reconnue
+    return "Une erreur s'est produite lors de l'inscription. Veuillez réessayer"
+  }
+
   // Mapper les préférences vers les types de la base de données
   const mapPreferencesToOpportunityTypes = (): OpportunityType[] => {
     const types: OpportunityType[] = []
@@ -257,7 +283,7 @@ export function ComedianSignupForm({
 
         if (authError) {
           console.error('Erreur d\'authentification:', authError)
-          setError(`Erreur d'inscription: ${authError.message}`)
+          setError(translateAuthError(authError.message))
           setIsLoading(false)
           return
         }
@@ -298,7 +324,13 @@ export function ComedianSignupForm({
 
         if (profileError) {
           console.error('Erreur lors de la création du profil:', profileError)
-          setError(`Erreur lors de la création du profil: ${profileError.message}. Veuillez contacter le support.`)
+          // Vérifier si c'est une erreur de duplication dans la table comediens
+          if (profileError.message.toLowerCase().includes('duplicate') ||
+              profileError.message.toLowerCase().includes('unique')) {
+            setError("Un compte existe déjà avec cet email")
+          } else {
+            setError("Une erreur s'est produite lors de la création du profil. Veuillez réessayer")
+          }
           setIsLoading(false)
           return
         }

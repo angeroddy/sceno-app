@@ -61,14 +61,16 @@ export function LoginForm({
 
       if (signInError) {
         console.error('Erreur de connexion:', signInError)
-        
+
         // Messages d'erreur plus clairs
         if (signInError.message.includes('Invalid login credentials')) {
           setError("Identifiants incorrects. Vérifiez votre email et mot de passe.")
         } else if (signInError.message.includes('Email not confirmed')) {
           setError("Veuillez confirmer votre adresse e-mail avant de vous connecter.")
+        } else if (signInError.message.toLowerCase().includes('network')) {
+          setError("Erreur de connexion. Veuillez vérifier votre connexion internet.")
         } else {
-          setError(`Erreur de connexion: ${signInError.message}`)
+          setError("Une erreur s'est produite lors de la connexion. Veuillez réessayer.")
         }
         setIsLoading(false)
         return
