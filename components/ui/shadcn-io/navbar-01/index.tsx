@@ -2,6 +2,7 @@
 import * as React from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
 
 import { Button } from '../../button';
 
@@ -91,6 +92,7 @@ export interface Navbar01Props extends React.HTMLAttributes<HTMLElement> {
   userType?: 'comedian' | 'advertiser';
   onLogout?: () => void;
   loading?: boolean;
+  hideHamburger?: boolean;
 }
 
 // Default navigation links
@@ -113,6 +115,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
       userType = 'comedian',
       onLogout,
       loading = false,
+      hideHamburger = false,
       ...props
     },
     ref
@@ -155,16 +158,16 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
       <header
         ref={combinedRef}
         className={cn(
-          'sticky top-0 z-50 w-full backdrop-blur px-4 md:px-6 **:no-underline',
+          'sticky top-0 z-50 w-full backdrop-blur **:no-underline',
           className
         )}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-4">
+        <div className="container mx-auto px-4 flex h-28 items-center justify-between gap-4">
           {/* Left side */}
           <div className="flex items-center gap-2">
             {/* Mobile menu trigger */}
-            {isMobile && (
+            {isMobile && !hideHamburger && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -202,9 +205,11 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
             <div className="flex items-center gap-6">
               <button
                 onClick={() => router.push(logoHref)}
-                className="flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
+                className={cn(
+                  "flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
+                )}
               >
-                <div className="text-2xl">
+                <div className={cn(hideHamburger && isMobile ? "text-5xl sm:text-6xl" : "text-2xl")}>
                   {logo}
                 </div>
               </button>
@@ -246,7 +251,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+                  className="cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onSignInClick) {
@@ -260,7 +265,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 </Button>
                 <Button
                   size="sm"
-                  className="rounded-none text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
+                  className="text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onCtaClick) {
@@ -280,7 +285,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-none cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-base sm:text-sm font-medium hover:bg-[#E6DAD0]"
                       onClick={() => router.push('/dashboard/profil')}
                     >
                       Mon profil
@@ -288,7 +293,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-none cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-base sm:text-sm font-medium hover:bg-[#E6DAD0]"
                       onClick={() => router.push('/dashboard/preferences')}
                     >
                       Préférences
@@ -298,7 +303,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="rounded-none cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+                  className="cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onLogout) {
@@ -306,7 +311,8 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     }
                   }}
                 >
-                  Se déconnecter
+                  <LogOut className="w-4 h-4 sm:hidden" />
+                  <span className="hidden sm:inline">Se déconnecter</span>
                 </Button>
               </>
             )}

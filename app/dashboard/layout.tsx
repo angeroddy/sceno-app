@@ -44,6 +44,7 @@ export default function DashboardLayout({
           isAuthenticated={isAuthenticated}
           userType={userType === 'comedian' ? 'comedian' : 'advertiser'}
           onLogout={logout}
+          hideHamburger={true}
         />
       </div>
 

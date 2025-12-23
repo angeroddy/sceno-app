@@ -144,7 +144,7 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Favorite Button */}
-                      <button className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-md hover:scale-110 transition-transform">
+                      <button className="cursor-pointer absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-md hover:scale-110 transition-transform">
                         <Heart
                           className={`w-5 h-5 ${opportunity.isFavorite ? 'fill-[#E63832] text-[#E63832]' : 'text-gray-600'}`}
                         />
@@ -215,10 +215,10 @@ export default function DashboardPage() {
 
                       {/* Actions */}
                       <div className="flex gap-2 pt-2">
-                        <Button className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90 rounded-md">
+                        <Button className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90">
                           Réserver
                         </Button>
-                        <Button variant="outline" className="flex-1 rounded-md">
+                        <Button variant="outline" className="flex-1">
                           Détails
                         </Button>
                       </div>
