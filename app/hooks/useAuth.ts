@@ -41,6 +41,19 @@ export function useAuth() {
     async function checkUserType(userId: string) {
       const supabase = createClient()
 
+      // Vérifier admin (priorité)
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('auth_user_id', userId)
+        .maybeSingle()
+
+      if (admin) {
+        setUserType('admin')
+        setLoading(false)
+        return
+      }
+
       // Vérifier comédien
       const { data: comedien } = await supabase
         .from('comediens')

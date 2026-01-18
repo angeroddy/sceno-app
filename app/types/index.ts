@@ -20,11 +20,32 @@ export type OpportunityStatus =
   | 'expiree'
   | 'complete'
 
-export type PurchaseStatus = 
+export type PurchaseStatus =
   | 'en_attente'
   | 'confirmee'
   | 'remboursee'
   | 'annulee'
+
+export type TypeAnnonceur =
+  | 'personne_physique'
+  | 'entreprise'
+
+export type TypeJuridique =
+  | 'auto_entrepreneur'
+  | 'entreprise_individuelle'
+  | 'eirl'
+  | 'sarl'
+  | 'eurl'
+  | 'sas'
+  | 'sasu'
+  | 'sa'
+  | 'sci'
+  | 'association'
+  | 'autre'
+
+export type TypePieceIdentite =
+  | 'cni'
+  | 'passeport'
 
 // ============================================
 // TABLES
@@ -50,10 +71,48 @@ export interface Annonceur {
   nom_formation: string
   email: string
   iban: string | null
+  nom_titulaire_compte: string | null
+  bic_swift: string | null
   email_verifie: boolean
   identite_verifiee: boolean
   created_at: string
   updated_at: string
+
+  // Nouveaux champs d'identité
+  type_annonceur: TypeAnnonceur | null
+  telephone: string | null
+
+  // Champs personne physique
+  nom: string | null
+  prenom: string | null
+  date_naissance: string | null
+  adresse_rue: string | null
+  adresse_ville: string | null
+  adresse_code_postal: string | null
+  adresse_pays: string | null
+  type_piece_identite: TypePieceIdentite | null
+  piece_identite_url: string | null
+
+  // Champs entreprise
+  nom_entreprise: string | null
+  type_juridique: TypeJuridique | null
+  pays_entreprise: string | null
+  numero_legal: string | null
+  siege_rue: string | null
+  siege_ville: string | null
+  siege_code_postal: string | null
+  siege_pays: string | null
+
+  // Représentant légal (entreprise)
+  representant_nom: string | null
+  representant_prenom: string | null
+  representant_date_naissance: string | null
+  representant_adresse_rue: string | null
+  representant_adresse_ville: string | null
+  representant_adresse_code_postal: string | null
+  representant_adresse_pays: string | null
+  representant_piece_identite_url: string | null
+  representant_type_piece_identite: TypePieceIdentite | null
 }
 
 export interface Admin {
@@ -72,7 +131,7 @@ export interface Opportunite {
   titre: string
   resume: string
   image_url: string | null
-  lien_infos: string
+  lien_infos: string | null
   prix_base: number
   prix_reduit: number
   reduction_pourcentage: number
@@ -114,6 +173,16 @@ export interface NotificationEmail {
   created_at: string
 }
 
+export interface Moderation {
+  id: string
+  admin_id: string
+  type: 'annonceur' | 'opportunite'
+  entity_id: string
+  action: 'validee' | 'refusee'
+  raison_refus: string | null
+  created_at: string
+}
+
 // ============================================
 // TYPES AVEC RELATIONS (pour les jointures)
 // ============================================
@@ -142,10 +211,97 @@ export interface InscriptionComedienForm {
 }
 
 export interface InscriptionAnnonceurForm {
-  nom_formation: string
+  // Étape 1 : Type d'annonceur
+  type_annonceur: TypeAnnonceur
+
+  // Étape 2a : Personne physique (conditionnelle)
+  nom?: string
+  prenom?: string
+  date_naissance?: string
+  adresse_rue?: string
+  adresse_ville?: string
+  adresse_code_postal?: string
+  adresse_pays?: string
+  telephone?: string
+  type_piece_identite?: TypePieceIdentite
+  piece_identite_file?: File
+
+  // Étape 2b : Entreprise (conditionnelle)
+  nom_formation?: string
+  nom_entreprise?: string
+  type_juridique?: TypeJuridique
+  pays_entreprise?: string
+  numero_legal?: string
+  siege_rue?: string
+  siege_ville?: string
+  siege_code_postal?: string
+  siege_pays?: string
+
+  // Représentant légal (entreprise)
+  representant_nom?: string
+  representant_prenom?: string
+  representant_date_naissance?: string
+  representant_adresse_rue?: string
+  representant_adresse_ville?: string
+  representant_adresse_code_postal?: string
+  representant_adresse_pays?: string
+  representant_type_piece_identite?: TypePieceIdentite
+  representant_piece_identite_file?: File
+
+  // Étape 3 : Compte et bancaire
   email: string
   password: string
-  iban?: string
+  iban: string
+  nom_titulaire_compte: string
+  bic_swift: string
+}
+
+// Types conditionnels pour les formulaires
+export interface InscriptionPersonnePhysiqueForm {
+  type_annonceur: 'personne_physique'
+  nom: string
+  prenom: string
+  date_naissance: string
+  adresse_rue: string
+  adresse_ville: string
+  adresse_code_postal: string
+  adresse_pays: string
+  telephone: string
+  type_piece_identite: TypePieceIdentite
+  piece_identite_file: File
+  email: string
+  password: string
+  iban: string
+  nom_titulaire_compte: string
+  bic_swift: string
+}
+
+export interface InscriptionEntrepriseForm {
+  type_annonceur: 'entreprise'
+  nom_formation: string
+  nom_entreprise: string
+  type_juridique: TypeJuridique
+  pays_entreprise: string
+  numero_legal: string
+  siege_rue: string
+  siege_ville: string
+  siege_code_postal: string
+  siege_pays: string
+  telephone: string
+  representant_nom: string
+  representant_prenom: string
+  representant_date_naissance: string
+  representant_adresse_rue: string
+  representant_adresse_ville: string
+  representant_adresse_code_postal: string
+  representant_adresse_pays: string
+  representant_type_piece_identite: TypePieceIdentite
+  representant_piece_identite_file: File
+  email: string
+  password: string
+  iban: string
+  nom_titulaire_compte: string
+  bic_swift: string
 }
 
 export interface PublierOpportuniteForm {
@@ -154,7 +310,7 @@ export interface PublierOpportuniteForm {
   titre: string
   resume: string
   image_url?: string
-  lien_infos: string
+  lien_infos?: string
   prix_base: number
   prix_reduit: number
   nombre_places: number
@@ -178,7 +334,7 @@ export interface Database {
       annonceurs: {
         Row: Annonceur
         Insert: Omit<Annonceur, 'id' | 'created_at' | 'updated_at' | 'email_verifie' | 'identite_verifiee'>
-        Update: Partial<Omit<Annonceur, 'id' | 'created_at' | 'updated_at'>>
+        Update: Partial<Omit<Annonceur, 'id' | 'auth_user_id' | 'created_at' | 'updated_at'>>
       }
       admins: {
         Row: Admin
@@ -205,12 +361,22 @@ export interface Database {
         Insert: Omit<NotificationEmail, 'id' | 'created_at' | 'envoye' | 'envoye_at'>
         Update: Partial<Pick<NotificationEmail, 'envoye' | 'envoye_at'>>
       }
+      moderations: {
+        Row: Moderation
+        Insert: Omit<Moderation, 'id' | 'created_at'>
+        Update: never
+      }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
     Enums: {
       opportunity_type: OpportunityType
       opportunity_model: OpportunityModel
       opportunity_status: OpportunityStatus
       purchase_status: PurchaseStatus
+      type_annonceur: TypeAnnonceur
+      type_juridique: TypeJuridique
+      type_piece_identite: TypePieceIdentite
     }
   }
 }
@@ -244,4 +410,28 @@ export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
   confirmee: 'Confirmée',
   remboursee: 'Remboursée',
   annulee: 'Annulée'
+}
+
+export const TYPE_ANNONCEUR_LABELS: Record<TypeAnnonceur, string> = {
+  personne_physique: 'Personne physique',
+  entreprise: 'Entreprise'
+}
+
+export const TYPE_JURIDIQUE_LABELS: Record<TypeJuridique, string> = {
+  auto_entrepreneur: 'Auto-entrepreneur',
+  entreprise_individuelle: 'Entreprise individuelle',
+  eirl: 'EIRL',
+  sarl: 'SARL',
+  eurl: 'EURL',
+  sas: 'SAS',
+  sasu: 'SASU',
+  sa: 'SA',
+  sci: 'SCI',
+  association: 'Association',
+  autre: 'Autre'
+}
+
+export const TYPE_PIECE_IDENTITE_LABELS: Record<TypePieceIdentite, string> = {
+  cni: 'Carte Nationale d\'Identité',
+  passeport: 'Passeport'
 }

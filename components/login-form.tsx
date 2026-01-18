@@ -84,20 +84,56 @@ export function LoginForm({
 
       console.log('Connexion réussie:', data.user)
 
-      // Vérifier si le profil comédien existe
-      const { data: profileData, error: profileError } = await supabase
-        .from('comediens')
-        .select('*')
+      // Vérifier le type d'utilisateur pour rediriger correctement
+      // 1. Vérifier si c'est un admin (priorité)
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('id')
         .eq('auth_user_id', data.user.id)
-        .single()
+        .maybeSingle()
 
-      if (profileError) {
-        console.error('Erreur lors de la récupération du profil:', profileError)
+      if (adminData) {
+        // L'utilisateur est un admin
+        console.log('Utilisateur admin détecté')
+        setIsLoading(false)
+        router.push('/admin')
+        return
       }
 
-      // Redirection vers le dashboard
+      // 2. Vérifier si c'est un comédien
+      const { data: comedienData } = await supabase
+        .from('comediens')
+        .select('id')
+        .eq('auth_user_id', data.user.id)
+        .maybeSingle()
+
+      if (comedienData) {
+        // L'utilisateur est un comédien
+        console.log('Utilisateur comédien détecté')
+        setIsLoading(false)
+        router.push('/dashboard')
+        return
+      }
+
+      // 3. Vérifier si c'est un annonceur
+      const { data: annonceurData } = await supabase
+        .from('annonceurs')
+        .select('id')
+        .eq('auth_user_id', data.user.id)
+        .maybeSingle()
+
+      if (annonceurData) {
+        // L'utilisateur est un annonceur
+        console.log('Utilisateur annonceur détecté')
+        setIsLoading(false)
+        router.push('/annonceur')
+        return
+      }
+
+      // Si aucun profil n'est trouvé
+      console.error('Aucun profil trouvé pour cet utilisateur')
+      setError("Aucun profil trouvé. Veuillez contacter le support.")
       setIsLoading(false)
-      router.push('/dashboard')
 
     } catch (error) {
       console.error('Erreur inattendue:', error)

@@ -34,7 +34,11 @@ export default function Home() {
           isAuthenticated={false}
           loading={loading}
           signInText={isAuthenticated ? "Retourner sur mon espace" : "Se connecter"}
-          signInHref={isAuthenticated ? (userType === 'comedian' ? '/dashboard' : '/annonceur') : '/connexion'}
+          signInHref={
+            isAuthenticated
+              ? (userType === 'admin' ? '/admin' : userType === 'comedian' ? '/dashboard' : '/annonceur')
+              : '/connexion'
+          }
           hideHamburger={true}
         />
       </div>
@@ -90,7 +94,9 @@ export default function Home() {
               <Button variant="outline" className="cursor-pointer bg-[#E63832] text-white border-none text-xs sm:text-sm md:text-base lg:text-lg px-3 py-4 sm:px-4 sm:py-3 md:px-6 md:py-3.5 whitespace-nowrap">Je m&apos;inscris comme Comédien <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
             </Link>
 
-            <Button variant="outline" className="cursor-pointer bg-black text-white border-none text-xs sm:text-sm md:text-base lg:text-lg px-3 py-4 sm:px-4 sm:py-3 md:px-6 md:py-3.5 whitespace-nowrap">Je m&apos;inscris comme Annonceur <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
+            <Link href="/inscription/annonceur">
+              <Button variant="outline" className="cursor-pointer bg-black text-white border-none text-xs sm:text-sm md:text-base lg:text-lg px-3 py-4 sm:px-4 sm:py-3 md:px-6 md:py-3.5 whitespace-nowrap">Je m&apos;inscris comme Annonceur <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
+            </Link>
           </div>
         </div>
       </motion.div>

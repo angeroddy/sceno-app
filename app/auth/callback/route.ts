@@ -41,52 +41,68 @@ export async function GET(request: NextRequest) {
     if (!error && data.user) {
       console.log('[AUTH CALLBACK] ✅ Échange réussi pour l\'utilisateur:', data.user.id)
 
-      // Vérifier si c'est un comédien ou un annonceur et mettre à jour email_verifie
-      // Essayer d'abord dans la table comediens
-      const { data: comedien, error: comedienError } = await supabase
-        .from('comediens')
+      // Vérifier si c'est un admin, comédien ou annonceur et mettre à jour email_verifie
+      let userType = 'unknown'
+
+      // Vérifier d'abord si c'est un admin (priorité)
+      const { data: admin } = await supabase
+        .from('admins')
         .select('id')
         .eq('auth_user_id', data.user.id)
         .maybeSingle()
 
-      if (comedien) {
-        // C'est un comédien
-        const { error: updateError } = await supabase
-          .from('comediens')
-          .update({ email_verifie: true })
-          .eq('auth_user_id', data.user.id)
-
-        if (updateError) {
-          console.error('[AUTH CALLBACK] ⚠️ Erreur mise à jour email_verifie (comedien):', updateError)
-        } else {
-          console.log('[AUTH CALLBACK] ✅ email_verifie mis à jour à true (comedien)')
-        }
+      if (admin) {
+        userType = 'admin'
+        console.log('[AUTH CALLBACK] ✅ Utilisateur admin détecté')
       } else {
-        // Essayer dans la table annonceurs
-        const { data: annonceur, error: annonceurError } = await supabase
-          .from('annonceurs')
+        // Essayer dans la table comediens
+        const { data: comedien } = await supabase
+          .from('comediens')
           .select('id')
           .eq('auth_user_id', data.user.id)
           .maybeSingle()
 
-        if (annonceur) {
+        if (comedien) {
+          // C'est un comédien
+          userType = 'comedian'
           const { error: updateError } = await supabase
-            .from('annonceurs')
+            .from('comediens')
             .update({ email_verifie: true })
             .eq('auth_user_id', data.user.id)
 
           if (updateError) {
-            console.error('[AUTH CALLBACK] ⚠️ Erreur mise à jour email_verifie (annonceur):', updateError)
+            console.error('[AUTH CALLBACK] ⚠️ Erreur mise à jour email_verifie (comedien):', updateError)
           } else {
-            console.log('[AUTH CALLBACK] ✅ email_verifie mis à jour à true (annonceur)')
+            console.log('[AUTH CALLBACK] ✅ email_verifie mis à jour à true (comedien)')
           }
         } else {
-          console.error('[AUTH CALLBACK] ⚠️ Utilisateur non trouvé dans comediens ni annonceurs')
+          // Essayer dans la table annonceurs
+          const { data: annonceur } = await supabase
+            .from('annonceurs')
+            .select('id')
+            .eq('auth_user_id', data.user.id)
+            .maybeSingle()
+
+          if (annonceur) {
+            userType = 'advertiser'
+            const { error: updateError } = await supabase
+              .from('annonceurs')
+              .update({ email_verifie: true })
+              .eq('auth_user_id', data.user.id)
+
+            if (updateError) {
+              console.error('[AUTH CALLBACK] ⚠️ Erreur mise à jour email_verifie (annonceur):', updateError)
+            } else {
+              console.log('[AUTH CALLBACK] ✅ email_verifie mis à jour à true (annonceur)')
+            }
+          } else {
+            console.error('[AUTH CALLBACK] ⚠️ Utilisateur non trouvé dans admins, comediens ni annonceurs')
+          }
         }
       }
 
-      // Rediriger vers la page de confirmation avec succès
-      const redirectUrl = `${requestUrl.origin}/auth/confirm?success=true`
+      // Rediriger vers la page de confirmation avec succès et le type d'utilisateur
+      const redirectUrl = `${requestUrl.origin}/auth/confirm?success=true&userType=${userType}`
       return NextResponse.redirect(redirectUrl)
     }
 

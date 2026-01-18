@@ -1,7 +1,6 @@
-import { createBrowserClient } from '@supabase/ssr'
-import { createServerClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { Database } from '../types'
+import type { Database } from '../types'
 
 // ============================================
 // CLIENT SUPABASE - CÔTÉ NAVIGATEUR

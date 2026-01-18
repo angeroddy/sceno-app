@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, CheckCircle } from "lucide-react"
+import { Mail, CheckCircle, FileText } from "lucide-react"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
 import { useRouter } from "next/navigation"
@@ -59,20 +59,44 @@ export default function InscriptionReussiePage() {
                   3
                 </span>
                 <span>
-                  <strong>Connectez-vous</strong> et accédez à votre tableau de bord comédien
+                  <strong>Connectez-vous</strong> à votre compte
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  4
+                </span>
+                <span>
+                  <strong>Uploadez votre pièce d&apos;identité</strong> dans vos paramètres pour publier des opportunités
                 </span>
               </li>
             </ol>
           </div>
 
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex gap-3">
+              <FileText className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800 mb-1">
+                  Important : Pièce d&apos;identité requise
+                </p>
+                <p className="text-sm text-orange-700">
+                  Pour publier des opportunités sur Scenio, vous devrez uploader votre pièce d&apos;identité (CNI ou passeport)
+                  dans la section <strong>Paramètres</strong> après vous être connecté. Cela nous permet de vérifier votre identité
+                  et de sécuriser la plateforme.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
-              <strong>Vous ne recevez pas l'email ?</strong>
+              <strong>Vous ne recevez pas l&apos;email ?</strong>
             </p>
             <ul className="text-sm text-yellow-700 mt-2 space-y-1 ml-4 list-disc">
               <li>Vérifiez votre dossier spam/courrier indésirable</li>
               <li>Attendez quelques minutes (parfois il y a un délai)</li>
-              <li>Vérifiez que l'adresse email est correcte</li>
+              <li>Vérifiez que l&apos;adresse email est correcte</li>
             </ul>
           </div>
 

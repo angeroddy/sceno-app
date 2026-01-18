@@ -14,14 +14,16 @@ function ConfirmContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const [redirectPath, setRedirectPath] = useState('/dashboard')
 
   useEffect(() => {
     const checkStatus = () => {
       // Vérifier les paramètres de l'URL
       const success = searchParams.get('success')
       const error = searchParams.get('error')
+      const userType = searchParams.get('userType')
 
-      console.log('[AUTH CONFIRM] Paramètres URL:', { success, error })
+      console.log('[AUTH CONFIRM] Paramètres URL:', { success, error, userType })
       console.log('[AUTH CONFIRM] URL complète:', window.location.href)
 
       if (success === 'true') {
@@ -30,10 +32,19 @@ function ConfirmContent() {
         setStatus('success')
         setMessage('Votre email a été confirmé avec succès !')
 
-        // Redirection vers le dashboard après 3 secondes
+        // Déterminer la redirection selon le type d'utilisateur
+        let path = '/dashboard' // Par défaut pour les comédiens
+        if (userType === 'admin') {
+          path = '/admin'
+        } else if (userType === 'advertiser') {
+          path = '/annonceur'
+        }
+        setRedirectPath(path)
+
+        // Redirection vers le dashboard approprié après 3 secondes
         setTimeout(() => {
-          console.log('[AUTH CONFIRM] Redirection vers /dashboard')
-          router.push('/dashboard')
+          console.log(`[AUTH CONFIRM] Redirection vers ${path}`)
+          router.push(path)
         }, 3000)
       } else if (error === 'true') {
         // Une erreur s'est produite
@@ -118,7 +129,7 @@ function ConfirmContent() {
 
         {status === 'success' && (
           <Button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(redirectPath)}
             className="w-full bg-[#E63832] hover:bg-[#E63832]/90"
           >
             Aller au tableau de bord
