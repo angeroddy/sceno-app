@@ -17,6 +17,7 @@ import logoApp from '@/app/assets/images/logoApp.png'
 import { createClient } from "@/app/lib/supabase-client"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import MobileBottomNav from "@/components/navigation/MobileBottomNav"
 
 interface SidebarLinkProps {
   href: string
@@ -101,16 +102,34 @@ export default function AdminLayout({
     },
   ]
 
+  const mobileNavItems = [
+    {
+      href: "/admin",
+      icon: LayoutDashboard,
+      label: "Accueil",
+    },
+    {
+      href: "/admin/annonceurs",
+      icon: Users,
+      label: "Annonceurs",
+    },
+    {
+      href: "/admin/opportunites",
+      icon: Calendar,
+      label: "Opportunités",
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
       {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-4">
+      <div className="lg:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <Image
             src={logoApp}
             alt="Logo"
-            width={60}
-            height={60}
+            width={50}
+            height={50}
             className="cursor-pointer"
             onClick={() => router.push('/')}
           />
@@ -118,27 +137,17 @@ export default function AdminLayout({
             variant="ghost"
             size="icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-gray-600"
           >
-            {mobileMenuOpen ? <X /> : <Menu />}
+            <Menu className="w-6 h-6" />
           </Button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Logout Menu (compact) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-white">
-          <div className="p-6 space-y-2">
-            {navigation.map((item) => (
-              <SidebarLink
-                key={item.href}
-                {...item}
-                active={pathname === item.href}
-                onClick={() => {
-                  router.push(item.href)
-                  setMobileMenuOpen(false)
-                }}
-              />
-            ))}
+        <div className="lg:hidden fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute top-16 right-4 bg-white rounded-lg shadow-xl p-2 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50"
@@ -149,6 +158,9 @@ export default function AdminLayout({
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav items={mobileNavItems} />
 
       <div className="flex">
         {/* Sidebar - Desktop */}
@@ -195,7 +207,7 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-72">
+        <main className="flex-1 lg:ml-72 pb-20 lg:pb-0">
           {children}
         </main>
       </div>

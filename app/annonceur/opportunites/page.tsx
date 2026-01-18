@@ -131,7 +131,7 @@ export default function MesOpportunitesPage() {
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               Mes opportunités
@@ -141,11 +141,12 @@ export default function MesOpportunitesPage() {
             </p>
           </div>
           <Button
-            className="bg-[#E63832] hover:bg-[#E63832]/90"
+            className="bg-[#E63832] hover:bg-[#E63832]/90 w-full sm:w-auto shrink-0"
             onClick={() => router.push('/annonceur/publier')}
           >
             <PlusCircle className="w-5 h-5 mr-2" />
-            Nouvelle opportunité
+            <span className="hidden sm:inline">Nouvelle opportunité</span>
+            <span className="sm:hidden">Nouvelle</span>
           </Button>
         </div>
       </div>
@@ -203,9 +204,9 @@ export default function MesOpportunitesPage() {
                   {/* Contenu */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-4 mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-xl">{opportunite.titre}</h3>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="font-bold text-xl truncate">{opportunite.titre}</h3>
                           {getStatusBadge(opportunite.statut)}
                         </div>
                         <p className="text-sm text-gray-600 line-clamp-2">
@@ -214,18 +215,18 @@ export default function MesOpportunitesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
+                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users className="w-4 h-4" />
+                        <Users className="w-4 h-4 flex-shrink-0" />
                         <span>{opportunite.places_restantes}/{opportunite.nombre_places} places</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Euro className="w-4 h-4" />
-                        <span>{opportunite.prix_reduit}€ (-{opportunite.reduction_pourcentage}%)</span>
+                        <Euro className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{opportunite.prix_reduit}€ (-{opportunite.reduction_pourcentage}%)</span>
                       </div>
                       <div className="text-sm text-gray-600">
                         <Badge variant="outline">{OPPORTUNITY_TYPE_LABELS[opportunite.type]}</Badge>
@@ -233,7 +234,7 @@ export default function MesOpportunitesPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"

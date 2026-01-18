@@ -382,13 +382,13 @@ export default function AdminOpportuniteDetailsPage() {
 
                       <div className="space-y-4">
                         {/* Email */}
-                        <div className="flex items-center gap-3 p-4 bg-[#F5F0EB] rounded-lg">
-                          <Mail className="w-5 h-5 text-[#E63832]" />
-                          <div>
+                        <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                          <Mail className="w-5 h-5 text-[#E63832] flex-shrink-0 mt-0.5" />
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm text-gray-600 mb-1">Email de contact</p>
                             <a
                               href={`mailto:${opportunite.contact_email}`}
-                              className="font-medium text-gray-900 hover:text-[#E63832] transition-colors"
+                              className="font-medium text-gray-900 hover:text-[#E63832] transition-colors break-words"
                             >
                               {opportunite.contact_email}
                             </a>
@@ -397,13 +397,13 @@ export default function AdminOpportuniteDetailsPage() {
 
                         {/* Téléphone */}
                         {opportunite.contact_telephone && (
-                          <div className="flex items-center gap-3 p-4 bg-[#F5F0EB] rounded-lg">
-                            <Phone className="w-5 h-5 text-[#E63832]" />
-                            <div>
+                          <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                            <Phone className="w-5 h-5 text-[#E63832] flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm text-gray-600 mb-1">Téléphone</p>
                               <a
                                 href={`tel:${opportunite.contact_telephone}`}
-                                className="font-medium text-gray-900 hover:text-[#E63832] transition-colors"
+                                className="font-medium text-gray-900 hover:text-[#E63832] transition-colors break-words"
                               >
                                 {opportunite.contact_telephone}
                               </a>

@@ -156,22 +156,24 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mb-8 flex gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row gap-4">
         <Button
           size="lg"
-          className="bg-orange-600 hover:bg-orange-700 text-white shadow-md"
+          className="bg-orange-600 hover:bg-orange-700 text-white shadow-md w-full sm:w-auto"
           onClick={() => router.push('/admin/annonceurs?statut=en_attente')}
         >
           <Clock className="w-5 h-5 mr-2" />
-          Annonceurs en attente ({stats.annonceurs.enAttente})
+          <span className="hidden sm:inline">Annonceurs en attente ({stats.annonceurs.enAttente})</span>
+          <span className="sm:hidden">Annonceurs ({stats.annonceurs.enAttente})</span>
         </Button>
         <Button
           size="lg"
-          className="bg-[#E63832] hover:bg-[#E63832]/90 text-white shadow-md"
+          className="bg-[#E63832] hover:bg-[#E63832]/90 text-white shadow-md w-full sm:w-auto"
           onClick={() => router.push('/admin/opportunites?statut=en_attente')}
         >
           <Calendar className="w-5 h-5 mr-2" />
-          Opportunités en attente ({stats.opportunites.enAttente})
+          <span className="hidden sm:inline">Opportunités en attente ({stats.opportunites.enAttente})</span>
+          <span className="sm:hidden">Opportunités ({stats.opportunites.enAttente})</span>
         </Button>
       </div>
 

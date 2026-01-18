@@ -140,38 +140,39 @@ export default function AnnonceurDetailsPage() {
           Retour à la liste
         </Button>
 
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 break-words">
                 {annonceur.nom_formation}
               </h1>
               {annonceur.identite_verifiee ? (
-                <Badge className="bg-green-100 text-green-700">Vérifié</Badge>
+                <Badge className="bg-green-100 text-green-700 shrink-0">Vérifié</Badge>
               ) : (
-                <Badge className="bg-orange-100 text-orange-700">En attente</Badge>
+                <Badge className="bg-orange-100 text-orange-700 shrink-0">En attente</Badge>
               )}
             </div>
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-600 text-base sm:text-lg">
               {annonceur.type_annonceur === 'personne_physique' ? 'Personne physique' : 'Entreprise'}
             </p>
           </div>
 
           {!annonceur.identite_verifiee && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto shrink-0">
               <Button
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-initial"
                 onClick={() => {
                   setModalAction('valider')
                   setShowValidateModal(true)
                 }}
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                Valider
+                <span className="hidden sm:inline">Valider</span>
+                <span className="sm:hidden">OK</span>
               </Button>
               <Button
                 variant="outline"
-                className="text-red-600 hover:text-red-700 border-red-300"
+                className="text-red-600 hover:text-red-700 border-red-300 flex-1 sm:flex-initial"
                 onClick={() => {
                   setModalAction('refuser')
                   setShowValidateModal(true)
@@ -231,14 +232,14 @@ export default function AnnonceurDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm text-gray-600">Nom</label>
-                    <p className="font-medium">{annonceur.nom || 'Non renseigné'}</p>
+                    <p className="font-medium break-words">{annonceur.nom || 'Non renseigné'}</p>
                   </div>
                   <div>
                     <label className="text-sm text-gray-600">Prénom</label>
-                    <p className="font-medium">{annonceur.prenom || 'Non renseigné'}</p>
+                    <p className="font-medium break-words">{annonceur.prenom || 'Non renseigné'}</p>
                   </div>
                 </div>
                 {annonceur.date_naissance && (
@@ -254,7 +255,7 @@ export default function AnnonceurDetailsPage() {
                   <label className="text-sm text-gray-600">Adresse</label>
                   <div className="flex items-start gap-2 mt-1">
                     <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div className="font-medium">
+                    <div className="font-medium break-words min-w-0 flex-1">
                       {annonceur.adresse_rue || 'Non renseigné'}<br />
                       {annonceur.adresse_code_postal} {annonceur.adresse_ville}<br />
                       {annonceur.adresse_pays || 'France'}
@@ -286,23 +287,23 @@ export default function AnnonceurDetailsPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <label className="text-sm text-gray-600">Nom légal de l&apos;entreprise</label>
-                    <p className="font-medium">{annonceur.nom_entreprise || 'Non renseigné'}</p>
+                    <p className="font-medium break-words">{annonceur.nom_entreprise || 'Non renseigné'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-600">Statut juridique</label>
-                      <p className="font-medium">{annonceur.type_juridique || 'Non renseigné'}</p>
+                      <p className="font-medium break-words">{annonceur.type_juridique || 'Non renseigné'}</p>
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">SIREN/SIRET</label>
-                      <p className="font-medium">{annonceur.numero_legal || 'Non renseigné'}</p>
+                      <p className="font-medium break-words">{annonceur.numero_legal || 'Non renseigné'}</p>
                     </div>
                   </div>
                   <div>
                     <label className="text-sm text-gray-600">Adresse du siège social</label>
                     <div className="flex items-start gap-2 mt-1">
                       <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                      <div className="font-medium">
+                      <div className="font-medium break-words min-w-0 flex-1">
                         {annonceur.siege_rue || 'Non renseigné'}<br />
                         {annonceur.siege_code_postal} {annonceur.siege_ville}<br />
                         {annonceur.siege_pays || 'France'}
@@ -320,22 +321,22 @@ export default function AnnonceurDetailsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-600">Nom</label>
-                      <p className="font-medium">{annonceur.representant_nom || 'Non renseigné'}</p>
+                      <p className="font-medium break-words">{annonceur.representant_nom || 'Non renseigné'}</p>
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">Prénom</label>
-                      <p className="font-medium">{annonceur.representant_prenom || 'Non renseigné'}</p>
+                      <p className="font-medium break-words">{annonceur.representant_prenom || 'Non renseigné'}</p>
                     </div>
                   </div>
                   {annonceur.representant_date_naissance && (
                     <div>
                       <label className="text-sm text-gray-600">Date de naissance</label>
                       <p className="font-medium flex items-center gap-2 mt-1">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(annonceur.representant_date_naissance).toLocaleDateString('fr-FR')}
+                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{new Date(annonceur.representant_date_naissance).toLocaleDateString('fr-FR')}</span>
                       </p>
                     </div>
                   )}
@@ -343,7 +344,7 @@ export default function AnnonceurDetailsPage() {
                     <label className="text-sm text-gray-600">Adresse</label>
                     <div className="flex items-start gap-2 mt-1">
                       <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                      <div className="font-medium">
+                      <div className="font-medium break-words min-w-0 flex-1">
                         {annonceur.representant_adresse_rue || 'Non renseigné'}<br />
                         {annonceur.representant_adresse_code_postal} {annonceur.representant_adresse_ville}<br />
                         {annonceur.representant_adresse_pays || 'France'}
@@ -374,11 +375,11 @@ export default function AnnonceurDetailsPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-gray-600">Titulaire du compte</label>
-                <p className="font-medium">{annonceur.nom_titulaire_compte || 'Non renseigné'}</p>
+                <p className="font-medium break-words">{annonceur.nom_titulaire_compte || 'Non renseigné'}</p>
               </div>
               <div>
                 <label className="text-sm text-gray-600">IBAN</label>
-                <p className="font-medium font-mono">
+                <p className="font-medium font-mono text-xs sm:text-sm break-all">
                   {annonceur.iban
                     ? `${annonceur.iban.substring(0, 4)} **** **** ${annonceur.iban.slice(-4)}`
                     : 'Non renseigné'}
@@ -386,7 +387,7 @@ export default function AnnonceurDetailsPage() {
               </div>
               <div>
                 <label className="text-sm text-gray-600">BIC/SWIFT</label>
-                <p className="font-medium font-mono">{annonceur.bic_swift || 'Non renseigné'}</p>
+                <p className="font-medium font-mono break-words">{annonceur.bic_swift || 'Non renseigné'}</p>
               </div>
             </CardContent>
           </Card>
@@ -433,11 +434,11 @@ export default function AnnonceurDetailsPage() {
                       href={pieceIdentiteUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors w-full sm:w-auto text-sm"
                     >
-                      <FileText className="w-4 h-4" />
-                      Voir la pièce
-                      <ExternalLink className="w-4 h-4" />
+                      <FileText className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">Voir la pièce</span>
+                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
                     </a>
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-orange-600">
@@ -457,11 +458,11 @@ export default function AnnonceurDetailsPage() {
                       href={representantPieceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors w-full sm:w-auto text-sm"
                     >
-                      <FileText className="w-4 h-4" />
-                      Voir la pièce
-                      <ExternalLink className="w-4 h-4" />
+                      <FileText className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">Voir la pièce</span>
+                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
                     </a>
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-orange-600">

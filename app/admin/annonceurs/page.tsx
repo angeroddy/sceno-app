@@ -206,7 +206,7 @@ export default function AnnonceursPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                         <div className="text-sm">
                           <span className="text-gray-600">Inscription:</span>
                           <div className="font-medium flex items-center gap-1">
@@ -220,7 +220,7 @@ export default function AnnonceursPage() {
                         </div>
                         <div className="text-sm">
                           <span className="text-gray-600">IBAN:</span>
-                          <div className="font-medium">
+                          <div className="font-medium truncate">
                             {annonceur.iban
                               ? `${annonceur.iban.substring(0, 4)}...${annonceur.iban.slice(-4)}`
                               : 'Non renseigné'}
@@ -229,7 +229,7 @@ export default function AnnonceursPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 flex-wrap items-center">
                         <Button
                           size="sm"
                           variant="outline"

@@ -233,31 +233,31 @@ export default function OpportunitesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
+                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users className="w-4 h-4" />
+                        <Users className="w-4 h-4 flex-shrink-0" />
                         <span>{opportunite.places_restantes}/{opportunite.nombre_places} places</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Euro className="w-4 h-4" />
-                        <span>
+                        <Euro className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">
                           <span className="line-through text-gray-400">{opportunite.prix_base}€</span>{' '}
                           <span className="font-bold text-[#E63832]">{opportunite.prix_reduit}€</span>
                           {' '}(-{opportunite.reduction_pourcentage}%)
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <span className="text-gray-500">Publié le:</span>{' '}
-                        {new Date(opportunite.created_at).toLocaleDateString('fr-FR')}
+                        <span className="text-gray-500">Publié:</span>{' '}
+                        <span className="truncate">{new Date(opportunite.created_at).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"

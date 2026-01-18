@@ -192,16 +192,17 @@ export default function AnnonceurPage() {
       <div className="mb-8">
         <Button
           size="lg"
-          className="bg-[#E63832] hover:bg-[#E63832]/90 text-white shadow-md"
+          className="bg-[#E63832] hover:bg-[#E63832]/90 text-white shadow-md w-full sm:w-auto"
           onClick={() => router.push('/annonceur/publier')}
         >
           <PlusCircle className="w-5 h-5 mr-2" />
-          Publier une nouvelle opportunité
+          <span className="hidden sm:inline">Publier une nouvelle opportunité</span>
+          <span className="sm:hidden">Nouvelle opportunité</span>
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
         {statCards.map((stat, index) => (
           <Card key={index} className="hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
@@ -246,26 +247,26 @@ export default function AnnonceurPage() {
                   onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}`)}
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-lg">{opportunite.titre}</h3>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="font-bold text-lg truncate">{opportunite.titre}</h3>
                         {getStatusBadge(opportunite.statut)}
                       </div>
                       <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                         {opportunite.resume}
                       </p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}
+                          <Calendar className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {opportunite.places_restantes}/{opportunite.nombre_places} places
+                          <Users className="w-4 h-4 flex-shrink-0" />
+                          <span>{opportunite.places_restantes}/{opportunite.nombre_places} places</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Euro className="w-4 h-4" />
-                          {opportunite.prix_reduit}€ (-{opportunite.reduction_pourcentage}%)
+                          <Euro className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{opportunite.prix_reduit}€ (-{opportunite.reduction_pourcentage}%)</span>
                         </div>
                       </div>
                     </div>
