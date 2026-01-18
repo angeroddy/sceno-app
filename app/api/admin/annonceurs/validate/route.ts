@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
-import type { Annonceur } from '@/app/types'
+import type { Annonceur, Admin } from '@/app/types'
 
 export async function POST(request: Request) {
   try {
@@ -10,10 +10,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    const admin = await getAdminProfile()
-    if (!admin) {
+    const adminProfile = await getAdminProfile()
+    if (!adminProfile) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
     }
+    const admin = adminProfile as Admin
 
     const supabase = await createServerSupabaseClient()
     const body = await request.json()

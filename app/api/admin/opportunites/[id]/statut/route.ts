@@ -38,6 +38,7 @@ export async function PATCH(
     // Mettre à jour le statut de l'opportunité
     const { data: opportunite, error: updateError } = await supabase
       .from('opportunites')
+      // @ts-expect-error - Supabase type inference issue
       .update({ statut })
       .eq('id', id)
       .select()
