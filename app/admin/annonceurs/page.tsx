@@ -82,15 +82,19 @@ export default function AnnonceursPage() {
         }),
       })
 
-      if (!response.ok) throw new Error('Erreur lors de la validation')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erreur lors de la validation')
+      }
 
       // Rafraîchir la liste
       await fetchAnnonceurs()
       setShowModal(false)
       setRefusRaison("")
+      alert(`Annonceur ${modalAction === 'valider' ? 'validé' : 'refusé'} avec succès`)
     } catch (error) {
       console.error('Erreur:', error)
-      alert("Une erreur s'est produite")
+      alert(error instanceof Error ? error.message : "Une erreur s'est produite lors de la validation")
     } finally {
       setValidatingId(null)
     }

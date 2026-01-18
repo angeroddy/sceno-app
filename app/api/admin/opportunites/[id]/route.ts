@@ -1,64 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
-import { Annonceur, Achat } from '@/app/types'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import { Achat } from '@/app/types'
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier l'authentification et les permissions admin
+    const user = await getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    const admin = await getAdminProfile()
+    if (!admin) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    }
+
     const supabase = await createServerSupabaseClient()
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Récupérer le profil annonceur
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('*')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json(
-        { error: 'Profil annonceur introuvable' },
-        { status: 404 }
-      )
-    }
-
-    const annonceur = annonceurData as Annonceur
 
     // Récupérer les paramètres
     const { id } = await context.params
 
-    console.log('Récupération de l\'opportunité avec ID:', id)
+    console.log('Admin - Récupération de l\'opportunité avec ID:', id)
 
-    // Récupérer l'opportunité (doit appartenir à cet annonceur)
+    // Récupérer l'opportunité (admin peut voir toutes les opportunités)
     const { data: opportunite, error: opportuniteError } = await supabase
       .from('opportunites')
       .select('*')
       .eq('id', id)
-      .eq('annonceur_id', annonceur.id)
       .single()
 
     if (opportuniteError) {
       console.error('Erreur Supabase:', opportuniteError)
       return NextResponse.json(
-        { error: 'Cette opportunité n\'existe pas ou vous n\'avez pas les droits d\'accès' },
+        { error: 'Cette opportunité n\'existe pas ou a été supprimée' },
         { status: 404 }
       )
     }
 
     if (!opportunite) {
       return NextResponse.json(
-        { error: 'Opportunité introuvable ou vous n\'avez pas les droits d\'accès' },
+        { error: 'Opportunité introuvable' },
         { status: 404 }
       )
     }

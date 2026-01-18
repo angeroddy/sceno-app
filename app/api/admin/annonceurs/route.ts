@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('Erreur Supabase:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Impossible de récupérer la liste des annonceurs' }, { status: 500 })
     }
 
     return NextResponse.json({

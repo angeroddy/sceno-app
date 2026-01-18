@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -29,8 +29,7 @@ import {
   Eye,
   TrendingUp,
   CheckCircle,
-  XCircle,
-  ShieldAlert
+  XCircle
 } from "lucide-react"
 import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
 
@@ -39,7 +38,7 @@ export default function AdminOpportuniteDetailsPage() {
   const router = useRouter()
   const [opportunite, setOpportunite] = useState<Opportunite | null>(null)
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false) // Pour les actions admin
+  const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mainImage, setMainImage] = useState<string | null>(null)
   const [opportuniteId, setOpportuniteId] = useState<string | null>(null)
@@ -49,7 +48,7 @@ export default function AdminOpportuniteDetailsPage() {
     revenu: 0
   })
 
-  // Extraire l'ID
+  // Extraire l'ID des params
   useEffect(() => {
     const extractId = async () => {
       if (params?.id) {
@@ -60,7 +59,7 @@ export default function AdminOpportuniteDetailsPage() {
     extractId()
   }, [params])
 
-  // Récupérer les détails via l'API Admin
+  // Récupérer les détails une fois l'ID extrait
   useEffect(() => {
     if (opportuniteId) {
       fetchOpportuniteDetails()
@@ -72,11 +71,11 @@ export default function AdminOpportuniteDetailsPage() {
 
     try {
       setLoading(true)
-      // NOTE: Changement de l'endpoint vers /api/admin
       const response = await fetch(`/api/admin/opportunites/${opportuniteId}`)
 
       if (!response.ok) {
-        throw new Error('Impossible de récupérer les détails')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Opportunité introuvable')
       }
 
       const data = await response.json()
@@ -85,43 +84,48 @@ export default function AdminOpportuniteDetailsPage() {
       setMainImage(data.opportunite.image_url)
     } catch (err) {
       console.error('Erreur:', err)
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      // Ne jamais afficher le message d'erreur brut, utiliser un message générique
+      setError('Impossible de charger cette opportunité. Elle n\'existe peut-être pas ou a été supprimée')
     } finally {
       setLoading(false)
     }
   }
 
-  // Fonction de modération pour l'admin
-  const handleUpdateStatus = async (newStatus: 'validee' | 'refusee') => {
+  const handleValidation = async (action: 'valider' | 'refuser') => {
     if (!opportuniteId) return
-    
+
     try {
-      setActionLoading(true)
+      setValidating(true)
+      const newStatus = action === 'valider' ? 'validee' : 'refusee'
+
       const response = await fetch(`/api/admin/opportunites/${opportuniteId}/statut`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statut: newStatus })
       })
 
-      if (!response.ok) throw new Error("Erreur lors de la mise à jour du statut")
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erreur lors de la validation')
+      }
 
-      // Mise à jour locale pour éviter de recharger toute la page
-      setOpportunite(prev => prev ? { ...prev, statut: newStatus } : null)
-      
+      // Rafraîchir les données
+      await fetchOpportuniteDetails()
+      alert(`Opportunité ${action === 'valider' ? 'validée' : 'refusée'} avec succès`)
     } catch (err) {
       console.error(err)
-      alert("Une erreur est survenue lors de la mise à jour du statut.")
+      alert(err instanceof Error ? err.message : "Une erreur s'est produite lors de la validation")
     } finally {
-      setActionLoading(false)
+      setValidating(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-          <p className="text-gray-600">Chargement des données administrateur...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-[#E63832]" />
+          <p className="text-gray-600">Chargement des détails...</p>
         </div>
       </div>
     )
@@ -135,16 +139,16 @@ export default function AdminOpportuniteDetailsPage() {
             <div className="flex items-center gap-3 text-red-800">
               <AlertCircle className="w-6 h-6" />
               <div>
-                <h3 className="font-semibold mb-1">Erreur Admin</h3>
+                <h3 className="font-semibold mb-1">Erreur</h3>
                 <p className="text-sm">{error || 'Opportunité introuvable'}</p>
               </div>
             </div>
             <Button
-              className="mt-4 bg-gray-800 hover:bg-gray-900"
+              className="mt-4 bg-[#E63832] hover:bg-[#E63832]/90"
               onClick={() => router.push('/admin/opportunites')}
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              Retour au dashboard
+              Retour aux opportunités
             </Button>
           </CardContent>
         </Card>
@@ -154,10 +158,14 @@ export default function AdminOpportuniteDetailsPage() {
 
   const dateObj = new Date(opportunite.date_limite)
   const dateFormatted = dateObj.toLocaleDateString('fr-FR', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   })
   const timeFormatted = dateObj.toLocaleTimeString('fr-FR', {
-    hour: '2-digit', minute: '2-digit'
+    hour: '2-digit',
+    minute: '2-digit'
   })
 
   const placesOccupees = opportunite.nombre_places - opportunite.places_restantes
@@ -166,81 +174,41 @@ export default function AdminOpportuniteDetailsPage() {
   const getStatusBadge = (statut: string) => {
     switch (statut) {
       case 'validee':
-        return <Badge className="bg-green-600 hover:bg-green-700">Validée</Badge>
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Validée</Badge>
       case 'en_attente':
-        return <Badge className="bg-orange-500 hover:bg-orange-600">En attente validation</Badge>
+        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">En attente</Badge>
       case 'refusee':
-        return <Badge className="bg-red-600 hover:bg-red-700">Refusée</Badge>
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Refusée</Badge>
       case 'expiree':
-        return <Badge className="bg-gray-500 hover:bg-gray-600">Expirée</Badge>
+        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">Expirée</Badge>
       case 'complete':
-        return <Badge className="bg-blue-600 hover:bg-blue-700">Complète</Badge>
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Complète</Badge>
       default:
         return <Badge>{statut}</Badge>
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Admin distinct */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
-        <div className="container mx-auto flex justify-between items-center">
-             <Button
-                variant="ghost"
-                className="hover:bg-gray-100"
-                onClick={() => router.push('/admin/opportunites')}
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Retour liste Admin
-              </Button>
-              <div className="flex items-center gap-2">
-                 <ShieldAlert className="w-5 h-5 text-purple-600"/>
-                 <span className="font-semibold text-gray-700">Vue Administrateur</span>
-              </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
       <div className="container mx-auto px-4 py-8">
+        {/* Bouton retour */}
+        <Button
+          variant="ghost"
+          className="mb-6 hover:bg-[#E6DAD0]"
+          onClick={() => router.push('/admin/opportunites')}
+        >
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          Retour aux opportunités
+        </Button>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Colonne gauche - Galerie et informations */}
           <div className="lg:col-span-2 space-y-6">
-            
-            {/* Zone de modération principale si en attente */}
-            {opportunite.statut === 'en_attente' && (
-               <Card className="border-orange-200 bg-orange-50 shadow-sm">
-                 <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <AlertCircle className="w-8 h-8 text-orange-600" />
-                        <div>
-                            <h3 className="font-bold text-orange-900">Validation requise</h3>
-                            <p className="text-sm text-orange-800">Cette opportunité attend votre validation pour être publiée.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <Button 
-                            variant="destructive" 
-                            onClick={() => handleUpdateStatus('refusee')}
-                            disabled={actionLoading}
-                            className="flex-1 sm:flex-none"
-                        >
-                            Refuser
-                        </Button>
-                        <Button 
-                            className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
-                            onClick={() => handleUpdateStatus('validee')}
-                            disabled={actionLoading}
-                        >
-                            Valider
-                        </Button>
-                    </div>
-                 </CardContent>
-               </Card>
-            )}
-
             {/* Galerie d'images */}
             <Card className="overflow-hidden">
               <div className="relative">
-                <div className="relative h-[400px] bg-gray-200">
+                {/* Image principale */}
+                <div className="relative h-[400px] md:h-[500px] bg-gray-200">
                   {mainImage ? (
                     <Image
                       src={mainImage}
@@ -250,10 +218,20 @@ export default function AdminOpportuniteDetailsPage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <Calendar className="w-24 h-24 text-gray-300" />
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+                      <Calendar className="w-24 h-24 text-gray-400" />
                     </div>
                   )}
+
+                  {/* Badge réduction */}
+                  {opportunite.reduction_pourcentage > 0 && (
+                    <div className="absolute top-4 left-4 z-10">
+                      <Badge className="bg-[#E63832] text-white text-lg px-4 py-2 hover:bg-[#E63832]">
+                        -{opportunite.reduction_pourcentage}% de réduction
+                      </Badge>
+                    </div>
+                  )}
+
                   {/* Badge statut */}
                   <div className="absolute top-4 right-4 z-10">
                     {getStatusBadge(opportunite.statut)}
@@ -266,91 +244,225 @@ export default function AdminOpportuniteDetailsPage() {
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="informations" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 mb-6">
-                    <TabsTrigger value="informations">Infos</TabsTrigger>
-                    <TabsTrigger value="description">Description</TabsTrigger>
-                    <TabsTrigger value="contact">Contact</TabsTrigger>
-                    <TabsTrigger value="statistiques">Métriques</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-4 mb-6 bg-[#E6DAD0]/50">
+                    <TabsTrigger value="informations" className="flex items-center gap-2">
+                      <Info className="w-4 h-4" />
+                      <span className="hidden sm:inline">Informations</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="description" className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      <span className="hidden sm:inline">Description</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="contact" className="flex items-center gap-2">
+                      <Contact className="w-4 h-4" />
+                      <span className="hidden sm:inline">Contact</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="statistiques" className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Stats</span>
+                    </TabsTrigger>
                   </TabsList>
 
                   {/* TAB: Informations */}
                   <TabsContent value="informations" className="space-y-6">
                     <div>
-                      <h3 className="text-lg font-bold mb-4">Détails techniques</h3>
+                      <h3 className="text-xl font-bold mb-4 text-gray-900">
+                        Informations importantes
+                      </h3>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                          <p className="text-xs text-gray-500 uppercase font-bold">Type</p>
-                          <p className="font-medium">{OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}</p>
+                        {/* Type d'opportunité */}
+                        <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                          <div className="bg-white p-2 rounded-lg">
+                            <Tag className="w-5 h-5 text-[#E63832]" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Type</p>
+                            <p className="font-semibold text-gray-900">
+                              {OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}
+                            </p>
+                          </div>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                           <p className="text-xs text-gray-500 uppercase font-bold">Modèle</p>
-                           <p className="font-medium">{opportunite.modele}</p>
+
+                        {/* Modèle */}
+                        <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                          <div className="bg-white p-2 rounded-lg">
+                            <Star className="w-5 h-5 text-[#E63832]" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Modèle</p>
+                            <p className="font-semibold text-gray-900">
+                              {opportunite.modele === 'derniere_minute' ? 'Dernière minute' : 'Pré-vente'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                           <p className="text-xs text-gray-500 uppercase font-bold">Places totales</p>
-                           <p className="font-medium">{opportunite.nombre_places}</p>
+
+                        {/* Capacité */}
+                        <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                          <div className="bg-white p-2 rounded-lg">
+                            <Users className="w-5 h-5 text-[#E63832]" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Capacité totale</p>
+                            <p className="font-semibold text-gray-900">
+                              {opportunite.nombre_places} place(s)
+                            </p>
+                          </div>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                           <p className="text-xs text-gray-500 uppercase font-bold">ID Opportunité</p>
-                           <p className="font-mono text-xs">{opportunite.id}</p>
+
+                        {/* Places restantes */}
+                        <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                          <div className="bg-white p-2 rounded-lg">
+                            <Building2 className="w-5 h-5 text-[#E63832]" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Places disponibles</p>
+                            <p className="font-semibold text-gray-900">
+                              {opportunite.places_restantes} place(s)
+                            </p>
+                          </div>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Barre de progression */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">
+                          Places réservées
+                        </span>
+                        <span className="text-sm font-bold text-[#E63832]">
+                          {placesOccupees} / {opportunite.nombre_places}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-[#E63832] h-3 rounded-full transition-all"
+                          style={{ width: `${pourcentageRemplissage}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {opportunite.places_restantes} place(s) restante(s)
+                      </p>
                     </div>
                   </TabsContent>
 
                   {/* TAB: Description */}
                   <TabsContent value="description" className="space-y-4">
-                    <div className="prose max-w-none p-4 bg-gray-50 rounded-lg border border-gray-100">
-                      <h4 className="text-sm font-bold text-gray-500 uppercase mb-2">Contenu de l&apos;annonce</h4>
-                      <p className="whitespace-pre-wrap text-sm">{opportunite.resume}</p>
+                    <div>
+                      <h3 className="text-xl font-bold mb-4 text-gray-900">
+                        Description de l&apos;opportunité
+                      </h3>
+                      <div className="prose max-w-none text-gray-700">
+                        <p className="whitespace-pre-wrap">{opportunite.resume}</p>
+                      </div>
                     </div>
+
                     {opportunite.lien_infos && (
-                      <div className="flex items-center gap-2 text-blue-600">
+                      <div className="mt-6">
+                        <a
+                          href={opportunite.lien_infos}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-[#E63832] hover:underline font-medium"
+                        >
                           <ExternalLink className="w-4 h-4" />
-                          <a href={opportunite.lien_infos} target="_blank" className="hover:underline text-sm">
-                            Vérifier le lien externe
-                          </a>
+                          Lien vers plus d&apos;informations
+                        </a>
                       </div>
                     )}
                   </TabsContent>
 
                   {/* TAB: Contact */}
                   <TabsContent value="contact" className="space-y-4">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                          <Mail className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <h3 className="text-xl font-bold mb-4 text-gray-900">
+                        Informations de contact
+                      </h3>
+
+                      <div className="space-y-4">
+                        {/* Email */}
+                        <div className="flex items-center gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                          <Mail className="w-5 h-5 text-[#E63832]" />
                           <div>
-                            <p className="text-xs text-gray-500 font-bold uppercase">Email Annonceur</p>
-                            <p className="font-mono text-sm">{opportunite.contact_email}</p>
+                            <p className="text-sm text-gray-600 mb-1">Email de contact</p>
+                            <a
+                              href={`mailto:${opportunite.contact_email}`}
+                              className="font-medium text-gray-900 hover:text-[#E63832] transition-colors"
+                            >
+                              {opportunite.contact_email}
+                            </a>
                           </div>
                         </div>
+
+                        {/* Téléphone */}
                         {opportunite.contact_telephone && (
-                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                            <Phone className="w-5 h-5 text-gray-500" />
+                          <div className="flex items-center gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                            <Phone className="w-5 h-5 text-[#E63832]" />
                             <div>
-                                <p className="text-xs text-gray-500 font-bold uppercase">Téléphone</p>
-                                <p className="font-mono text-sm">{opportunite.contact_telephone}</p>
+                              <p className="text-sm text-gray-600 mb-1">Téléphone</p>
+                              <a
+                                href={`tel:${opportunite.contact_telephone}`}
+                                className="font-medium text-gray-900 hover:text-[#E63832] transition-colors"
+                              >
+                                {opportunite.contact_telephone}
+                              </a>
                             </div>
                           </div>
                         )}
+                      </div>
                     </div>
                   </TabsContent>
 
                   {/* TAB: Statistiques */}
                   <TabsContent value="statistiques" className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-4 border rounded-lg bg-gray-50">
-                            <span className="block text-2xl font-bold">{stats.vues}</span>
-                            <span className="text-xs text-gray-500">Vues totales</span>
+                    <div>
+                      <h3 className="text-xl font-bold mb-4 text-gray-900">
+                        Performance de l&apos;opportunité
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Vues */}
+                        <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Eye className="w-5 h-5 text-blue-600" />
+                            <p className="text-sm font-medium text-blue-900">Vues</p>
+                          </div>
+                          <p className="text-3xl font-bold text-blue-600">{stats.vues}</p>
+                          <p className="text-xs text-blue-700 mt-1">Nombre de consultations</p>
                         </div>
-                        <div className="text-center p-4 border rounded-lg bg-gray-50">
-                            <span className="block text-2xl font-bold">{stats.reservations}</span>
-                            <span className="text-xs text-gray-500">Réservations</span>
+
+                        {/* Réservations */}
+                        <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Users className="w-5 h-5 text-green-600" />
+                            <p className="text-sm font-medium text-green-900">Réservations</p>
+                          </div>
+                          <p className="text-3xl font-bold text-green-600">{stats.reservations}</p>
+                          <p className="text-xs text-green-700 mt-1">Places réservées</p>
                         </div>
-                        <div className="text-center p-4 border rounded-lg bg-gray-50">
-                            <span className="block text-2xl font-bold">{stats.revenu}€</span>
-                            <span className="text-xs text-gray-500">Vol. d&apos;affaires</span>
+
+                        {/* Revenu */}
+                        <div className="p-6 bg-[#FEE] border border-red-200 rounded-lg">
+                          <div className="flex items-center gap-3 mb-2">
+                            <TrendingUp className="w-5 h-5 text-[#E63832]" />
+                            <p className="text-sm font-medium text-red-900">Revenu</p>
+                          </div>
+                          <p className="text-3xl font-bold text-[#E63832]">{stats.revenu.toFixed(2)}€</p>
+                          <p className="text-xs text-red-700 mt-1">Revenu généré</p>
                         </div>
+                      </div>
+
+                      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-600">
+                          <strong>Taux de conversion:</strong>{' '}
+                          {stats.vues > 0 ? ((stats.reservations / stats.vues) * 100).toFixed(1) : 0}%
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          <strong>Prix moyen par place:</strong>{' '}
+                          {stats.reservations > 0 ? (stats.revenu / stats.reservations).toFixed(2) : opportunite.prix_reduit}€
+                        </p>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -358,100 +470,185 @@ export default function AdminOpportuniteDetailsPage() {
             </Card>
           </div>
 
-          {/* Colonne droite - Actions Admin */}
+          {/* Colonne droite - Résumé et actions ADMIN */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-24 shadow-lg border-t-4 border-t-purple-600">
-              <CardHeader className="pb-2">
-                 <CardTitle className="text-lg flex items-center justify-between">
-                    Résumé
-                    {getStatusBadge(opportunite.statut)}
-                 </CardTitle>
-              </CardHeader>
+            <Card className="sticky top-8 shadow-lg">
               <CardContent className="p-6 space-y-6">
+                {/* Titre et statut */}
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900 mb-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge className="bg-[#E6DAD0] text-gray-900 hover:bg-[#E6DAD0]">
+                      {OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}
+                    </Badge>
+                    {getStatusBadge(opportunite.statut)}
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
                     {opportunite.titre}
                   </h1>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm text-gray-600">
                     Créée le {new Date(opportunite.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
 
                 {/* Prix */}
-                <div className="border-t border-b border-gray-100 py-4">
-                   <div className="flex justify-between items-center mb-1">
-                       <span className="text-sm text-gray-600">Prix affiché :</span>
-                       <span className="font-bold text-lg">{opportunite.prix_reduit}€</span>
-                   </div>
-                   <div className="flex justify-between items-center">
-                       <span className="text-sm text-gray-600">Prix de base :</span>
-                       <span className="text-sm text-gray-400 line-through">{opportunite.prix_base}€</span>
-                   </div>
-                   <div className="mt-2 text-xs text-right text-red-600 font-medium">
-                       -{opportunite.reduction_pourcentage}% de réduction
-                   </div>
+                <div className="border-t border-b border-gray-200 py-4">
+                  {opportunite.reduction_pourcentage > 0 ? (
+                    <div>
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-3xl font-bold text-[#E63832]">
+                          {opportunite.prix_reduit}€
+                        </span>
+                        <span className="text-lg text-gray-400 line-through">
+                          {opportunite.prix_base}€
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Réduction de {opportunite.reduction_pourcentage}%
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-3xl font-bold text-gray-900">
+                      {opportunite.prix_base}€
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Prix par place
+                  </p>
                 </div>
 
-                {/* Informations de timing */}
+                {/* Informations clés */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 flex items-center gap-2">
-                        <Calendar className="w-4 h-4"/> Date limite
-                    </span>
-                    <span className="font-medium">{dateFormatted}</span>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Date limite</p>
+                      <span className="text-gray-700 font-medium">{dateFormatted}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 flex items-center gap-2">
-                        <Clock className="w-4 h-4"/> Heure limite
-                    </span>
-                    <span className="font-medium">{timeFormatted}</span>
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <Clock className="w-5 h-5 text-gray-400 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Heure limite</p>
+                      <span className="text-gray-700 font-medium">{timeFormatted}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <Users className="w-5 h-5 text-gray-400 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Places</p>
+                      <span className="text-gray-700 font-medium">
+                        {opportunite.places_restantes} / {opportunite.nombre_places} disponibles
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Section Modération (Toujours visible pour l'admin) */}
-                <div className="pt-4 border-t border-gray-100">
-                  <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-purple-600"/>
-                    Actions Administrateur
-                  </h4>
-                  
-                  <div className="space-y-2">
-                    {opportunite.statut !== 'validee' && (
-                        <Button 
-                            className="w-full bg-green-600 hover:bg-green-700"
-                            onClick={() => handleUpdateStatus('validee')}
-                            disabled={actionLoading}
-                        >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Valider l&apos;annonce
-                        </Button>
-                    )}
-                    
-                    {opportunite.statut !== 'refusee' && (
-                        <Button 
-                            variant="outline"
-                            className="w-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-                            onClick={() => handleUpdateStatus('refusee')}
-                            disabled={actionLoading}
-                        >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Refuser / Bloquer
-                        </Button>
-                    )}
-                    
+                {/* Boutons d'action ADMIN */}
+                <div className="space-y-3 pt-4 border-t border-gray-200">
+                  {opportunite.statut !== 'validee' && (
                     <Button
-                      variant="ghost"
-                      className="w-full text-gray-500 text-xs mt-2"
+                      size="lg"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
+                      onClick={() => handleValidation('valider')}
+                      disabled={validating}
+                    >
+                      {validating ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                      )}
+                      Valider l&apos;opportunité
+                    </Button>
+                  )}
+
+                  {opportunite.statut !== 'refusee' && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={() => handleValidation('refuser')}
+                      disabled={validating}
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Refuser l&apos;opportunité
+                    </Button>
+                  )}
+
+                  {opportunite.lien_infos && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full"
                       asChild
                     >
-                      <a href={`/admin/annonceurs/TBD`} /* Lien vers profil annonceur si dispo */>
-                        <Users className="w-3 h-3 mr-2" />
-                        Voir le profil de l&apos;annonceur
+                      <a href={opportunite.lien_infos} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Voir le site public
                       </a>
                     </Button>
-                  </div>
+                  )}
                 </div>
 
+                {/* Informations de validation */}
+                {opportunite.statut === 'en_attente' && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-orange-900">
+                        <p className="font-semibold mb-1">En attente de validation</p>
+                        <p className="text-orange-700">
+                          Cette opportunité doit être validée avant d&apos;être visible par les comédiens.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {opportunite.statut === 'validee' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-green-900">
+                        <p className="font-semibold mb-1">Opportunité validée</p>
+                        <p className="text-green-700">
+                          Cette opportunité est visible par tous les comédiens.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {opportunite.statut === 'refusee' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-red-900">
+                        <p className="font-semibold mb-1">Opportunité refusée</p>
+                        <p className="text-red-700">
+                          Cette opportunité a été refusée et n&apos;est pas visible.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Statistiques rapides */}
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">
+                  <div className="text-center p-3 bg-[#F5F0EB] rounded-lg">
+                    <p className="text-2xl font-bold text-[#E63832]">
+                      {placesOccupees}
+                    </p>
+                    <p className="text-xs text-gray-600">Réservées</p>
+                  </div>
+                  <div className="text-center p-3 bg-[#F5F0EB] rounded-lg">
+                    <p className="text-2xl font-bold text-[#E63832]">
+                      {Math.round(pourcentageRemplissage)}%
+                    </p>
+                    <p className="text-xs text-gray-600">Remplissage</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

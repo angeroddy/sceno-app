@@ -34,7 +34,7 @@ export async function GET(
     if (opportuniteError) {
       console.error('Erreur Supabase:', opportuniteError)
       return NextResponse.json(
-        { error: 'Opportunité introuvable', details: opportuniteError.message },
+        { error: 'Cette opportunité n\'existe pas ou n\'est plus disponible' },
         { status: 404 }
       )
     }
@@ -51,7 +51,7 @@ export async function GET(
   } catch (error) {
     console.error('Erreur serveur:', error)
     return NextResponse.json(
-      { error: 'Erreur serveur interne', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Une erreur s\'est produite. Si le problème persiste, contactez le support' },
       { status: 500 }
     )
   }

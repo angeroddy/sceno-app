@@ -87,15 +87,19 @@ export default function OpportunitesPage() {
         }),
       })
 
-      if (!response.ok) throw new Error('Erreur lors de la validation')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erreur lors de la validation')
+      }
 
       // Rafraîchir la liste
       await fetchOpportunites()
       setShowModal(false)
       setRefusRaison("")
+      alert(`Opportunité ${modalAction === 'valider' ? 'validée' : 'refusée'} avec succès`)
     } catch (error) {
       console.error('Erreur:', error)
-      alert("Une erreur s'est produite")
+      alert(error instanceof Error ? error.message : "Une erreur s'est produite lors de la validation")
     } finally {
       setValidatingId(null)
     }
@@ -257,7 +261,7 @@ export default function OpportunitesPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                         onClick={() => router.push(`/admin/opprtunite/${opportunite.id}`)}
+                        onClick={() => router.push(`/admin/opportunites/${opportunite.id}`)}
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Prévisualiser

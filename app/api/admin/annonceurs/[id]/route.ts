@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import type { Annonceur } from '@/app/types'
 
 export async function GET(
   request: Request,
@@ -23,7 +24,7 @@ export async function GET(
     const { id } = await params
 
     // Récupérer l'annonceur avec toutes ses informations
-    const { data: annonceur, error } = await supabase
+    const { data, error } = await supabase
       .from('annonceurs')
       .select(`
         *,
@@ -34,16 +35,20 @@ export async function GET(
 
     if (error) {
       console.error('Erreur Supabase:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Impossible de récupérer les informations de l\'annonceur' }, { status: 500 })
     }
 
-    if (!annonceur) {
+    if (!data) {
       return NextResponse.json({ error: 'Annonceur non trouvé' }, { status: 404 })
     }
 
+    const annonceur = data as unknown as Annonceur & {
+      opportunites?: { id: string; titre: string; statut: string; created_at: string }[]
+    }
+
     // Récupérer les URLs signées pour les pièces d'identité
-    let pieceIdentiteUrl = null
-    let representantPieceIdentiteUrl = null
+    let pieceIdentiteUrl: string | null = null
+    let representantPieceIdentiteUrl: string | null = null
 
     if (annonceur.piece_identite_url) {
       const { data: pieceData } = await supabase.storage

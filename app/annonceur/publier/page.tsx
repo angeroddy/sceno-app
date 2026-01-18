@@ -278,7 +278,7 @@ export default function PublierOpportunitePage() {
           code: insertError.code,
           fullError: insertError
         })
-        setError(insertError.message || "Une erreur s'est produite lors de la publication")
+        setError("Impossible de publier l'opportunité. Veuillez vérifier vos informations et réessayer")
         setLoading(false)
         return
       }

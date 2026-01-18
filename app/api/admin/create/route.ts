@@ -10,6 +10,34 @@ import { createClient } from '@supabase/supabase-js'
  * SÉCURITÉ : Protégée par une clé secrète (ADMIN_CREATION_SECRET_KEY)
  */
 
+// Fonction pour traduire les erreurs d'authentification
+function translateAuthError(errorMessage: string): string {
+  const lowerMessage = errorMessage.toLowerCase()
+
+  // Erreurs de duplication
+  if (lowerMessage.includes('already') || lowerMessage.includes('duplicate') || lowerMessage.includes('exists')) {
+    return 'Un compte existe déjà avec cet email'
+  }
+
+  // Erreurs de validation email
+  if (lowerMessage.includes('invalid email')) {
+    return 'L\'adresse email n\'est pas valide'
+  }
+
+  // Erreurs de mot de passe
+  if (lowerMessage.includes('password')) {
+    return 'Le mot de passe ne respecte pas les critères de sécurité'
+  }
+
+  // Erreurs de connexion réseau
+  if (lowerMessage.includes('network')) {
+    return 'Erreur de connexion. Veuillez vérifier votre connexion internet'
+  }
+
+  // Message générique
+  return 'Une erreur s\'est produite lors de la création du compte'
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -99,7 +127,7 @@ export async function POST(request: Request) {
     if (authError || !authData.user) {
       console.error('Erreur création utilisateur Auth:', authError)
       return NextResponse.json(
-        { error: authError?.message || 'Erreur lors de la création de l\'utilisateur' },
+        { error: authError?.message ? translateAuthError(authError.message) : 'Erreur lors de la création de l\'utilisateur' },
         { status: 500 }
       )
     }
