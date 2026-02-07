@@ -159,6 +159,12 @@ export default function AnnonceurPage() {
     },
   ]
 
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("DIV")
+    tmp.innerHTML = html
+    return tmp.textContent || tmp.innerText || ""
+  }
+
   const getStatusBadge = (statut: string) => {
     switch (statut) {
       case 'validee':
@@ -253,7 +259,7 @@ export default function AnnonceurPage() {
                         {getStatusBadge(opportunite.statut)}
                       </div>
                       <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                        {opportunite.resume}
+                        {stripHtml(opportunite.resume)}
                       </p>
                       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">

@@ -110,15 +110,37 @@ describe('LoginForm', () => {
         error: null,
       })
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: { id: 1, auth_user_id: 'test-user-id' },
-              error: null,
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admins') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
             }),
-          }),
-        }),
+          }
+        }
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { id: 1, auth_user_id: 'test-user-id' },
+                }),
+              }),
+            }),
+          }
+        }
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        return {}
       })
 
       render(<LoginForm />)

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import { useAuth } from '../useAuth'
 import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
 import { useRouter } from 'next/navigation'
@@ -34,15 +34,16 @@ describe('useAuth', () => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
+
+    mockSupabase.auth.onAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } },
+    })
   })
 
   describe('Initialisation et authentification', () => {
     it('devrait initialiser avec loading = true et isAuthenticated = false', () => {
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: null },
-      })
-      mockSupabase.auth.onAuthStateChange.mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } },
       })
 
       const { result } = renderHook(() => useAuth())
@@ -51,6 +52,10 @@ describe('useAuth', () => {
       expect(result.current.isAuthenticated).toBe(false)
       expect(result.current.user).toBe(null)
       expect(result.current.userType).toBe(null)
+      // let async state updates flush to avoid act warnings
+      return waitFor(() => {
+        expect(result.current.loading).toBe(false)
+      })
     })
 
     it('devrait définir l\'utilisateur quand une session existe', async () => {
@@ -65,17 +70,36 @@ describe('useAuth', () => {
         data: { session: { user: mockUser } },
       })
 
-      mockSupabase.auth.onAuthStateChange.mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } },
-      })
-
       // Mock pour la vérification du type d'utilisateur
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            maybeSingle: jest.fn().mockResolvedValue({ data: mockComedien }),
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admins') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: mockComedien }),
+              }),
+            }),
+          }
+        }
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        return {}
       })
 
       const { result } = renderHook(() => useAuth())
@@ -101,25 +125,37 @@ describe('useAuth', () => {
         data: { session: { user: mockUser } },
       })
 
-      mockSupabase.auth.onAuthStateChange.mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } },
-      })
-
       // Mock pour la vérification du type d'utilisateur
       // Premier appel (comedien) retourne null, second (annonceur) retourne l'annonceur
-      let callCount = 0
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            maybeSingle: jest.fn().mockImplementation(async () => {
-              callCount++
-              if (callCount === 1) {
-                return { data: null } // Pas un comédien
-              }
-              return { data: mockAnnonceur } // C'est un annonceur
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admins') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
             }),
-          }),
-        }),
+          }
+        }
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: mockAnnonceur }),
+              }),
+            }),
+          }
+        }
+        return {}
       })
 
       const { result } = renderHook(() => useAuth())
@@ -142,17 +178,18 @@ describe('useAuth', () => {
         data: { session: { user: mockUser } },
       })
 
-      mockSupabase.auth.onAuthStateChange.mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } },
-      })
-
       // Mock retournant null pour tous les types d'utilisateurs
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-          }),
-        }),
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admins' || table === 'comediens' || table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        return {}
       })
 
       const { result } = renderHook(() => useAuth())
@@ -170,10 +207,6 @@ describe('useAuth', () => {
     it('devrait déconnecter l\'utilisateur et rediriger vers la page d\'accueil', async () => {
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: null },
-      })
-
-      mockSupabase.auth.onAuthStateChange.mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } },
       })
 
       mockSupabase.auth.signOut.mockResolvedValue({ error: null })
@@ -220,17 +253,42 @@ describe('useAuth', () => {
         email: 'newuser@example.com',
       }
 
-      mockSupabase.from.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            maybeSingle: jest.fn().mockResolvedValue({
-              data: { id: 1, auth_user_id: 'new-user-id' }
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admins') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
             }),
-          }),
-        }),
+          }
+        }
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { id: 1, auth_user_id: 'new-user-id' }
+                }),
+              }),
+            }),
+          }
+        }
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        return {}
       })
 
-      authStateCallback('SIGNED_IN', { user: mockUser })
+      await act(async () => {
+        authStateCallback('SIGNED_IN', { user: mockUser })
+      })
 
       await waitFor(() => {
         expect(result.current.isAuthenticated).toBe(true)

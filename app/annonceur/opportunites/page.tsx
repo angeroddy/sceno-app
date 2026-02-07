@@ -19,6 +19,8 @@ import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { Opportunite } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
 
+const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+
 export default function MesOpportunitesPage() {
   const router = useRouter()
   const [opportunites, setOpportunites] = useState<Opportunite[]>([])
@@ -210,7 +212,7 @@ export default function MesOpportunitesPage() {
                           {getStatusBadge(opportunite.statut)}
                         </div>
                         <p className="text-sm text-gray-600 line-clamp-2">
-                          {opportunite.resume}
+                          {stripHtml(opportunite.resume)}
                         </p>
                       </div>
                     </div>

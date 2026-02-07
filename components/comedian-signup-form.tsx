@@ -482,8 +482,7 @@ export function ComedianSignupForm({
                 placeholder="Dupont"
                 value={personalInfo.lastName}
                 onChange={(e) => handlePersonalInfoChange("lastName", e.target.value)}
-                required
-              />
+                              />
             </Field>
 
             <Field>
@@ -496,8 +495,7 @@ export function ComedianSignupForm({
                 placeholder="Jean"
                 value={personalInfo.firstName}
                 onChange={(e) => handlePersonalInfoChange("firstName", e.target.value)}
-                required
-              />
+                              />
             </Field>
 
             <Field>
@@ -510,8 +508,7 @@ export function ComedianSignupForm({
                 value={personalInfo.birthDate}
                 onChange={(e) => handlePersonalInfoChange("birthDate", e.target.value)}
                 max={new Date().toISOString().split("T")[0]}
-                required
-              />
+                              />
               <FieldDescription>
                 Cette information reste privée
               </FieldDescription>
@@ -604,8 +601,7 @@ export function ComedianSignupForm({
                 placeholder="exemple@email.com"
                 value={accountInfo.email}
                 onChange={(e) => handleAccountInfoChange("email", e.target.value)}
-                required
-              />
+                              />
               <FieldDescription>
                 Nous utiliserons cette adresse pour vous contacter
               </FieldDescription>
@@ -621,8 +617,7 @@ export function ComedianSignupForm({
                 placeholder="••••••••"
                 value={accountInfo.password}
                 onChange={(e) => handleAccountInfoChange("password", e.target.value)}
-                required
-              />
+                              />
               <FieldDescription>
                 Doit contenir au moins 8 caractères
               </FieldDescription>
@@ -638,8 +633,7 @@ export function ComedianSignupForm({
                 placeholder="••••••••"
                 value={accountInfo.confirmPassword}
                 onChange={(e) => handleAccountInfoChange("confirmPassword", e.target.value)}
-                required
-              />
+                              />
             </Field>
 
             <div className="flex items-start space-x-3 p-4 rounded-lg border bg-accent/30">
@@ -647,8 +641,7 @@ export function ComedianSignupForm({
                 id="acceptTerms"
                 checked={accountInfo.acceptTerms}
                 onCheckedChange={(checked) => handleAccountInfoChange("acceptTerms", checked as boolean)}
-                required
-              />
+                              />
               <div className="flex-1">
                 <label
                   htmlFor="acceptTerms"

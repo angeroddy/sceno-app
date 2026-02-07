@@ -10,11 +10,11 @@
 
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
 
 // Mock du module supabase-client
 jest.mock('@/app/lib/supabase-client', () => ({
-  createClient: jest.fn(),
+  createBrowserSupabaseClient: jest.fn(),
 }))
 
 // Mock de next/navigation
@@ -25,6 +25,23 @@ jest.mock('next/navigation', () => ({
     prefetch: jest.fn(),
     back: jest.fn(),
   })),
+}))
+
+// Mock des composants UI
+jest.mock('@/components/ui/stepper', () => ({
+  Stepper: () => <div data-testid="stepper" />,
+}))
+
+jest.mock('@/components/ui/checkbox', () => ({
+  Checkbox: (props: any) => (
+    <input
+      type="checkbox"
+      id={props.id}
+      checked={props.checked}
+      onChange={(e) => props.onCheckedChange?.(e.target.checked)}
+      required={props.required}
+    />
+  ),
 }))
 
 describe('Flow d\'authentification complet', () => {
@@ -49,11 +66,9 @@ describe('Flow d\'authentification complet', () => {
       },
     }
 
-    ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
 
-    // Mock window.location.origin
-    delete (window as any).location
-    window.location = { origin: 'http://localhost:3000' } as any
+    // window.location.origin is set in jest.setup.ts
   })
 
   describe('Scénario complet : Inscription -> Connexion -> Dashboard -> Déconnexion', () => {
@@ -111,11 +126,11 @@ describe('Flow d\'authentification complet', () => {
 
       // Étape 2 : Informations personnelles
       await waitFor(() => {
-        expect(screen.getByLabelText(/Nom/i)).toBeInTheDocument()
+        expect(screen.getByLabelText(/^Nom/i)).toBeInTheDocument()
       })
 
-      await user.type(screen.getByLabelText(/Nom/i), testUser.lastName)
-      await user.type(screen.getByLabelText(/Prénom/i), testUser.firstName)
+      await user.type(screen.getByLabelText(/^Nom/i), testUser.lastName)
+      await user.type(screen.getByLabelText(/^Prénom/i), testUser.firstName)
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Étape 3 : Création de compte
@@ -192,9 +207,9 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/Nom/i))
-      await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await waitFor(() => screen.getByLabelText(/^Nom/i))
+      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
+      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -246,9 +261,9 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/Nom/i))
-      await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await waitFor(() => screen.getByLabelText(/^Nom/i))
+      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
+      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -276,9 +291,9 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/Nom/i))
-      await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await waitFor(() => screen.getByLabelText(/^Nom/i))
+      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
+      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -305,9 +320,9 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/Nom/i))
-      await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await waitFor(() => screen.getByLabelText(/^Nom/i))
+      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
+      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -360,9 +375,9 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Remplir les informations personnelles
-      await waitFor(() => screen.getByLabelText(/Nom/i))
-      await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await waitFor(() => screen.getByLabelText(/^Nom/i))
+      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
+      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Créer le compte

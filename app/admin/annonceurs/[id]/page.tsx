@@ -148,6 +148,8 @@ export default function AnnonceurDetailsPage() {
             </div>
             <p className="text-gray-600 text-base sm:text-lg">
               {annonceur.type_annonceur === 'personne_physique' ? 'Personne physique' : 'Entreprise'}
+            </p>
+          </div>
           {!annonceur.identite_verifiee && (
             <div className="flex gap-2 w-full sm:w-auto shrink-0">
               <Button
@@ -207,6 +209,9 @@ export default function AnnonceurDetailsPage() {
                   <p className="font-medium flex items-center gap-2 mt-1">
                     <Phone className="w-4 h-4" />
                     {annonceur.telephone}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -236,6 +241,9 @@ export default function AnnonceurDetailsPage() {
                     <p className="font-medium flex items-center gap-2 mt-1">
                       <Calendar className="w-4 h-4" />
                       {new Date(annonceur.date_naissance).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm text-gray-600">Adresse</label>
                   <div className="flex items-start gap-2 mt-1">
@@ -314,6 +322,9 @@ export default function AnnonceurDetailsPage() {
                       <p className="font-medium flex items-center gap-2 mt-1">
                         <Calendar className="w-4 h-4 flex-shrink-0" />
                         <span className="truncate">{new Date(annonceur.representant_date_naissance).toLocaleDateString('fr-FR')}</span>
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-sm text-gray-600">Adresse</label>
                     <div className="flex items-start gap-2 mt-1">
@@ -349,6 +360,9 @@ export default function AnnonceurDetailsPage() {
                   {annonceur.iban
                     ? `${annonceur.iban.substring(0, 4)} **** **** ${annonceur.iban.slice(-4)}`
                     : 'Non renseigné'}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600">BIC/SWIFT</label>
                 <p className="font-medium font-mono break-words">{annonceur.bic_swift || 'Non renseigné'}</p>
               </div>
@@ -369,6 +383,9 @@ export default function AnnonceurDetailsPage() {
                 <p className="font-medium flex items-center gap-2 mt-1">
                   <Calendar className="w-4 h-4" />
                   {new Date(annonceur.created_at).toLocaleDateString('fr-FR')}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600">Opportunités publiées</label>
                 <p className="font-medium text-2xl">{opportunitesCount}</p>
               </div>
@@ -398,6 +415,8 @@ export default function AnnonceurDetailsPage() {
                 </h3>
                 <p className="text-center text-gray-600 mb-4">
                   {annonceur.nom_formation}
+                </p>
+              </div>
               {modalAction === 'refuser' && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-2">
@@ -451,3 +470,17 @@ export default function AnnonceurDetailsPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
