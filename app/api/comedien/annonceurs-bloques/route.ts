@@ -19,10 +19,12 @@ export async function GET() {
       return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
     }
 
+    const comedienTyped = comedien as { id: string }
+
     const { data: rows, error } = await supabase
       .from("annonceurs_bloques")
       .select("annonceur_id, annonceur:annonceurs(nom_formation, email)")
-      .eq("comedien_id", comedien.id)
+      .eq("comedien_id", comedienTyped.id)
 
     if (error) {
       return NextResponse.json({ error: "Erreur chargement" }, { status: 500 })
@@ -59,9 +61,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
     }
 
+    const comedienTyped = comedien as { id: string }
+
     const { error: insertError } = await supabase
       .from("annonceurs_bloques")
-      .insert({ comedien_id: comedien.id, annonceur_id })
+      // @ts-expect-error - Supabase type inference issue
+      .insert({ comedien_id: comedienTyped.id, annonceur_id })
 
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 400 })
@@ -97,10 +102,12 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
     }
 
+    const comedienTyped = comedien as { id: string }
+
     const { error: deleteError } = await supabase
       .from("annonceurs_bloques")
       .delete()
-      .eq("comedien_id", comedien.id)
+      .eq("comedien_id", comedienTyped.id)
       .eq("annonceur_id", annonceur_id)
 
     if (deleteError) {

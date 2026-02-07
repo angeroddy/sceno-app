@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getUser, getAdminProfile } from '@/app/lib/supabase'
 
-export async function GET(request: Request, context: { params?: { id?: string } }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUser()
     if (!user) {
@@ -25,8 +25,8 @@ export async function GET(request: Request, context: { params?: { id?: string } 
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    const pathId = new URL(request.url).pathname.split('/').filter(Boolean).pop() || ""
-    const comedienId = context.params?.id || pathId
+    const params = await context.params
+    const comedienId = params.id
     if (!comedienId) {
       return NextResponse.json({ error: 'Identifiant manquant' }, { status: 400 })
     }

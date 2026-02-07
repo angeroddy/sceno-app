@@ -98,7 +98,9 @@ export async function POST(request: Request) {
           .select('id, email, preferences_opportunites')
           .contains('preferences_opportunites', [opportunityType])
 
-        const comedienIds = (comediens || []).map((c: any) => c.id)
+        type ComedienRow = { id: string; email: string; preferences_opportunites: string[] }
+        const comediensList = (comediens || []) as ComedienRow[]
+        const comedienIds = comediensList.map((c) => c.id)
 
         const { data: blockedRows } = await supabase
           .from('annonceurs_bloques')
@@ -106,9 +108,10 @@ export async function POST(request: Request) {
           .eq('annonceur_id', annonceurId)
           .in('comedien_id', comedienIds.length > 0 ? comedienIds : ['00000000-0000-0000-0000-000000000000'])
 
-        const blockedSet = new Set((blockedRows || []).map((r: any) => r.comedien_id))
+        type BlockedRow = { comedien_id: string }
+        const blockedSet = new Set((blockedRows || [] as BlockedRow[]).map((r) => r.comedien_id))
 
-        const recipients = (comediens || []).filter((c: any) => !blockedSet.has(c.id))
+        const recipients = comediensList.filter((c) => !blockedSet.has(c.id))
 
         const opportunityUrl = `${appUrl}/dashboard/opportunites/${opportunite.id}`
         const dateLabel = opportunite.date_evenement
