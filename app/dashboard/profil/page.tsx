@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { User, Upload, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
-import { createClient } from "@/app/lib/supabase-client";
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client";
 import Image from "next/image";
 
 // 1. Define the interface based on your DB schema image
@@ -23,7 +23,7 @@ interface ComedienProfile {
 export default function ProfilPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = createBrowserSupabaseClient();
 
   // États pour le profil
   const [profile, setProfile] = useState({

@@ -6,7 +6,7 @@ import type { Database } from '../types'
 // ============================================
 // Utilise celui-ci dans les composants clients ("use client")
 
-export function createClient() {
+export function createBrowserSupabaseClient() {
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

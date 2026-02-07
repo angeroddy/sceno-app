@@ -92,3 +92,16 @@ body {
   font-family: var(--font-tt-firs-neue), system-ui, -apple-system, sans-serif;
 }
 
+/* Placeholder pour les éléments contentEditable (rich-text-editor) */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* Styles prose pour le rendu du contenu HTML du rich-text-editor */
+.prose h2 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0; }
+.prose ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
+.prose ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+.prose li { margin: 0.25rem 0; }
+

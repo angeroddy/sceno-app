@@ -59,6 +59,7 @@ export interface Comedien {
   email: string
   photo_url: string | null
   lien_demo: string | null
+  date_naissance: string | null
   preferences_opportunites: OpportunityType[]
   email_verifie: boolean
   created_at: string
@@ -137,7 +138,7 @@ export interface Opportunite {
   reduction_pourcentage: number
   nombre_places: number
   places_restantes: number
-  date_limite: string
+  date_evenement: string
   contact_telephone: string | null
   contact_email: string
   statut: OpportunityStatus
@@ -207,6 +208,7 @@ export interface InscriptionComedienForm {
   password: string
   photo_url?: string
   lien_demo?: string
+  date_naissance: string
   preferences_opportunites: OpportunityType[]
 }
 
@@ -314,7 +316,7 @@ export interface PublierOpportuniteForm {
   prix_base: number
   prix_reduit: number
   nombre_places: number
-  date_limite: string
+  date_evenement: string
   contact_telephone?: string
   contact_email: string
 }

@@ -5,10 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Save, Eye, EyeOff, CheckCircle2, FileText, AlertCircle } from "lucide-react"
-import { createClient } from "@/app/lib/supabase-client"
+import { Loader2, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { Annonceur } from "@/app/types"
-import { FileUpload } from "@/components/file-upload"
 
 export default function ParametresPage() {
   const [annonceur, setAnnonceur] = useState<Annonceur | null>(null)
@@ -17,8 +16,6 @@ export default function ParametresPage() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
   const [showIban, setShowIban] = useState(false)
-  const [uploadingFile, setUploadingFile] = useState(false)
-  const [uploadSuccess, setUploadSuccess] = useState(false)
 
   const [formData, setFormData] = useState({
     nom_formation: "",
@@ -34,7 +31,7 @@ export default function ParametresPage() {
 
   const fetchAnnonceurData = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -133,7 +130,7 @@ export default function ParametresPage() {
     setSuccess(false)
 
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
 
       const updatePayload = {
         nom_formation: formData.nom_formation,
@@ -185,71 +182,6 @@ export default function ParametresPage() {
     return masked.match(/.{1,4}/g)?.join(' ') || masked
   }
 
-  const uploadFileToStorage = async (
-    file: File,
-    fileType: 'piece-identite' | 'representant-piece-identite'
-  ): Promise<string | null> => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${fileType}.${fileExt}`
-    const filePath = `annonceur/${user.id}/${fileName}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('pieces-identite')
-      .upload(filePath, file, { upsert: true })
-
-    if (uploadError) {
-      console.error('Erreur upload fichier:', uploadError)
-      return null
-    }
-
-    return filePath
-  }
-
-  const handleFileUpload = async (file: File | null, fileType: 'piece-identite' | 'representant-piece-identite') => {
-    if (!file || !annonceur) return
-
-    setUploadingFile(true)
-    setError("")
-    setUploadSuccess(false)
-
-    try {
-      const filePath = await uploadFileToStorage(file, fileType)
-
-      if (!filePath) {
-        setError("Erreur lors de l'upload du fichier")
-        return
-      }
-
-      const supabase = createClient()
-      const updateField = fileType === 'piece-identite' ? 'piece_identite_url' : 'representant_piece_identite_url'
-
-      const { error: updateError } = await supabase
-        .from('annonceurs')
-        .update({ [updateField]: filePath } as unknown as never)
-        .eq('id', annonceur.id)
-
-      if (updateError) {
-        console.error('Erreur mise à jour:', updateError)
-        setError("Erreur lors de la mise à jour du profil")
-        return
-      }
-
-      setUploadSuccess(true)
-      setTimeout(() => setUploadSuccess(false), 3000)
-
-      // Rafraîchir les données
-      await fetchAnnonceurData()
-    } catch (error) {
-      console.error('Erreur:', error)
-      setError("Une erreur inattendue s'est produite")
-    } finally {
-      setUploadingFile(false)
-    }
-  }
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
@@ -310,96 +242,16 @@ export default function ParametresPage() {
               {annonceur?.identite_verifiee ? (
                 <div className="flex items-center gap-2 text-sm text-green-600">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Identité vérifiée</span>
+                  <span>Compte vérifié</span>
                 </div>
               ) : (
                 <div className="text-sm text-orange-600">
-                  Identité en cours de vérification par l&apos;équipe Scenio
+                  Compte en cours de vérification par l&apos;équipe Scenio
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Pièces d'identité */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Pièces d&apos;identité
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {annonceur?.type_annonceur === 'personne_physique' ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Pièce d&apos;identité ({annonceur.type_piece_identite === 'cni' ? 'Carte Nationale d&apos;Identité' : 'Passeport'})
-                    </p>
-                    {annonceur.piece_identite_url ? (
-                      <div className="flex items-center gap-2 text-sm text-green-600 mb-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Pièce d&apos;identité uploadée</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-orange-600 mb-2">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Pièce d&apos;identité requise</span>
-                      </div>
-                    )}
-                    <FileUpload
-                      label="Uploader votre pièce d&apos;identité"
-                      description="Formats acceptés : JPG, PNG, PDF (max 5 MB)"
-                      onFileSelect={(file) => handleFileUpload(file, 'piece-identite')}
-                      error={error.includes('pièce') ? error : ''}
-                    />
-                  </div>
-                </div>
-              ) : annonceur?.type_annonceur === 'entreprise' ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Pièce d&apos;identité du représentant légal ({annonceur.representant_type_piece_identite === 'cni' ? 'Carte Nationale d&apos;Identité' : 'Passeport'})
-                    </p>
-                    {annonceur.representant_piece_identite_url ? (
-                      <div className="flex items-center gap-2 text-sm text-green-600 mb-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Pièce d&apos;identité uploadée</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-orange-600 mb-2">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Pièce d&apos;identité requise</span>
-                      </div>
-                    )}
-                    <FileUpload
-                      label="Uploader la pièce d&apos;identité du représentant légal"
-                      description="Formats acceptés : JPG, PNG, PDF (max 5 MB)"
-                      onFileSelect={(file) => handleFileUpload(file, 'representant-piece-identite')}
-                      error={error.includes('représentant') ? error : ''}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">
-                  Complétez d&apos;abord vos informations de base pour uploader vos pièces d&apos;identité.
-                </div>
-              )}
-
-              {uploadingFile && (
-                <div className="flex items-center gap-2 text-sm text-blue-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Upload en cours...</span>
-                </div>
-              )}
-
-              {uploadSuccess && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>Fichier uploadé avec succès</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Informations bancaires */}
           <Card>

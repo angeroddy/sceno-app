@@ -156,7 +156,7 @@ export default function AdminOpportuniteDetailsPage() {
     )
   }
 
-  const dateObj = new Date(opportunite.date_limite)
+  const dateObj = new Date(opportunite.date_evenement)
   const dateFormatted = dateObj.toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
@@ -353,9 +353,7 @@ export default function AdminOpportuniteDetailsPage() {
                       <h3 className="text-xl font-bold mb-4 text-gray-900">
                         Description de l&apos;opportunité
                       </h3>
-                      <div className="prose max-w-none text-gray-700">
-                        <p className="whitespace-pre-wrap">{opportunite.resume}</p>
-                      </div>
+                      <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: opportunite.resume }} />
                     </div>
 
                     {opportunite.lien_infos && (
@@ -521,7 +519,7 @@ export default function AdminOpportuniteDetailsPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">Date limite</p>
+                      <p className="text-xs text-gray-500">Date de l'événement</p>
                       <span className="text-gray-700 font-medium">{dateFormatted}</span>
                     </div>
                   </div>

@@ -20,14 +20,13 @@ import {
   Star,
   Heart,
   Info,
-  FileText,
   Contact,
   Loader2,
   AlertCircle,
   Tag,
   Building2
 } from "lucide-react"
-import { OpportuniteWithAnnonceur, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
+import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
 
 export default function OpportuniteDetailsPage() {
   const params = useParams()
@@ -38,6 +37,8 @@ export default function OpportuniteDetailsPage() {
   const [mainImage, setMainImage] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [opportuniteId, setOpportuniteId] = useState<string | null>(null)
+  const [blockError, setBlockError] = useState<string | null>(null)
+  const [blockSuccess, setBlockSuccess] = useState<string | null>(null)
 
   // Extraire l'ID des params
   useEffect(() => {
@@ -84,6 +85,27 @@ export default function OpportuniteDetailsPage() {
     }
   }
 
+  const handleBlockAnnonceur = async () => {
+    if (!opportunite?.annonceur_id) return
+    setBlockError(null)
+    setBlockSuccess(null)
+    try {
+      const response = await fetch("/api/comedien/annonceurs-bloques", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ annonceur_id: opportunite.annonceur_id }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Erreur lors du blocage")
+      }
+      setBlockSuccess("Organisme bloqué. Vous ne recevrez plus ses opportunités.")
+    } catch (err) {
+      console.error("Erreur blocage:", err)
+      setBlockError(err instanceof Error ? err.message : "Erreur lors du blocage")
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -120,7 +142,7 @@ export default function OpportuniteDetailsPage() {
     )
   }
 
-  const dateObj = new Date(opportunite.date_limite)
+  const dateObj = new Date(opportunite.date_evenement)
   const dateFormatted = dateObj.toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
@@ -161,7 +183,7 @@ export default function OpportuniteDetailsPage() {
                       src={mainImage}
                       alt={opportunite.titre}
                       fill
-                      className="object-cover"
+                      className="object-cover cursor-pointer"
                       unoptimized
                     />
                   ) : (
@@ -174,7 +196,7 @@ export default function OpportuniteDetailsPage() {
                   {opportunite.reduction_pourcentage > 0 && (
                     <div className="absolute top-4 left-4 z-10">
                       <Badge className="bg-[#E63832] text-white text-lg px-4 py-2 hover:bg-[#E63832]">
-                        -{opportunite.reduction_pourcentage}% de réduction
+                        -{Math.floor(opportunite.reduction_pourcentage)}% de réduction
                       </Badge>
                     </div>
                   )}
@@ -196,16 +218,12 @@ export default function OpportuniteDetailsPage() {
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="informations" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6 bg-[#E6DAD0]/50">
-                    <TabsTrigger value="informations" className="flex items-center gap-2">
+                  <TabsList className="grid w-full grid-cols-2 mb-6 bg-[#E6DAD0]/50">
+                    <TabsTrigger value="informations" className="flex items-center gap-2 cursor-pointer">
                       <Info className="w-4 h-4" />
                       <span className="hidden sm:inline">Informations</span>
                     </TabsTrigger>
-                    <TabsTrigger value="programme" className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span className="hidden sm:inline">Description</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="contact" className="flex items-center gap-2">
+                    <TabsTrigger value="contact" className="flex items-center gap-2 cursor-pointer">
                       <Contact className="w-4 h-4" />
                       <span className="hidden sm:inline">Contact</span>
                     </TabsTrigger>
@@ -253,7 +271,7 @@ export default function OpportuniteDetailsPage() {
                           <div>
                             <p className="text-sm text-gray-600">Places</p>
                             <p className="font-semibold text-gray-900">
-                              Jusqu&apos;à {opportunite.nombre_places} participant(s)
+                              Nombre de places : {opportunite.nombre_places}
                             </p>
                           </div>
                         </div>
@@ -273,52 +291,51 @@ export default function OpportuniteDetailsPage() {
                       </div>
                     </div>
 
-                    {/* Barre de progression */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">
-                          Places réservées
-                        </span>
-                        <span className="text-sm font-bold text-[#E63832]">
-                          {placesOccupees} / {opportunite.nombre_places}
-                        </span>
+                    {/* Places restantes — clarifier restantes vs total */}
+                    <div className="p-4 bg-[#F5F0EB] rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Places disponibles
+                      </p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold text-[#E63832]">
+                          {opportunite.places_restantes}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          sur {opportunite.nombre_places} au total
+                        </p>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
+                      <p className="text-xs text-gray-500 mt-1">
+                        {opportunite.nombre_places - opportunite.places_restantes} réservées
+                      </p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                         <div
-                          className="bg-[#E63832] h-3 rounded-full transition-all"
+                          className="bg-[#E63832] h-2 rounded-full transition-all"
                           style={{ width: `${pourcentageRemplissage}%` }}
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {opportunite.places_restantes} place(s) restante(s)
-                      </p>
                     </div>
-                  </TabsContent>
 
-                  {/* TAB: Description */}
-                  <TabsContent value="programme" className="space-y-4">
-                    <div>
-                      <h3 className="text-xl font-bold mb-4 text-gray-900">
+                    {/* Description inlinée — plus de tab séparée */}
+                    <div className="pt-2">
+                      <h3 className="text-xl font-bold mb-3 text-gray-900">
                         À propos de cette opportunité
                       </h3>
-                      <div className="prose max-w-none text-gray-700">
-                        <p className="whitespace-pre-wrap">{opportunite.resume}</p>
-                      </div>
-                    </div>
+                      <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: opportunite.resume }} />
 
-                    {opportunite.lien_infos && (
-                      <div className="mt-6">
-                        <a
-                          href={opportunite.lien_infos}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-[#E63832] hover:underline font-medium"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          En savoir plus
-                        </a>
-                      </div>
-                    )}
+                      {opportunite.lien_infos && (
+                        <div className="mt-4">
+                          <a
+                            href={opportunite.lien_infos}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-[#E63832] hover:underline font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            En savoir plus
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </TabsContent>
 
                   {/* TAB: Contact */}
@@ -394,6 +411,15 @@ export default function OpportuniteDetailsPage() {
                   <Badge className="bg-[#E6DAD0] text-gray-900 hover:bg-[#E6DAD0] mb-3">
                     {OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}
                   </Badge>
+                  <Badge
+                    className={
+                      opportunite.modele === "derniere_minute"
+                        ? "bg-[#E63832] text-white hover:bg-[#E63832]"
+                        : "bg-green-100 text-green-700 hover:bg-green-100"
+                    }
+                  >
+                    {OPPORTUNITY_MODEL_LABELS[opportunite.modele]}
+                  </Badge>
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">
                     {opportunite.titre}
                   </h1>
@@ -443,7 +469,7 @@ export default function OpportuniteDetailsPage() {
 
                   <div className="flex items-center gap-3 text-sm">
                     <Clock className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">Avant {timeFormatted}</span>
+                    <span className="text-gray-700">À {timeFormatted}</span>
                   </div>
 
                   <div className="flex items-center gap-3 text-sm">
@@ -477,6 +503,15 @@ export default function OpportuniteDetailsPage() {
                       </a>
                     </Button>
                   )}
+
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full border-[#E63832] text-[#E63832] hover:bg-[#E63832]/10"
+                    onClick={handleBlockAnnonceur}
+                  >
+                    Ne plus recevoir d'infos de cet organisme
+                  </Button>
                 </div>
 
                 {/* Informations complémentaires */}
@@ -491,6 +526,17 @@ export default function OpportuniteDetailsPage() {
                     </div>
                   </div>
                 </div>
+
+                {blockSuccess && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                    {blockSuccess}
+                  </div>
+                )}
+                {blockError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                    {blockError}
+                  </div>
+                )}
 
                 {/* Statistiques supplémentaires */}
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">

@@ -13,13 +13,11 @@ import {
   Phone,
   Building2,
   Calendar,
-  FileText,
   CreditCard,
   User,
   MapPin,
   Loader2,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react"
 import type { Annonceur } from "@/app/types"
 
@@ -33,8 +31,6 @@ export default function AnnonceurDetailsPage() {
   const annonceurId = params.id as string
 
   const [annonceur, setAnnonceur] = useState<AnnonceurDetails | null>(null)
-  const [pieceIdentiteUrl, setPieceIdentiteUrl] = useState<string | null>(null)
-  const [representantPieceUrl, setRepresentantPieceUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [validating, setValidating] = useState(false)
   const [showValidateModal, setShowValidateModal] = useState(false)
@@ -56,8 +52,6 @@ export default function AnnonceurDetailsPage() {
 
       const data = await response.json()
       setAnnonceur(data.annonceur)
-      setPieceIdentiteUrl(data.pieceIdentiteUrl)
-      setRepresentantPieceUrl(data.representantPieceIdentiteUrl)
     } catch (error) {
       console.error('Erreur:', error)
     } finally {
@@ -154,9 +148,6 @@ export default function AnnonceurDetailsPage() {
             </div>
             <p className="text-gray-600 text-base sm:text-lg">
               {annonceur.type_annonceur === 'personne_physique' ? 'Personne physique' : 'Entreprise'}
-            </p>
-          </div>
-
           {!annonceur.identite_verifiee && (
             <div className="flex gap-2 w-full sm:w-auto shrink-0">
               <Button
@@ -216,9 +207,6 @@ export default function AnnonceurDetailsPage() {
                   <p className="font-medium flex items-center gap-2 mt-1">
                     <Phone className="w-4 h-4" />
                     {annonceur.telephone}
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -248,9 +236,6 @@ export default function AnnonceurDetailsPage() {
                     <p className="font-medium flex items-center gap-2 mt-1">
                       <Calendar className="w-4 h-4" />
                       {new Date(annonceur.date_naissance).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                )}
                 <div>
                   <label className="text-sm text-gray-600">Adresse</label>
                   <div className="flex items-start gap-2 mt-1">
@@ -262,14 +247,6 @@ export default function AnnonceurDetailsPage() {
                     </div>
                   </div>
                 </div>
-                {annonceur.type_piece_identite && (
-                  <div>
-                    <label className="text-sm text-gray-600">Type de pièce d&apos;identité</label>
-                    <p className="font-medium">
-                      {annonceur.type_piece_identite === 'cni' ? 'Carte Nationale d\'Identité' : 'Passeport'}
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
@@ -337,9 +314,6 @@ export default function AnnonceurDetailsPage() {
                       <p className="font-medium flex items-center gap-2 mt-1">
                         <Calendar className="w-4 h-4 flex-shrink-0" />
                         <span className="truncate">{new Date(annonceur.representant_date_naissance).toLocaleDateString('fr-FR')}</span>
-                      </p>
-                    </div>
-                  )}
                   <div>
                     <label className="text-sm text-gray-600">Adresse</label>
                     <div className="flex items-start gap-2 mt-1">
@@ -351,14 +325,6 @@ export default function AnnonceurDetailsPage() {
                       </div>
                     </div>
                   </div>
-                  {annonceur.representant_type_piece_identite && (
-                    <div>
-                      <label className="text-sm text-gray-600">Type de pièce d&apos;identité</label>
-                      <p className="font-medium">
-                        {annonceur.representant_type_piece_identite === 'cni' ? 'Carte Nationale d\'Identité' : 'Passeport'}
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </>
@@ -383,9 +349,6 @@ export default function AnnonceurDetailsPage() {
                   {annonceur.iban
                     ? `${annonceur.iban.substring(0, 4)} **** **** ${annonceur.iban.slice(-4)}`
                     : 'Non renseigné'}
-                </p>
-              </div>
-              <div>
                 <label className="text-sm text-gray-600">BIC/SWIFT</label>
                 <p className="font-medium font-mono break-words">{annonceur.bic_swift || 'Non renseigné'}</p>
               </div>
@@ -406,74 +369,12 @@ export default function AnnonceurDetailsPage() {
                 <p className="font-medium flex items-center gap-2 mt-1">
                   <Calendar className="w-4 h-4" />
                   {new Date(annonceur.created_at).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
-              <div>
                 <label className="text-sm text-gray-600">Opportunités publiées</label>
                 <p className="font-medium text-2xl">{opportunitesCount}</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Pièces d'identité */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Pièces d&apos;identité
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {annonceur.type_annonceur === 'personne_physique' && (
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">
-                    Pièce d&apos;identité
-                  </label>
-                  {pieceIdentiteUrl ? (
-                    <a
-                      href={pieceIdentiteUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors w-full sm:w-auto text-sm"
-                    >
-                      <FileText className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">Voir la pièce</span>
-                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                    </a>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-orange-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Non uploadée</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              {annonceur.type_annonceur === 'entreprise' && (
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">
-                    Pièce d&apos;identité du représentant légal
-                  </label>
-                  {representantPieceUrl ? (
-                    <a
-                      href={representantPieceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors w-full sm:w-auto text-sm"
-                    >
-                      <FileText className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">Voir la pièce</span>
-                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                    </a>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-orange-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Non uploadée</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
 
@@ -497,9 +398,6 @@ export default function AnnonceurDetailsPage() {
                 </h3>
                 <p className="text-center text-gray-600 mb-4">
                   {annonceur.nom_formation}
-                </p>
-              </div>
-
               {modalAction === 'refuser' && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-2">

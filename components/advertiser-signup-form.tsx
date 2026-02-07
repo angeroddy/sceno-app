@@ -14,15 +14,13 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type {
   TypeJuridique,
-  TypePieceIdentite,
   InscriptionAnnonceurForm
 } from "@/app/types"
 import {
-  TYPE_JURIDIQUE_LABELS,
-  TYPE_PIECE_IDENTITE_LABELS
+  TYPE_JURIDIQUE_LABELS
 } from "@/app/types"
 
 const STEPS = [
@@ -105,11 +103,6 @@ export function AdvertiserSignupForm({
         setError("Le numéro de téléphone est obligatoire")
         return false
       }
-      if (!formData.type_piece_identite) {
-        setError("Veuillez sélectionner le type de pièce d'identité")
-        return false
-      }
-      // Upload de pièce sera fait après inscription dans l'espace personnel
     } else if (formData.type_annonceur === 'entreprise') {
       // Validation entreprise
       if (!formData.nom_formation?.trim()) {
@@ -187,11 +180,6 @@ export function AdvertiserSignupForm({
         setError("Le code postal du représentant légal est obligatoire")
         return false
       }
-      if (!formData.representant_type_piece_identite) {
-        setError("Veuillez sélectionner le type de pièce d'identité du représentant")
-        return false
-      }
-      // Upload de pièce sera fait après inscription dans l'espace personnel
     }
     return true
   }
@@ -296,7 +284,7 @@ export function AdvertiserSignupForm({
       setError("")
 
       try {
-        const supabase = createClient()
+        const supabase = createBrowserSupabaseClient()
 
         // 1. Créer l'utilisateur dans Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -320,7 +308,6 @@ export function AdvertiserSignupForm({
           return
         }
 
-        // 2. Créer le profil annonceur dans la table (upload de pièces sera fait après)
         const profileData: any = {
           auth_user_id: authData.user.id,
           email: formData.email,
@@ -340,8 +327,6 @@ export function AdvertiserSignupForm({
           profileData.adresse_ville = formData.adresse_ville
           profileData.adresse_code_postal = formData.adresse_code_postal
           profileData.adresse_pays = formData.adresse_pays || 'France'
-          profileData.type_piece_identite = formData.type_piece_identite
-          profileData.piece_identite_url = null // Sera uploadé après dans l'espace personnel
           profileData.nom_formation = `${formData.prenom} ${formData.nom}` // Nom d'affichage par défaut
         } else if (formData.type_annonceur === 'entreprise') {
           // Ajouter les champs entreprise
@@ -361,8 +346,6 @@ export function AdvertiserSignupForm({
           profileData.representant_adresse_ville = formData.representant_adresse_ville
           profileData.representant_adresse_code_postal = formData.representant_adresse_code_postal
           profileData.representant_adresse_pays = formData.representant_adresse_pays || 'France'
-          profileData.representant_type_piece_identite = formData.representant_type_piece_identite
-          profileData.representant_piece_identite_url = null // Sera uploadé après dans l'espace personnel
         }
 
         const { error: profileError } = await supabase
@@ -517,7 +500,7 @@ export function AdvertiserSignupForm({
                 Vos informations personnelles
               </h2>
               <p className="text-sm text-muted-foreground">
-                Ces informations sont nécessaires pour vérifier votre identité
+                Ces informations sont nécessaires pour vérifier votre compte
               </p>
             </div>
 
@@ -610,25 +593,6 @@ export function AdvertiserSignupForm({
               />
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="type_piece_identite">Type de pièce d'identité <span className="text-red-500">*</span></FieldLabel>
-              <select
-                id="type_piece_identite"
-                value={formData.type_piece_identite || ''}
-                onChange={(e) => updateFormData({ type_piece_identite: e.target.value as TypePieceIdentite })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                required
-              >
-                <option value="">Sélectionnez...</option>
-                {Object.entries(TYPE_PIECE_IDENTITE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </Field>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">
-              ℹ️ Vous pourrez uploader votre pièce d'identité après l'inscription dans votre espace personnel.
-            </div>
 
             {error && (
               <div className="text-sm text-red-500 text-center bg-red-50 p-3 rounded-md">
@@ -646,7 +610,7 @@ export function AdvertiserSignupForm({
                 Informations sur votre entreprise
               </h2>
               <p className="text-sm text-muted-foreground">
-                Ces informations sont nécessaires pour vérifier votre identité juridique
+                Ces informations sont nécessaires pour vérifier votre organisation
               </p>
             </div>
 
@@ -851,25 +815,6 @@ export function AdvertiserSignupForm({
                   </Field>
                 </div>
 
-                <Field>
-                  <FieldLabel htmlFor="representant_type_piece_identite">Type de pièce d'identité <span className="text-red-500">*</span></FieldLabel>
-                  <select
-                    id="representant_type_piece_identite"
-                    value={formData.representant_type_piece_identite || ''}
-                    onChange={(e) => updateFormData({ representant_type_piece_identite: e.target.value as TypePieceIdentite })}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    required
-                  >
-                    <option value="">Sélectionnez...</option>
-                    {Object.entries(TYPE_PIECE_IDENTITE_LABELS).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">
-                  ℹ️ Vous pourrez uploader la pièce d'identité du représentant légal après l'inscription dans votre espace personnel.
-                </div>
               </div>
             </div>
 
@@ -1049,7 +994,6 @@ export function AdvertiserSignupForm({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Création en cours...
                   </>
                 ) : (

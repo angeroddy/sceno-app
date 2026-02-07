@@ -1,18 +1,6 @@
-import { createBrowserClient, createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '../types'
-
-// ============================================
-// CLIENT SUPABASE - CÔTÉ NAVIGATEUR
-// ============================================
-// Utilise celui-ci dans les composants clients ("use client")
-
-export function createClient() {
-  return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
 
 // ============================================
 // CLIENT SUPABASE - CÔTÉ SERVEUR
@@ -126,7 +114,7 @@ export async function getAdminProfile() {
 // HELPER : DÉTERMINER LE TYPE D'UTILISATEUR
 // ============================================
 
-export type UserType = 'comedien' | 'annonceur' | 'admin' | null
+export type UserType = 'comedian' | 'advertiser' | 'admin' | null
 
 export async function getUserType(): Promise<UserType> {
   const [comedien, annonceur, admin] = await Promise.all([
@@ -136,8 +124,8 @@ export async function getUserType(): Promise<UserType> {
   ])
   
   if (admin) return 'admin'
-  if (annonceur) return 'annonceur'
-  if (comedien) return 'comedien'
+  if (annonceur) return 'advertiser'
+  if (comedien) return 'comedian'
   
   return null
 }

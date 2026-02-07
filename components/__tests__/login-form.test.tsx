@@ -1,12 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LoginForm } from '../login-form'
-import { createClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 
 // Mock du module supabase-client
 jest.mock('@/app/lib/supabase-client', () => ({
-  createClient: jest.fn(),
+  createBrowserSupabaseClient: jest.fn(),
 }))
 
 // Mock de next/navigation
@@ -32,7 +32,7 @@ describe('LoginForm', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
-    ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
   })
 
   describe('Rendu du formulaire', () => {

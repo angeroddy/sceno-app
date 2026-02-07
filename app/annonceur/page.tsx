@@ -15,7 +15,7 @@ import {
   XCircle,
   PlusCircle
 } from "lucide-react"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import { useRouter } from "next/navigation"
 import type { Opportunite, Annonceur, Achat } from "@/app/types"
 
@@ -50,7 +50,7 @@ export default function AnnonceurPage() {
 
   const fetchDashboardData = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
 
       // Récupérer l'utilisateur connecté
       const { data: { user } } = await supabase.auth.getUser()
@@ -258,7 +258,7 @@ export default function AnnonceurPage() {
                       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
+                          <span className="truncate">{new Date(opportunite.date_evenement).toLocaleDateString('fr-FR')}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4 flex-shrink-0" />
@@ -266,7 +266,7 @@ export default function AnnonceurPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Euro className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{opportunite.prix_reduit}€ (-{opportunite.reduction_pourcentage}%)</span>
+                          <span className="truncate">{opportunite.prix_reduit}€ (-{Math.floor(opportunite.reduction_pourcentage)}%)</span>
                         </div>
                       </div>
                     </div>

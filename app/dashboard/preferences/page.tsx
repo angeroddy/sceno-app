@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Bell, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+import { Bell, ArrowLeft, Loader2, CheckCircle, ShieldOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
-import { createClient } from "@/app/lib/supabase-client";
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client";
 import type { OpportunityType } from "@/app/types";
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types";
 
 export default function PreferencesPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = createBrowserSupabaseClient();
 
   type ComedienRow = {
     id: string;
@@ -42,6 +42,9 @@ export default function PreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [blockedLoading, setBlockedLoading] = useState(true);
+  const [blockedError, setBlockedError] = useState("");
+  const [blockedAnnonceurs, setBlockedAnnonceurs] = useState<Array<{ annonceur_id: string; annonceur: { nom_formation: string; email: string } | null }>>([]);
 
   // Charger les préférences
   useEffect(() => {
@@ -81,6 +84,28 @@ export default function PreferencesPage() {
     loadPreferences();
   }, [user, supabase]);
 
+  useEffect(() => {
+    const loadBlocked = async () => {
+      if (!user) return;
+      try {
+        setBlockedLoading(true);
+        const response = await fetch("/api/comedien/annonceurs-bloques");
+        if (!response.ok) {
+          throw new Error("Impossible de charger les organismes bloqués");
+        }
+        const data = await response.json();
+        setBlockedAnnonceurs(data.annonceurs || []);
+      } catch (err) {
+        console.error("Erreur chargement bloqués:", err);
+        setBlockedError("Impossible de charger les organismes bloqués");
+      } finally {
+        setBlockedLoading(false);
+      }
+    };
+
+    loadBlocked();
+  }, [user]);
+
   const handlePreferenceChange = (key: OpportunityType) => {
     setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
   };
@@ -117,6 +142,23 @@ export default function PreferencesPage() {
       setError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUnblock = async (annonceurId: string) => {
+    try {
+      const response = await fetch("/api/comedien/annonceurs-bloques", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ annonceur_id: annonceurId }),
+      });
+      if (!response.ok) {
+        throw new Error("Erreur lors du déblocage");
+      }
+      setBlockedAnnonceurs(prev => prev.filter((row) => row.annonceur_id !== annonceurId));
+    } catch (err) {
+      console.error("Erreur déblocage:", err);
+      setBlockedError("Impossible de débloquer l'organisme");
     }
   };
 
@@ -248,6 +290,54 @@ export default function PreferencesPage() {
             </CardContent>
           </Card>
         )}
+
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">Organismes bloqués</CardTitle>
+              <CardDescription>
+                Gérez la liste des organismes dont vous ne souhaitez plus recevoir d'opportunités
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {blockedError && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <p className="text-sm text-red-800">{blockedError}</p>
+                </div>
+              )}
+              {blockedLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#E63832]" />
+                </div>
+              ) : blockedAnnonceurs.length === 0 ? (
+                <div className="text-sm text-gray-600">
+                  Aucun organisme bloqué pour le moment.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {blockedAnnonceurs.map((row) => (
+                    <div key={row.annonceur_id} className="flex items-center justify-between border rounded-md p-3">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {row.annonceur?.nom_formation || "Organisme"}
+                        </div>
+                        <div className="text-sm text-gray-600">{row.annonceur?.email || ""}</div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleUnblock(row.annonceur_id)}
+                        className="border-[#E63832] text-[#E63832] hover:bg-[#E63832]/10"
+                      >
+                        <ShieldOff className="w-4 h-4 mr-2" />
+                        Débloquer
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

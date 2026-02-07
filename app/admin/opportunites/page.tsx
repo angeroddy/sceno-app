@@ -236,7 +236,7 @@ export default function OpportunitesPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
+                        <span className="truncate">{new Date(opportunite.date_evenement).toLocaleDateString('fr-FR')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Users className="w-4 h-4 flex-shrink-0" />

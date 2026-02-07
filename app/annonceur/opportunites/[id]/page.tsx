@@ -128,7 +128,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
     )
   }
 
-  const dateObj = new Date(opportunite.date_limite)
+  const dateObj = new Date(opportunite.date_evenement)
   const dateFormatted = dateObj.toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
@@ -199,7 +199,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                   {opportunite.reduction_pourcentage > 0 && (
                     <div className="absolute top-4 left-4 z-10">
                       <Badge className="bg-[#E63832] text-white text-lg px-4 py-2 hover:bg-[#E63832]">
-                        -{opportunite.reduction_pourcentage}% de réduction
+                        -{Math.floor(opportunite.reduction_pourcentage)}% de réduction
                       </Badge>
                     </div>
                   )}
@@ -325,9 +325,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                       <h3 className="text-xl font-bold mb-4 text-gray-900">
                         Description de l&apos;opportunité
                       </h3>
-                      <div className="prose max-w-none text-gray-700">
-                        <p className="whitespace-pre-wrap">{opportunite.resume}</p>
-                      </div>
+                      <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: opportunite.resume }} />
                     </div>
 
                     {opportunite.lien_infos && (
@@ -475,7 +473,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                         </span>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Réduction de {opportunite.reduction_pourcentage}%
+                        Réduction de {Math.floor(opportunite.reduction_pourcentage)}%
                       </p>
                     </div>
                   ) : (
@@ -493,7 +491,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Calendar className="w-5 h-5 text-gray-400 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">Date limite</p>
+                      <p className="text-xs text-gray-500">Date de l'événement</p>
                       <span className="text-gray-700 font-medium">{dateFormatted}</span>
                     </div>
                   </div>

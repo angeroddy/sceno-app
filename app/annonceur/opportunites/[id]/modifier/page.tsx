@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft } from "lucide-react"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import Image from "next/image"
 import type { OpportunityType, OpportunityModel, Opportunite, Annonceur } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LABELS } from "@/app/types"
@@ -23,7 +23,7 @@ interface FormData {
   prix_base: string
   prix_reduit: string
   nombre_places: string
-  date_limite: string
+  date_evenement: string
   contact_telephone: string
   contact_email: string
 }
@@ -43,7 +43,7 @@ export default function ModifierOpportunitePage() {
     prix_base: "",
     prix_reduit: "",
     nombre_places: "",
-    date_limite: "",
+    date_evenement: "",
     contact_telephone: "",
     contact_email: "",
   })
@@ -93,7 +93,7 @@ export default function ModifierOpportunitePage() {
         prix_base: opp.prix_base.toString(),
         prix_reduit: opp.prix_reduit.toString(),
         nombre_places: opp.nombre_places.toString(),
-        date_limite: new Date(opp.date_limite).toISOString().slice(0, 16),
+        date_evenement: new Date(opp.date_evenement).toISOString().slice(0, 16),
         contact_telephone: opp.contact_telephone || "",
         contact_email: opp.contact_email,
       })
@@ -129,7 +129,7 @@ export default function ModifierOpportunitePage() {
 
   const uploadImage = async (file: File, annonceurId: string): Promise<string | null> => {
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
       const fileExt = file.name.split('.').pop()
       const fileName = `${annonceurId}-${Date.now()}.${fileExt}`
       const filePath = `opportunites/${fileName}`
@@ -203,12 +203,23 @@ export default function ModifierOpportunitePage() {
       setError("Le nombre de places doit être supérieur à 0")
       return false
     }
-    if (!formData.date_limite) {
-      setError("La date limite est obligatoire")
+    if (!formData.date_evenement) {
+      setError("La date de l'événement est obligatoire")
       return false
     }
-    if (new Date(formData.date_limite) <= new Date()) {
-      setError("La date limite doit être dans le futur")
+    if (new Date(formData.date_evenement) <= new Date()) {
+      setError("La date de l'événement doit être dans le futur")
+      return false
+    }
+
+    const eventDate = new Date(formData.date_evenement)
+    const diffDays = (eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    if (formData.modele === 'derniere_minute' && diffDays > 3) {
+      setError("Le modèle 'Dernière minute' n'est autorisé que si l'événement est dans 72h.")
+      return false
+    }
+    if (formData.modele === 'pre_vente' && diffDays < 56) {
+      setError("Le modèle 'Prévente' n'est autorisé que si l'événement est à au moins 8 semaines.")
       return false
     }
     if (!formData.contact_email.trim()) {
@@ -234,7 +245,7 @@ export default function ModifierOpportunitePage() {
     setError("")
 
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -270,31 +281,37 @@ export default function ModifierOpportunitePage() {
       const prixReduit = parseFloat(formData.prix_reduit)
       const reductionPourcentage = ((prixBase - prixReduit) / prixBase) * 100
 
-      const { error: updateError } = await supabase
+      // reduction_pourcentage est une colonne générée par trigger DB — on ne l'envoie pas dans le payload
+      const { data: updatedRow, error: updateError } = await supabase
         .from('opportunites')
-        // @ts-expect-error - Supabase type inference issue with Database generic
         .update({
           type: formData.type as OpportunityType,
           modele: formData.modele as OpportunityModel,
           titre: formData.titre,
           resume: formData.resume,
           image_url: imageUrl,
-          lien_infos: formData.lien_infos || null,
+          lien_infos: formData.lien_infos?.trim() || "",
           prix_base: prixBase,
           prix_reduit: prixReduit,
-          reduction_pourcentage: reductionPourcentage,
           nombre_places: parseInt(formData.nombre_places),
-          date_limite: new Date(formData.date_limite).toISOString(),
+          date_evenement: new Date(formData.date_evenement).toISOString(),
           contact_telephone: formData.contact_telephone || null,
           contact_email: formData.contact_email,
-        })
-        // @ts-expect-error - Supabase type inference issue
-        .eq('id', opportuniteId)
-        .eq('annonceur_id', annonceur.id) // Sécurité: vérifier que c'est bien son opportunité
+        } as unknown as never)
+        .eq('id', opportuniteId as string)
+        .eq('annonceur_id', annonceur.id)
+        .select('id')
+        .maybeSingle()
 
-      if (updateError) {
-        console.error('Erreur mise à jour:', updateError)
-        setError("Erreur lors de la mise à jour de l'opportunité")
+      if (updateError || !updatedRow) {
+        console.error('Erreur mise à jour:', {
+          message: updateError?.message,
+          details: updateError?.details,
+          hint: updateError?.hint,
+          code: updateError?.code,
+          raw: updateError
+        })
+        setError(updateError?.message || "Mise à jour refusée. Vérifiez vos permissions et la cohérence des données.")
         setLoading(false)
         return
       }
@@ -383,46 +400,6 @@ export default function ModifierOpportunitePage() {
             </Card>
           )}
 
-          {/* Type et Modèle */}
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Type d&apos;opportunité
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="type">Type *</Label>
-                  <select
-                    id="type"
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E63832]"
-                    value={formData.type}
-                    onChange={(e) => handleInputChange('type', e.target.value)}
-                  >
-                    <option value="">Sélectionnez un type</option>
-                    {Object.entries(OPPORTUNITY_TYPE_LABELS).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="modele">Modèle *</Label>
-                  <select
-                    id="modele"
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E63832]"
-                    value={formData.modele}
-                    onChange={(e) => handleInputChange('modele', e.target.value)}
-                  >
-                    <option value="">Sélectionnez un modèle</option>
-                    {Object.entries(OPPORTUNITY_MODEL_LABELS).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Informations générales */}
           <Card>
@@ -547,7 +524,7 @@ export default function ModifierOpportunitePage() {
               {reductionPourcentage > 0 && (
                 <div className="p-4 bg-[#F5F0EB] rounded-lg">
                   <p className="text-sm text-gray-700">
-                    <strong>Réduction:</strong> {reductionPourcentage.toFixed(0)}%
+                    <strong>Réduction:</strong> {Math.floor(reductionPourcentage)}%
                     {reductionPourcentage < 25 && (
                       <span className="text-red-600 ml-2">(minimum 25% requis)</span>
                     )}
@@ -562,7 +539,7 @@ export default function ModifierOpportunitePage() {
             </CardContent>
           </Card>
 
-          {/* Places et date limite */}
+          {/* Places et date de l'événement */}
           <Card>
             <CardContent className="p-6 space-y-4">
               <h2 className="text-xl font-bold text-gray-900">
@@ -583,12 +560,12 @@ export default function ModifierOpportunitePage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="date_limite">Date et heure limite *</Label>
+                  <Label htmlFor="date_evenement">Date et heure de l'événement *</Label>
                   <Input
-                    id="date_limite"
+                    id="date_evenement"
                     type="datetime-local"
-                    value={formData.date_limite}
-                    onChange={(e) => handleInputChange('date_limite', e.target.value)}
+                    value={formData.date_evenement}
+                    onChange={(e) => handleInputChange('date_evenement', e.target.value)}
                   />
                 </div>
               </div>

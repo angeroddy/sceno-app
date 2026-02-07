@@ -1,16 +1,14 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Bold,
   Italic,
+  Underline,
   List,
   ListOrdered,
-  Heading2,
-  Quote,
-  Undo,
-  Redo
+  Heading2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -21,86 +19,95 @@ interface RichTextEditorProps {
   className?: string
 }
 
+/**
+ * Éditeur WYSIWYG basé sur contentEditable.
+ *
+ * - Les boutons B / I / S génèrent du HTML natif (<strong>, <em>, <u>)
+ *   au lieu de marqueurs markdown (** / * / __).
+ * - Le formatage est conservé lors du copier-coller.
+ * - La valeur échangée avec le parent est du HTML (<strong>texte</strong>).
+ */
 export function RichTextEditor({
   value,
   onChange,
   placeholder = "Décrivez votre opportunité...",
   className
 }: RichTextEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
+  // Drapeau pour éviter une boucle value → innerHTML → onInput → onChange → value
+  const isInternalUpdate = useRef(false)
 
-  const insertFormatting = (before: string, after: string = before) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
+  // Charger le contenu initial UNE seule fois (évite de réinitialiser le curseur)
+  useEffect(() => {
+    if (editorRef.current && value) {
+      editorRef.current.innerHTML = value
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = value.substring(start, end)
+  // Si le parent pousse une nouvelle valeur de l'extérieur (reset formulaire etc.)
+  useEffect(() => {
+    if (!editorRef.current) return
+    if (isInternalUpdate.current) {
+      // Ignorer — on est nous-mêmes à l'origine du changement
+      isInternalUpdate.current = false
+      return
+    }
+    editorRef.current.innerHTML = value
+  }, [value])
 
-    const newText =
-      value.substring(0, start) +
-      before + selectedText + after +
-      value.substring(end)
+  const handleInput = useCallback(() => {
+    if (!editorRef.current) return
+    isInternalUpdate.current = true
+    onChange(editorRef.current.innerHTML)
+  }, [onChange])
 
-    onChange(newText)
-
-    // Remettre le focus et la sélection
-    setTimeout(() => {
-      textarea.focus()
-      const newCursorPos = start + before.length + selectedText.length
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-    }, 0)
-  }
-
-  const insertAtCursor = (text: string) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const newText =
-      value.substring(0, start) +
-      text +
-      value.substring(start)
-
-    onChange(newText)
-
-    setTimeout(() => {
-      textarea.focus()
-      const newCursorPos = start + text.length
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-    }, 0)
-  }
+  /**
+   * Exécute une commande d'édition sur la sélection courante.
+   * document.execCommand est deprecated mais reste le seul moyen simple
+   * de manipuler contentEditable sans bibliothèque externe.
+   */
+  const execCommand = useCallback((command: string, commandValue?: string) => {
+    editorRef.current?.focus()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(document as any).execCommand(command, false, commandValue ?? null)
+    // Synchroniser immédiatement après la commande
+    if (editorRef.current) {
+      isInternalUpdate.current = true
+      onChange(editorRef.current.innerHTML)
+    }
+  }, [onChange])
 
   const toolbarButtons = [
     {
       icon: <Bold className="w-4 h-4" />,
-      label: "Gras",
-      action: () => insertFormatting("**"),
+      label: "Gras (Ctrl+B)",
+      action: () => execCommand("bold"),
     },
     {
       icon: <Italic className="w-4 h-4" />,
-      label: "Italique",
-      action: () => insertFormatting("*"),
+      label: "Italique (Ctrl+I)",
+      action: () => execCommand("italic"),
+    },
+    {
+      icon: <Underline className="w-4 h-4" />,
+      label: "Souligné (Ctrl+U)",
+      action: () => execCommand("underline"),
     },
     {
       icon: <Heading2 className="w-4 h-4" />,
       label: "Titre",
-      action: () => insertAtCursor("\n## "),
+      action: () => execCommand("formatBlock", "h2"),
     },
     {
       icon: <List className="w-4 h-4" />,
       label: "Liste",
-      action: () => insertAtCursor("\n- "),
+      action: () => execCommand("insertUnorderedList"),
     },
     {
       icon: <ListOrdered className="w-4 h-4" />,
       label: "Liste numérotée",
-      action: () => insertAtCursor("\n1. "),
-    },
-    {
-      icon: <Quote className="w-4 h-4" />,
-      label: "Citation",
-      action: () => insertAtCursor("\n> "),
+      action: () => execCommand("insertOrderedList"),
     },
   ]
 
@@ -114,7 +121,7 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 cursor-pointer"
             onClick={button.action}
             title={button.label}
           >
@@ -123,21 +130,23 @@ export function RichTextEditor({
         ))}
       </div>
 
-      {/* Text Area */}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full min-h-[300px] p-4 resize-y focus:outline-none font-sans"
+      {/* Éditeur contentEditable */}
+      <div
+        ref={editorRef}
+        contentEditable
+        onInput={handleInput}
+        suppressContentEditableWarning
+        className="w-full min-h-[300px] p-4 focus:outline-none font-sans prose prose-sm max-w-none"
         style={{ lineHeight: "1.6" }}
+        // Placeholder via attribut data — stylé en CSS (voir globals.css)
+        data-placeholder={placeholder}
       />
 
-      {/* Preview Helper */}
+      {/* Hint bas de page */}
       <div className="bg-gray-50 border-t px-4 py-2 text-xs text-gray-500">
         <p>
           <strong>Astuce :</strong> Utilisez la barre d&apos;outils pour formater votre texte.
-          Markdown supporté : **gras**, *italique*, ## titres, - listes.
+          Le formatage est conservé lors du copier-coller.
         </p>
       </div>
     </div>

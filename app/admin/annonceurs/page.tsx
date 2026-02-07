@@ -269,7 +269,7 @@ export default function AnnonceursPage() {
                       {annonceur.identite_verifiee && (
                         <div className="flex items-center gap-2 text-sm text-green-600 mt-2">
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>Identité vérifiée</span>
+                          <span>Compteé vérifiée</span>
                         </div>
                       )}
                     </div>

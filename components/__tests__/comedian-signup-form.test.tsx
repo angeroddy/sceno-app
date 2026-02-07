@@ -1,12 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ComedianSignupForm } from '../comedian-signup-form'
-import { createClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 
 // Mock du module supabase-client
 jest.mock('@/app/lib/supabase-client', () => ({
-  createClient: jest.fn(),
+  createBrowserSupabaseClient: jest.fn(),
 }))
 
 // Mock de next/navigation
@@ -35,7 +35,7 @@ describe('ComedianSignupForm', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
-    ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
 
     // Mock window.location.origin
     delete (window as any).location
@@ -182,9 +182,11 @@ describe('ComedianSignupForm', () => {
 
       const lastNameInput = screen.getByLabelText(/Nom/i)
       const firstNameInput = screen.getByLabelText(/Prénom/i)
+      const birthDateInput = screen.getByLabelText(/Date de naissance/i)
 
       await user.type(lastNameInput, 'Dupont')
       await user.type(firstNameInput, 'Jean')
+      await user.type(birthDateInput, '1990-01-15')
 
       const nextButton = screen.getByRole('button', { name: /Suivant/i })
       await user.click(nextButton)
@@ -210,6 +212,7 @@ describe('ComedianSignupForm', () => {
       })
       await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => {
@@ -320,6 +323,7 @@ describe('ComedianSignupForm', () => {
       })
       await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Étape 3
@@ -365,6 +369,7 @@ describe('ComedianSignupForm', () => {
       await waitFor(() => screen.getByLabelText(/Nom/i))
       await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -396,6 +401,7 @@ describe('ComedianSignupForm', () => {
       await waitFor(() => screen.getByLabelText(/Nom/i))
       await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -445,6 +451,7 @@ describe('ComedianSignupForm', () => {
       await waitFor(() => screen.getByLabelText(/Nom/i))
       await user.type(screen.getByLabelText(/Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/Prénom/i), 'Jean')
+      await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))

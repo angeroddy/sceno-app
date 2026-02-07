@@ -15,7 +15,7 @@ import {
   Eye,
   Trash2
 } from "lucide-react"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { Opportunite } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
 
@@ -54,7 +54,7 @@ export default function MesOpportunitesPage() {
 
   const fetchOpportunites = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -105,7 +105,7 @@ export default function MesOpportunitesPage() {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cette opportunité ?")) return
 
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
       const { error } = await supabase
         .from('opportunites')
         .delete()
@@ -218,7 +218,7 @@ export default function MesOpportunitesPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{new Date(opportunite.date_limite).toLocaleDateString('fr-FR')}</span>
+                        <span className="truncate">{new Date(opportunite.date_evenement).toLocaleDateString('fr-FR')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Users className="w-4 h-4 flex-shrink-0" />
@@ -226,7 +226,7 @@ export default function MesOpportunitesPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Euro className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{opportunite.prix_reduit}€ (-{opportunite.reduction_pourcentage}%)</span>
+                        <span className="truncate">{opportunite.prix_reduit}€ (-{Math.floor(opportunite.reduction_pourcentage)}%)</span>
                       </div>
                       <div className="text-sm text-gray-600">
                         <Badge variant="outline">{OPPORTUNITY_TYPE_LABELS[opportunite.type]}</Badge>

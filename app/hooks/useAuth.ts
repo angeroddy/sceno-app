@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '../lib/supabase-client'
+import { createBrowserSupabaseClient } from '../lib/supabase-client'
 import type { User } from '@supabase/supabase-js'
 
 export type UserType = 'comedian' | 'advertiser' | 'admin' | null
@@ -14,7 +14,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const supabase = createClient()
+    const supabase = createBrowserSupabaseClient()
 
     // Vérifier la session actuelle immédiatement
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -39,7 +39,7 @@ export function useAuth() {
 
     // Vérifier le type d'utilisateur
     async function checkUserType(userId: string) {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
 
       // Vérifier admin (priorité)
       const { data: admin } = await supabase
@@ -88,7 +88,7 @@ export function useAuth() {
   }, [])
 
   const logout = async () => {
-    const supabase = createClient()
+    const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
     router.push('/')
   }

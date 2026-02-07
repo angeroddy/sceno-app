@@ -18,12 +18,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { OpportuniteWithAnnonceur, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types";
+import { OpportuniteWithAnnonceur, OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LABELS, OpportunityType, OpportunityModel } from "@/app/types";
 
 // Type pour les opportunités affichées dans l'UI
 interface DisplayOpportunity {
   id: string;
   type: string;
+  model: OpportunityModel;
   title: string;
   organizer: string;
   location: string;
@@ -70,28 +71,21 @@ export default function DashboardPage() {
 
         const data = await response.json();
 
-        // Vérifier si le comédien a configuré des préférences
+        // Signaler si les préférences ne sont pas encore configurées (banner info, pas de blocage)
         if (!data.preferences || data.preferences.length === 0) {
           setHasPreferences(false);
-          setOpportunities([]);
-          setLoading(false);
-          return;
+        } else {
+          setHasPreferences(true);
         }
-
-        setHasPreferences(true);
 
         // Transformer les données de l'API au format attendu par l'UI
         const transformedOpportunities: DisplayOpportunity[] = data.opportunites.map((opp: OpportuniteWithAnnonceur) => {
-          const dateObj = new Date(opp.date_limite);
-
-          // Debug: Afficher l'URL de l'image
-          if (opp.image_url) {
-            console.log('Image URL pour', opp.titre, ':', opp.image_url);
-          }
+          const dateObj = new Date(opp.date_evenement);
 
           return {
             id: opp.id,
             type: OPPORTUNITY_TYPE_LABELS[opp.type as OpportunityType],
+            model: opp.modele as OpportunityModel,
             title: opp.titre,
             organizer: opp.annonceur?.nom_formation || 'Non spécifié',
             location: 'France', // À améliorer si vous avez une localisation dans la base
@@ -169,11 +163,11 @@ export default function DashboardPage() {
           {/* Main Content */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8 bg-[#E6DAD0]/50">
-              <TabsTrigger value="opportunities" className="flex items-center gap-2">
+              <TabsTrigger value="opportunities" className="flex items-center gap-2 cursor-pointer">
                 <Calendar className="w-4 h-4" />
                 <span>Opportunités</span>
               </TabsTrigger>
-              <TabsTrigger value="tickets" className="flex items-center gap-2">
+              <TabsTrigger value="tickets" className="flex items-center gap-2 cursor-pointer">
                 <Ticket className="w-4 h-4" />
                 <span>Mes Places</span>
               </TabsTrigger>
@@ -204,20 +198,19 @@ export default function DashboardPage() {
                 </Card>
               )}
 
-              {/* Pas de préférences configurées */}
+              {/* Banner léger si préférences non configurées — ne bloque pas l'affichage */}
               {!loading && !error && !hasPreferences && (
                 <Card className="border-orange-200 bg-orange-50">
-                  <CardContent className="p-6 text-center">
-                    <AlertCircle className="w-16 h-16 mx-auto text-orange-500 mb-4" />
-                    <h3 className="font-bold text-lg text-orange-900 mb-2">
-                      Configurez vos préférences
-                    </h3>
-                    <p className="text-orange-800 mb-4">
-                      Pour voir les opportunités qui correspondent à vos besoins, veuillez d&apos;abord configurer vos préférences.
-                    </p>
+                  <CardContent className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                      <p className="text-sm text-orange-800">
+                        Configurez vos préférences pour personnaliser vos opportunités.
+                      </p>
+                    </div>
                     <Link href="/dashboard/preferences">
-                      <Button className="bg-[#E63832] hover:bg-[#E63832]/90">
-                        Configurer mes préférences
+                      <Button size="sm" className="bg-[#E63832] hover:bg-[#E63832]/90 whitespace-nowrap">
+                        Configurer
                       </Button>
                     </Link>
                   </CardContent>
@@ -225,11 +218,15 @@ export default function DashboardPage() {
               )}
 
               {/* Affichage des opportunités */}
-              {!loading && !error && hasPreferences && (
+              {!loading && !error && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {opportunities.map((opportunity) => (
-                        <Card key={opportunity.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
+                        <Card
+                          key={opportunity.id}
+                          className="overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer"
+                          onClick={() => window.location.href = `/dashboard/opportunites/${opportunity.id}`}
+                        >
                           <div className="relative">
                             {/* Date Badge */}
                             <div className="absolute top-4 left-4 z-10 bg-white rounded-lg p-2 shadow-md">
@@ -240,7 +237,10 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Favorite Button */}
-                            <button className="cursor-pointer absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-md hover:scale-110 transition-transform">
+                            <button
+                              className="cursor-pointer absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-md hover:scale-110 transition-transform"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Heart
                                 className={`w-5 h-5 ${opportunity.isFavorite ? 'fill-[#E63832] text-[#E63832]' : 'text-gray-600'}`}
                               />
@@ -253,7 +253,7 @@ export default function DashboardPage() {
                                   src={opportunity.image}
                                   alt={opportunity.title}
                                   fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                   unoptimized
                                   onError={() => {
@@ -278,7 +278,7 @@ export default function DashboardPage() {
                               {opportunity.discount > 0 && (
                                 <div className="absolute top-4 right-16 z-10">
                                   <span className="text-white text-xs font-bold bg-[#E63832] px-2 py-1 rounded">
-                                    -{opportunity.discount}%
+                                    -{Math.floor(opportunity.discount)}%
                                   </span>
                                 </div>
                               )}
@@ -287,9 +287,20 @@ export default function DashboardPage() {
 
                           <CardContent className="p-4 space-y-3">
                             {/* Category Badge */}
-                            <Badge className="bg-[#E6DAD0] text-gray-900 hover:bg-[#E6DAD0]">
-                              {opportunity.category}
-                            </Badge>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge className="bg-[#E6DAD0] text-gray-900 hover:bg-[#E6DAD0]">
+                                {opportunity.category}
+                              </Badge>
+                              <Badge
+                                className={
+                                  opportunity.model === "derniere_minute"
+                                    ? "bg-[#E63832] text-white hover:bg-[#E63832]"
+                                    : "bg-green-100 text-green-700 hover:bg-green-100"
+                                }
+                              >
+                                {OPPORTUNITY_MODEL_LABELS[opportunity.model]}
+                              </Badge>
+                            </div>
 
                             {/* Title */}
                             <h3 className="font-bold text-lg line-clamp-2 min-h-[3.5rem]">
@@ -331,12 +342,12 @@ export default function DashboardPage() {
 
                             {/* Actions */}
                             <div className="flex gap-2 pt-2">
-                              <Link href={`/dashboard/opportunites/${opportunity.id}`} className="flex-1">
+                              <Link href={`/dashboard/opportunites/${opportunity.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
                                 <Button variant="outline" className="w-full">
                                   Voir détails
                                 </Button>
                               </Link>
-                              <Button className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90">
+                              <Button className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90" onClick={(e) => e.stopPropagation()}>
                                 Réserver
                               </Button>
                             </div>

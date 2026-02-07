@@ -15,7 +15,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { OpportunityType } from "@/app/types"
 
 const STEPS = [
@@ -34,6 +34,7 @@ interface OpportunityPreferences {
 interface PersonalInfo {
   lastName: string
   firstName: string
+  birthDate: string
   photo: File | null
   demoLink: string
 }
@@ -60,6 +61,7 @@ export function ComedianSignupForm({
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
     lastName: "",
     firstName: "",
+    birthDate: "",
     photo: null,
     demoLink: "",
   })
@@ -128,6 +130,10 @@ export function ComedianSignupForm({
     }
     if (!personalInfo.firstName.trim()) {
       setError("Le prénom est obligatoire")
+      return false
+    }
+    if (!personalInfo.birthDate) {
+      setError("La date de naissance est obligatoire")
       return false
     }
     return true
@@ -221,7 +227,7 @@ export function ComedianSignupForm({
   // Upload de la photo vers Supabase Storage
   const uploadPhoto = async (file: File, userId: string): Promise<string | null> => {
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
       const fileExt = file.name.split('.').pop()
       const fileName = `${userId}-${Date.now()}.${fileExt}`
       const filePath = `comediens/${fileName}`
@@ -268,7 +274,7 @@ export function ComedianSignupForm({
       setError("")
 
       try {
-        const supabase = createClient()
+        const supabase = createBrowserSupabaseClient()
 
         // 1. Créer l'utilisateur dans Supabase Auth
         console.log('Tentative de création de compte pour:', accountInfo.email)
@@ -318,6 +324,7 @@ export function ComedianSignupForm({
             email: accountInfo.email,
             photo_url: photoUrl,
             lien_demo: personalInfo.demoLink || null,
+            date_naissance: personalInfo.birthDate,
             preferences_opportunites: mapPreferencesToOpportunityTypes(),
           } as any)
           .select()
@@ -491,6 +498,23 @@ export function ComedianSignupForm({
                 onChange={(e) => handlePersonalInfoChange("firstName", e.target.value)}
                 required
               />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="birthDate">
+                Date de naissance <span className="text-red-500">*</span>
+              </FieldLabel>
+              <Input
+                id="birthDate"
+                type="date"
+                value={personalInfo.birthDate}
+                onChange={(e) => handlePersonalInfoChange("birthDate", e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
+                required
+              />
+              <FieldDescription>
+                Cette information reste privée
+              </FieldDescription>
             </Field>
 
             <Field>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
   Users,
+  User,
   Calendar,
   Settings,
   LogOut,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import MobileBottomNav from "@/components/navigation/MobileBottomNav"
@@ -55,7 +56,7 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    const supabase = createClient()
+    const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
     router.push('/')
   }
@@ -100,6 +101,11 @@ export default function AdminLayout({
       icon: <Calendar />,
       label: "Opportunités",
     },
+    {
+      href: "/admin/comediens",
+      icon: <User />,
+      label: "Comédiens",
+    },
   ]
 
   const mobileNavItems = [
@@ -117,6 +123,11 @@ export default function AdminLayout({
       href: "/admin/opportunites",
       icon: Calendar,
       label: "Opportunités",
+    },
+    {
+      href: "/admin/comediens",
+      icon: User,
+      label: "Comédiens",
     },
   ]
 
@@ -150,7 +161,7 @@ export default function AdminLayout({
           <div className="absolute top-16 right-4 bg-white rounded-lg shadow-xl p-2 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50 cursor-pointer"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-medium">Se déconnecter</span>
@@ -197,7 +208,7 @@ export default function AdminLayout({
             <div className="p-4 border-t border-gray-200">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-red-600 hover:bg-red-50 cursor-pointer"
               >
                 <LogOut className="w-5 h-5" />
                 <span className="font-medium">Se déconnecter</span>

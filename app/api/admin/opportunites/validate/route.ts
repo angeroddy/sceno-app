@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import { sendMail } from '@/app/lib/mailer'
 import type { Opportunite, Admin } from '@/app/types'
 
 export async function POST(request: Request) {
@@ -84,9 +85,58 @@ export async function POST(request: Request) {
       // On continue même si l'insertion échoue
     }
 
-    // TODO: Envoyer un email de notification à l'annonceur
-    // Email: opportunite.annonceur.email
-    // Sujet: action === 'valider' ? 'Votre opportunité "{titre}" est en ligne' : 'Votre opportunité "{titre}" n\'a pas été validée'
+    // Envoyer un email aux comédiens concernés lorsque l'opportunité est validée
+    if (action === 'valider') {
+      try {
+        const opportunityType = opportunite.type
+        const annonceurId = opportunite.annonceur_id
+        const annonceurNom = opportunite.annonceur?.nom_formation || 'Un organisme'
+        const appUrl = process.env.APP_URL || 'http://localhost:3000'
+
+        const { data: comediens } = await supabase
+          .from('comediens')
+          .select('id, email, preferences_opportunites')
+          .contains('preferences_opportunites', [opportunityType])
+
+        const comedienIds = (comediens || []).map((c: any) => c.id)
+
+        const { data: blockedRows } = await supabase
+          .from('annonceurs_bloques')
+          .select('comedien_id')
+          .eq('annonceur_id', annonceurId)
+          .in('comedien_id', comedienIds.length > 0 ? comedienIds : ['00000000-0000-0000-0000-000000000000'])
+
+        const blockedSet = new Set((blockedRows || []).map((r: any) => r.comedien_id))
+
+        const recipients = (comediens || []).filter((c: any) => !blockedSet.has(c.id))
+
+        const opportunityUrl = `${appUrl}/dashboard/opportunites/${opportunite.id}`
+        const dateLabel = opportunite.date_evenement
+          ? new Date(opportunite.date_evenement).toLocaleString('fr-FR')
+          : ''
+
+        for (const recipient of recipients) {
+          const subject = `Nouvelle opportunité ${opportunite.modele === 'derniere_minute' ? 'Dernière minute' : 'Pré-vente'} : ${opportunite.titre}`
+          const html = `
+            <div style="font-family: Arial, sans-serif; color: #111;">
+              <h2 style="margin: 0 0 12px;">${opportunite.titre}</h2>
+              <p style="margin: 0 0 8px;">Nouvelle opportunité publiée par <strong>${annonceurNom}</strong>.</p>
+              <p style="margin: 0 0 8px;"><strong>Date:</strong> ${dateLabel}</p>
+              <p style="margin: 0 0 16px;"><strong>Prix:</strong> ${opportunite.prix_reduit}€ (au lieu de ${opportunite.prix_base}€)</p>
+              <a href="${opportunityUrl}" style="display: inline-block; padding: 10px 16px; background: #E63832; color: #fff; text-decoration: none; border-radius: 6px;">Voir l'opportunité</a>
+            </div>
+          `
+          await sendMail({
+            to: recipient.email,
+            subject,
+            html,
+            text: `${opportunite.titre} - ${opportunityUrl}`,
+          })
+        }
+      } catch (emailError) {
+        console.error("Erreur envoi email:", emailError)
+      }
+    }
 
     return NextResponse.json({
       success: true,

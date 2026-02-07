@@ -44,11 +44,11 @@ export async function GET(request: NextRequest) {
       .select('*, annonceur:annonceurs(nom_formation, email)', { count: 'exact' })
       .eq('statut', 'validee')
       .gt('places_restantes', 0)
-      .gt('date_limite', new Date().toISOString())
+      .gt('date_evenement', new Date().toISOString())
 
-    // Filtrer par préférences si elles existent
+    // Filtrer par préférences du comédien si elles sont configurées
     if (comedienData.preferences_opportunites && comedienData.preferences_opportunites.length > 0) {
-      query = query.in('type', comedienData.preferences_opportunites as OpportunityType[])
+      query = query.in('type', comedienData.preferences_opportunites)
     }
 
     // Appliquer la pagination et le tri

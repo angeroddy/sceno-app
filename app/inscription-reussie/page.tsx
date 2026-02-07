@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, CheckCircle, FileText } from "lucide-react"
+import { Mail, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
 import { useRouter } from "next/navigation"
@@ -67,26 +67,10 @@ export default function InscriptionReussiePage() {
                   4
                 </span>
                 <span>
-                  <strong>Uploadez votre pièce d&apos;identité</strong> dans vos paramètres pour publier des opportunités
+                  <strong>Complétez votre profil</strong> et publiez votre première opportunité
                 </span>
               </li>
             </ol>
-          </div>
-
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="flex gap-3">
-              <FileText className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-orange-800 mb-1">
-                  Important : Pièce d&apos;identité requise
-                </p>
-                <p className="text-sm text-orange-700">
-                  Pour publier des opportunités sur Scenio, vous devrez uploader votre pièce d&apos;identité (CNI ou passeport)
-                  dans la section <strong>Paramètres</strong> après vous être connecté. Cela nous permet de vérifier votre identité
-                  et de sécuriser la plateforme.
-                </p>
-              </div>
-            </div>
           </div>
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

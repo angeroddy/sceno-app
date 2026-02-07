@@ -21,7 +21,7 @@ export function FileUpload({
   onFileSelect,
   accept = "image/jpeg,image/jpg,image/png,application/pdf",
   maxSizeMB = 5,
-  label = "Pièce d'identité",
+  label = "Document",
   description = "Formats acceptés : JPG, PNG, PDF (max 5 MB)",
   currentFileUrl = null,
   error = "",

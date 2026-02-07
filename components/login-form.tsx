@@ -12,7 +12,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@/components/ui/field"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 
 export function LoginForm({
   className,
@@ -50,7 +50,7 @@ export function LoginForm({
     }
 
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
 
       console.log('Tentative de connexion pour:', email)
 

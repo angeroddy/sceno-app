@@ -15,7 +15,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { createClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 
 const STEPS = [
   "Informations organisme",
@@ -206,7 +206,7 @@ export function AdvertiserSignupForm({
       setError("")
 
       try {
-        const supabase = createClient()
+        const supabase = createBrowserSupabaseClient()
 
         // 1. Créer l'utilisateur dans Supabase Auth
         console.log('Tentative de création de compte annonceur pour:', accountInfo.email)
