@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
     const { data, error, count } = await supabase
       .from('comediens')
-      .select('id, nom, prenom, email, photo_url, lien_demo, preferences_opportunites, email_verifie, created_at', { count: 'exact' })
+      .select('id, nom, prenom, genre, email, photo_url, lien_demo, preferences_opportunites, email_verifie, created_at', { count: 'exact' })
       .order('nom', { ascending: true })
       .order('prenom', { ascending: true })
       .range(offset, offset + limit - 1)

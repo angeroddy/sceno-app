@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -16,7 +17,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
-import type { OpportunityType } from "@/app/types"
+import type { OpportunityType, ComedianGender } from "@/app/types"
 
 const STEPS = [
   "Préférences",
@@ -35,6 +36,7 @@ interface PersonalInfo {
   lastName: string
   firstName: string
   birthDate: string
+  gender: "" | ComedianGender
   photo: File | null
   demoLink: string
 }
@@ -62,6 +64,7 @@ export function ComedianSignupForm({
     lastName: "",
     firstName: "",
     birthDate: "",
+    gender: "",
     photo: null,
     demoLink: "",
   })
@@ -134,6 +137,10 @@ export function ComedianSignupForm({
     }
     if (!personalInfo.birthDate) {
       setError("La date de naissance est obligatoire")
+      return false
+    }
+    if (!personalInfo.gender) {
+      setError("Le genre est obligatoire")
       return false
     }
     return true
@@ -242,9 +249,9 @@ export function ComedianSignupForm({
         })
 
       if (uploadError) {
-        console.error('Erreur upload photo:', {
+        console.warn("Upload photo ignoré:", {
+          name: uploadError.name,
           message: uploadError.message,
-          error: uploadError
         })
         // Ne pas bloquer l'inscription si l'upload échoue
         return null
@@ -260,7 +267,7 @@ export function ComedianSignupForm({
       console.log('URL publique générée:', data.publicUrl)
       return data.publicUrl
     } catch (error) {
-      console.error('Erreur lors de l\'upload (catch):', error)
+      console.warn("Upload photo ignoré (exception):", error)
       // Ne pas bloquer l'inscription si l'upload échoue
       return null
     }
@@ -284,6 +291,9 @@ export function ComedianSignupForm({
           password: accountInfo.password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              genre: personalInfo.gender,
+            },
           }
         })
 
@@ -302,32 +312,54 @@ export function ComedianSignupForm({
           return
         }
 
-        // 2. Upload de la photo si présente
+        // 2. Upload de la photo si présente.
+        // Quand la confirmation email est activée, Supabase peut ne pas renvoyer de session ici.
+        // Sans session, l'upload Storage côté navigateur échoue souvent (RLS).
         let photoUrl: string | null = null
         if (personalInfo.photo) {
-          photoUrl = await uploadPhoto(personalInfo.photo, authData.user.id)
-          // Si l'upload a échoué mais qu'on continue quand même
-          if (!photoUrl) {
+          if (!authData.session) {
             setPhotoUploadWarning(true)
+          } else {
+            photoUrl = await uploadPhoto(personalInfo.photo, authData.user.id)
+            // Si l'upload a échoué mais qu'on continue quand même
+            if (!photoUrl) {
+              setPhotoUploadWarning(true)
+            }
           }
         }
 
         // 3. Créer le profil comédien dans la table
         console.log('Création du profil comédien...')
 
-        const { data: profileData, error: profileError } = await supabase
+        const profilePayload: Record<string, unknown> = {
+          auth_user_id: authData.user.id,
+          nom: personalInfo.lastName,
+          prenom: personalInfo.firstName,
+          email: accountInfo.email,
+          photo_url: photoUrl,
+          lien_demo: personalInfo.demoLink || null,
+          date_naissance: personalInfo.birthDate,
+          preferences_opportunites: mapPreferencesToOpportunityTypes(),
+          genre: personalInfo.gender,
+        }
+
+        let { data: profileData, error: profileError } = await supabase
           .from('comediens')
-          .insert({
-            auth_user_id: authData.user.id,
-            nom: personalInfo.lastName,
-            prenom: personalInfo.firstName,
-            email: accountInfo.email,
-            photo_url: photoUrl,
-            lien_demo: personalInfo.demoLink || null,
-            date_naissance: personalInfo.birthDate,
-            preferences_opportunites: mapPreferencesToOpportunityTypes(),
-          } as any)
+          .insert(profilePayload as never)
           .select()
+
+        if (
+          profileError &&
+          /genre|schema cache|column/i.test(profileError.message)
+        ) {
+          delete profilePayload.genre
+          const retry = await supabase
+            .from('comediens')
+            .insert(profilePayload as never)
+            .select()
+          profileData = retry.data
+          profileError = retry.error
+        }
 
         if (profileError) {
           console.error('Erreur lors de la création du profil:', profileError)
@@ -362,7 +394,7 @@ export function ComedianSignupForm({
   }
 
   return (
-    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} noValidate {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-4 text-center mb-6">
           <h1 className="text-2xl font-bold">Inscription Comédien</h1>
@@ -515,6 +547,23 @@ export function ComedianSignupForm({
             </Field>
 
             <Field>
+              <FieldLabel htmlFor="gender">
+                Genre <span className="text-red-500">*</span>
+              </FieldLabel>
+              <select
+                id="gender"
+                value={personalInfo.gender}
+                onChange={(e) => handlePersonalInfoChange("gender", e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+              >
+             
+                <option value="masculin">Masculin</option>
+                <option value="feminin">Feminin</option>
+                <option value="non_genre">Non genre</option>
+              </select>
+            </Field>
+
+            <Field>
               <FieldLabel htmlFor="photo">
                 Photo portrait <span className="text-muted-foreground text-xs">(facultatif, recommandé)</span>
               </FieldLabel>
@@ -542,10 +591,12 @@ export function ComedianSignupForm({
                 </div>
                 {photoPreview && (
                   <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
-                    <img
+                    <Image
                       src={photoPreview}
                       alt="Preview"
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      unoptimized
                     />
                   </div>
                 )}

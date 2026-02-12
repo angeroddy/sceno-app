@@ -47,6 +47,11 @@ export type TypePieceIdentite =
   | 'cni'
   | 'passeport'
 
+export type ComedianGender =
+  | 'masculin'
+  | 'feminin'
+  | 'non_genre'
+
 // ============================================
 // TABLES
 // ============================================
@@ -56,6 +61,7 @@ export interface Comedien {
   auth_user_id: string
   nom: string
   prenom: string
+  genre?: ComedianGender | null
   email: string
   photo_url: string | null
   lien_demo: string | null

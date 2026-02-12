@@ -201,6 +201,7 @@ describe('ComedianSignupForm', () => {
       await user.type(lastNameInput, 'Dupont')
       await user.type(firstNameInput, 'Jean')
       await user.type(birthDateInput, '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
 
       const nextButton = screen.getByRole('button', { name: /Suivant/i })
       await user.click(nextButton)
@@ -227,6 +228,7 @@ describe('ComedianSignupForm', () => {
       await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => {
@@ -340,6 +342,7 @@ describe('ComedianSignupForm', () => {
       await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Étape 3
@@ -359,7 +362,10 @@ describe('ComedianSignupForm', () => {
           email: 'test@example.com',
           password: 'password123',
           options: {
-            emailRedirectTo: 'http://localhost:3000/auth/callback',
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              genre: 'masculin',
+            },
           },
         })
       })
@@ -386,6 +392,7 @@ describe('ComedianSignupForm', () => {
       await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -398,7 +405,7 @@ describe('ComedianSignupForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Erreur d'inscription: User already registered/i)).toBeInTheDocument()
+        expect(screen.getByText(/Un compte existe déjà avec cet email/i)).toBeInTheDocument()
       })
     })
 
@@ -418,6 +425,7 @@ describe('ComedianSignupForm', () => {
       await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
@@ -468,6 +476,7 @@ describe('ComedianSignupForm', () => {
       await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
       await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
       await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))

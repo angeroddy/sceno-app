@@ -195,26 +195,22 @@ export default function OpportunitesPage() {
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row gap-6">
                   {/* Image */}
-                  {opportunite.image_url ? (
-                    <div className="w-full lg:w-48 h-32 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  {opportunite.image_url && (
+                    <div className="w-full lg:w-48 aspect-[16/9] rounded-lg overflow-hidden bg-gray-100 shrink-0">
                       <img
                         src={opportunite.image_url}
                         alt={opportunite.titre}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                  ) : (
-                    <div className="w-full lg:w-48 h-32 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                      <Calendar className="w-12 h-12 text-gray-300" />
-                    </div>
                   )}
 
                   {/* Contenu */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-4 mb-3">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="font-bold text-xl">{opportunite.titre}</h3>
+                          <h3 className="font-bold text-xl truncate">{opportunite.titre}</h3>
                           {getStatusBadge(opportunite.statut)}
                           <Badge variant="outline">{OPPORTUNITY_TYPE_LABELS[opportunite.type]}</Badge>
                         </div>
@@ -247,7 +243,7 @@ export default function OpportunitesPage() {
                         <span className="truncate">
                           <span className="line-through text-gray-400">{opportunite.prix_base}€</span>{' '}
                           <span className="font-bold text-[#E63832]">{opportunite.prix_reduit}€</span>
-                          {' '}(-{opportunite.reduction_pourcentage}%)
+                          {' '}(-{Math.floor(opportunite.reduction_pourcentage)}%)
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">

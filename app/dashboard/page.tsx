@@ -11,10 +11,10 @@ import {
   MapPin,
   Tag,
   Users,
-  Heart,
   Clock,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Ban
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import { OpportuniteWithAnnonceur, OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LA
 // Type pour les opportunités affichées dans l'UI
 interface DisplayOpportunity {
   id: string;
+  annonceurId: string;
   type: string;
   model: OpportunityModel;
   title: string;
@@ -38,7 +39,6 @@ interface DisplayOpportunity {
   placesLeft: number;
   image: string | null;
   category: string;
-  isFavorite: boolean;
   lienInfos: string;
   contactEmail: string;
 }
@@ -50,6 +50,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasPreferences, setHasPreferences] = useState(true);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [blockingAnnonceurId, setBlockingAnnonceurId] = useState<string | null>(null);
 
   // Gérer les erreurs d'images
   const handleImageError = (opportunityId: string) => {
@@ -84,6 +85,7 @@ export default function DashboardPage() {
 
           return {
             id: opp.id,
+            annonceurId: opp.annonceur_id,
             type: OPPORTUNITY_TYPE_LABELS[opp.type as OpportunityType],
             model: opp.modele as OpportunityModel,
             title: opp.titre,
@@ -107,7 +109,6 @@ export default function DashboardPage() {
             placesLeft: opp.places_restantes,
             image: opp.image_url,
             category: OPPORTUNITY_TYPE_LABELS[opp.type as OpportunityType],
-            isFavorite: false,
             lienInfos: opp.lien_infos,
             contactEmail: opp.contact_email
           };
@@ -124,6 +125,29 @@ export default function DashboardPage() {
 
     fetchOpportunities();
   }, []);
+
+  const handleBlockAnnonceur = async (annonceurId: string) => {
+    try {
+      setBlockingAnnonceurId(annonceurId);
+      const response = await fetch("/api/comedien/annonceurs-bloques", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ annonceur_id: annonceurId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur lors du blocage");
+      }
+
+      setOpportunities((prev) => prev.filter((opp) => opp.annonceurId !== annonceurId));
+    } catch (err) {
+      console.error("Erreur blocage organisme:", err);
+      alert("Impossible de bloquer cet organisme pour le moment.");
+    } finally {
+      setBlockingAnnonceurId(null);
+    }
+  };
 
   // Places achetées
   const purchasedTickets = [
@@ -148,7 +172,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
+    <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
         <div className="container mx-auto px-4 py-8 md:py-12">
           {/* Header */}
           <div className="mb-8">
@@ -188,7 +212,7 @@ export default function DashboardPage() {
                 <Card className="border-red-200 bg-red-50">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 text-red-800">
-                      <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                      <AlertCircle className="w-6 h-6 shrink-0" />
                       <div>
                         <h3 className="font-semibold mb-1">Erreur de chargement</h3>
                         <p className="text-sm">{error}</p>
@@ -203,7 +227,7 @@ export default function DashboardPage() {
                 <Card className="border-orange-200 bg-orange-50">
                   <CardContent className="p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                      <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
                       <p className="text-sm text-orange-800">
                         Configurez vos préférences pour personnaliser vos opportunités.
                       </p>
@@ -236,18 +260,8 @@ export default function DashboardPage() {
                               </div>
                             </div>
 
-                            {/* Favorite Button */}
-                            <button
-                              className="cursor-pointer absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-md hover:scale-110 transition-transform"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Heart
-                                className={`w-5 h-5 ${opportunity.isFavorite ? 'fill-[#E63832] text-[#E63832]' : 'text-gray-600'}`}
-                              />
-                            </button>
-
                             {/* Image */}
-                            <div className="relative h-48 overflow-hidden bg-gray-200">
+                            <div className="relative overflow-hidden bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
                               {opportunity.image && !imageErrors.has(opportunity.id) ? (
                                 <Image
                                   src={opportunity.image}
@@ -262,7 +276,7 @@ export default function DashboardPage() {
                                   }}
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+                                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
                                   <Calendar className="w-16 h-16 text-gray-400" />
                                 </div>
                               )}
@@ -276,12 +290,36 @@ export default function DashboardPage() {
 
                               {/* Badge réduction si applicable */}
                               {opportunity.discount > 0 && (
-                                <div className="absolute top-4 right-16 z-10">
+                                <div className="absolute top-4 right-4 z-10">
                                   <span className="text-white text-xs font-bold bg-[#E63832] px-2 py-1 rounded">
                                     -{Math.floor(opportunity.discount)}%
                                   </span>
                                 </div>
                               )}
+
+                              <button
+                                type="button"
+                                title="Mettre cet organisme en liste noire"
+                                aria-label="Mettre cet organisme en liste noire"
+                                className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 shadow-md hover:bg-red-50 disabled:opacity-60"
+                                disabled={blockingAnnonceurId === opportunity.annonceurId}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleBlockAnnonceur(opportunity.annonceurId);
+                                }}
+                              >
+                                {blockingAnnonceurId === opportunity.annonceurId ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <span>Blocage...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Ban className="h-3.5 w-3.5 cursor-pointer" />
+                                
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
 
@@ -303,26 +341,26 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Title */}
-                            <h3 className="font-bold text-lg line-clamp-2 min-h-[3.5rem]">
+                            <h3 className="font-bold text-lg line-clamp-2 min-h-14">
                               {opportunity.title}
                             </h3>
 
                             {/* Details */}
                             <div className="space-y-2 text-sm text-gray-600">
                               <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 flex-shrink-0" />
+                                <MapPin className="w-4 h-4 shrink-0" />
                                 <span className="truncate">{opportunity.location}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 flex-shrink-0" />
+                                <Calendar className="w-4 h-4 shrink-0" />
                                 <span className="truncate">{opportunity.date}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 flex-shrink-0" />
+                                <Clock className="w-4 h-4 shrink-0" />
                                 <span>{opportunity.time}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Tag className="w-4 h-4 flex-shrink-0" />
+                                <Tag className="w-4 h-4 shrink-0" />
                                 <div className="flex flex-col">
                                   {opportunity.discount > 0 ? (
                                     <>
@@ -335,7 +373,7 @@ export default function DashboardPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 flex-shrink-0" />
+                                <Users className="w-4 h-4 shrink-0" />
                                 <span className="text-xs truncate">Par {opportunity.organizer}</span>
                               </div>
                             </div>
@@ -379,7 +417,7 @@ export default function DashboardPage() {
                     {purchasedTickets.map((ticket) => (
                       <div
                         key={ticket.id}
-                        className="border rounded-lg p-6 hover:shadow-md transition-shadow bg-gradient-to-r from-[#E6DAD0]/10 to-white"
+                        className="border rounded-lg p-6 hover:shadow-md transition-shadow bg-linear-to-r from-[#E6DAD0]/10 to-white"
                       >
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                           <div className="space-y-2">

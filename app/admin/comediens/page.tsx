@@ -11,6 +11,7 @@ interface ComedienRow {
   id: string
   nom: string
   prenom: string
+  genre?: "masculin" | "feminin" | "non_genre" | null
   email: string
   photo_url: string | null
   lien_demo: string | null
@@ -78,6 +79,14 @@ export default function AdminComediensPage() {
     return `${p}${n}` || "C"
   }
 
+  const formatGender = (genre?: string | null) => {
+    if (!genre) return "Non renseigne"
+    if (genre === "masculin") return "Masculin"
+    if (genre === "feminin") return "Feminin"
+    if (genre === "non_genre") return "Non genre"
+    return genre
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -143,6 +152,7 @@ export default function AdminComediensPage() {
                 <tr className="border-b bg-[#F5F0EB]">
                   <th className="text-left px-6 py-4 font-semibold text-gray-700">Photo</th>
                   <th className="text-left px-6 py-4 font-semibold text-gray-700">Nom / Prénom</th>
+                  <th className="text-left px-6 py-4 font-semibold text-gray-700">Genre</th>
                   <th className="text-left px-6 py-4 font-semibold text-gray-700">Email</th>
                   <th className="text-left px-6 py-4 font-semibold text-gray-700">Email vérifié</th>
                   <th className="text-left px-6 py-4 font-semibold text-gray-700">Inscription</th>
@@ -152,7 +162,7 @@ export default function AdminComediensPage() {
               <tbody>
                 {filteredComédiens.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-gray-500">
+                    <td colSpan={7} className="text-center py-12 text-gray-500">
                       Aucun comédien trouvé
                     </td>
                   </tr>
@@ -180,6 +190,7 @@ export default function AdminComediensPage() {
                           {comedien.nom} {comedien.prenom}
                         </Link>
                       </td>
+                      <td className="px-6 py-4 text-gray-600">{formatGender(comedien.genre)}</td>
                       <td className="px-6 py-4 text-gray-600">{comedien.email}</td>
                       <td className="px-6 py-4">
                         {comedien.email_verifie ? (
@@ -247,6 +258,7 @@ export default function AdminComediensPage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-600">{comedien.email}</p>
+                    <p className="text-sm text-gray-600 mt-1">Genre: {formatGender(comedien.genre)}</p>
                     <p className="text-sm text-gray-500 mt-1">
                       Inscrit le {formatDate(comedien.created_at)}
                     </p>

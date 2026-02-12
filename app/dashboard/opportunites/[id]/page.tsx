@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
@@ -11,14 +11,12 @@ import {
   MapPin,
   Calendar,
   Users,
-  Euro,
   Clock,
   Phone,
   Mail,
   ExternalLink,
   ChevronLeft,
   Star,
-  Heart,
   Info,
   Contact,
   Loader2,
@@ -35,7 +33,6 @@ export default function OpportuniteDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mainImage, setMainImage] = useState<string | null>(null)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [opportuniteId, setOpportuniteId] = useState<string | null>(null)
   const [blockError, setBlockError] = useState<string | null>(null)
   const [blockSuccess, setBlockSuccess] = useState<string | null>(null)
@@ -52,14 +49,7 @@ export default function OpportuniteDetailsPage() {
     extractId()
   }, [params])
 
-  // Récupérer les détails une fois l'ID extrait
-  useEffect(() => {
-    if (opportuniteId) {
-      fetchOpportuniteDetails()
-    }
-  }, [opportuniteId])
-
-  const fetchOpportuniteDetails = async () => {
+  const fetchOpportuniteDetails = useCallback(async () => {
     if (!opportuniteId) return
 
     try {
@@ -83,7 +73,14 @@ export default function OpportuniteDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [opportuniteId])
+
+  // Récupérer les détails une fois l'ID extrait
+  useEffect(() => {
+    if (opportuniteId) {
+      void fetchOpportuniteDetails()
+    }
+  }, [opportuniteId, fetchOpportuniteDetails])
 
   const handleBlockAnnonceur = async () => {
     if (!opportunite?.annonceur_id) return
@@ -154,11 +151,8 @@ export default function OpportuniteDetailsPage() {
     minute: '2-digit'
   })
 
-  const placesOccupees = opportunite.nombre_places - opportunite.places_restantes
-  const pourcentageRemplissage = (placesOccupees / opportunite.nombre_places) * 100
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
+    <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
       <div className="container mx-auto px-4 py-8">
         {/* Bouton retour */}
         <Button
@@ -177,7 +171,10 @@ export default function OpportuniteDetailsPage() {
             <Card className="overflow-hidden">
               <div className="relative">
                 {/* Image principale */}
-                <div className="relative h-[400px] md:h-[500px] bg-gray-200">
+                <div
+                  className="relative w-full bg-gray-200"
+                  style={{ aspectRatio: "16 / 9", minHeight: "200px" }}
+                >
                   {mainImage ? (
                     <Image
                       src={mainImage}
@@ -187,7 +184,7 @@ export default function OpportuniteDetailsPage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
                       <Calendar className="w-24 h-24 text-gray-400" />
                     </div>
                   )}
@@ -201,15 +198,6 @@ export default function OpportuniteDetailsPage() {
                     </div>
                   )}
 
-                  {/* Bouton favori */}
-                  <button
-                    className="absolute top-4 right-4 z-10 bg-white rounded-full p-3 shadow-lg hover:scale-110 transition-transform"
-                    onClick={() => setIsFavorite(!isFavorite)}
-                  >
-                    <Heart
-                      className={`w-6 h-6 ${isFavorite ? 'fill-[#E63832] text-[#E63832]' : 'text-gray-600'}`}
-                    />
-                  </button>
                 </div>
               </div>
             </Card>
@@ -291,31 +279,6 @@ export default function OpportuniteDetailsPage() {
                       </div>
                     </div>
 
-                    {/* Places restantes — clarifier restantes vs total */}
-                    <div className="p-4 bg-[#F5F0EB] rounded-lg">
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        Places disponibles
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-2xl font-bold text-[#E63832]">
-                          {opportunite.places_restantes}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          sur {opportunite.nombre_places} au total
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {opportunite.nombre_places - opportunite.places_restantes} réservées
-                      </p>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div
-                          className="bg-[#E63832] h-2 rounded-full transition-all"
-                          style={{ width: `${pourcentageRemplissage}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Description inlinée — plus de tab séparée */}
                     <div className="pt-2">
                       <h3 className="text-xl font-bold mb-3 text-gray-900">
                         À propos de cette opportunité
@@ -458,22 +421,22 @@ export default function OpportuniteDetailsPage() {
                 {/* Informations clés */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <MapPin className="w-5 h-5 text-gray-400 shrink-0" />
                     <span className="text-gray-700">France</span>
                   </div>
 
                   <div className="flex items-center gap-3 text-sm">
-                    <Calendar className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                     <span className="text-gray-700">{dateFormatted}</span>
                   </div>
 
                   <div className="flex items-center gap-3 text-sm">
-                    <Clock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <Clock className="w-5 h-5 text-gray-400 shrink-0" />
                     <span className="text-gray-700">À {timeFormatted}</span>
                   </div>
 
                   <div className="flex items-center gap-3 text-sm">
-                    <Users className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <Users className="w-5 h-5 text-gray-400 shrink-0" />
                     <span className="text-gray-700">
                       {opportunite.places_restantes} place(s) restante(s)
                     </span>
@@ -510,21 +473,8 @@ export default function OpportuniteDetailsPage() {
                     className="w-full border-[#E63832] text-[#E63832] hover:bg-[#E63832]/10"
                     onClick={handleBlockAnnonceur}
                   >
-                    Ne plus recevoir d'infos de cet organisme
+                    Ne plus recevoir d&apos;infos de cet organisme
                   </Button>
-                </div>
-
-                {/* Informations complémentaires */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-900">
-                      <p className="font-semibold mb-1">Réponse rapide garantie</p>
-                      <p className="text-blue-700">
-                        L&apos;organisateur s&apos;engage à vous répondre dans les 24 heures
-                      </p>
-                    </div>
-                  </div>
                 </div>
 
                 {blockSuccess && (
@@ -538,21 +488,6 @@ export default function OpportuniteDetailsPage() {
                   </div>
                 )}
 
-                {/* Statistiques supplémentaires */}
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">
-                  <div className="text-center p-3 bg-[#F5F0EB] rounded-lg">
-                    <p className="text-2xl font-bold text-[#E63832]">
-                      {opportunite.nombre_places - opportunite.places_restantes}
-                    </p>
-                    <p className="text-xs text-gray-600">Déjà intéressés</p>
-                  </div>
-                  <div className="text-center p-3 bg-[#F5F0EB] rounded-lg">
-                    <p className="text-2xl font-bold text-[#E63832]">
-                      {Math.round(pourcentageRemplissage)}%
-                    </p>
-                    <p className="text-xs text-gray-600">Remplissage</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>

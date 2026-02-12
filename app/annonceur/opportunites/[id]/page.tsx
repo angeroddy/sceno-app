@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
@@ -11,7 +11,6 @@ import {
   MapPin,
   Calendar,
   Users,
-  Euro,
   Clock,
   Phone,
   Mail,
@@ -58,14 +57,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
     extractId()
   }, [params])
 
-  // Récupérer les détails une fois l'ID extrait
-  useEffect(() => {
-    if (opportuniteId) {
-      fetchOpportuniteDetails()
-    }
-  }, [opportuniteId])
-
-  const fetchOpportuniteDetails = async () => {
+  const fetchOpportuniteDetails = useCallback(async () => {
     if (!opportuniteId) return
 
     try {
@@ -90,7 +82,14 @@ export default function AnnonceurOpportuniteDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [opportuniteId])
+
+  // Récupérer les détails une fois l'ID extrait
+  useEffect(() => {
+    if (opportuniteId) {
+      void fetchOpportuniteDetails()
+    }
+  }, [opportuniteId, fetchOpportuniteDetails])
 
   if (loading) {
     return (
@@ -161,7 +160,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
+    <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
       <div className="container mx-auto px-4 py-8">
         {/* Bouton retour */}
         <Button
@@ -180,7 +179,10 @@ export default function AnnonceurOpportuniteDetailsPage() {
             <Card className="overflow-hidden">
               <div className="relative">
                 {/* Image principale */}
-                <div className="relative h-[400px] md:h-[500px] bg-gray-200">
+                <div
+                  className="relative w-full bg-gray-200"
+                  style={{ aspectRatio: "16 / 9", minHeight: "200px" }}
+                >
                   {mainImage ? (
                     <Image
                       src={mainImage}
@@ -190,7 +192,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
                       <Calendar className="w-24 h-24 text-gray-400" />
                     </div>
                   )}
@@ -489,15 +491,15 @@ export default function AnnonceurOpportuniteDetailsPage() {
                 {/* Informations clés */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <Calendar className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">Date de l'événement</p>
+                      <p className="text-xs text-gray-500">Date de l&apos;événement</p>
                       <span className="text-gray-700 font-medium">{dateFormatted}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 text-sm">
-                    <Clock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <Clock className="w-5 h-5 text-gray-400 shrink-0" />
                     <div>
                       <p className="text-xs text-gray-500">Heure limite</p>
                       <span className="text-gray-700 font-medium">{timeFormatted}</span>
@@ -505,7 +507,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                   </div>
 
                   <div className="flex items-center gap-3 text-sm">
-                    <Users className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <Users className="w-5 h-5 text-gray-400 shrink-0" />
                     <div>
                       <p className="text-xs text-gray-500">Places</p>
                       <span className="text-gray-700 font-medium">
@@ -545,7 +547,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                 {opportunite.statut === 'en_attente' && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                      <Info className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
                       <div className="text-sm text-orange-900">
                         <p className="font-semibold mb-1">En attente de validation</p>
                         <p className="text-orange-700">
@@ -559,7 +561,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                 {opportunite.statut === 'validee' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <Info className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                       <div className="text-sm text-green-900">
                         <p className="font-semibold mb-1">Opportunité validée</p>
                         <p className="text-green-700">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,11 +59,10 @@ export default function PublierOpportunitePage() {
   } | null>(null)
   const [isCropping, setIsCropping] = useState(false)
   const cropperContainerRef = useRef<HTMLDivElement | null>(null)
-  const [cropAspect, setCropAspect] = useState(16 / 9)
-  const [aspectMode, setAspectMode] = useState<"detail" | "card" | "square">("detail")
-  const [outputType, setOutputType] = useState<"image/webp" | "image/jpeg">("image/webp")
-  const [quality, setQuality] = useState(0.85)
-  const [maxSize, setMaxSize] = useState(1600)
+  const cropAspect = 16 / 9
+  const outputType: "image/webp" | "image/jpeg" = "image/webp"
+  const quality = 0.85
+  const maxSize = 1600
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
   const [autoZoomed, setAutoZoomed] = useState(false)
   const [sizeWarning, setSizeWarning] = useState("")
@@ -71,7 +71,7 @@ export default function PublierOpportunitePage() {
   const [success, setSuccess] = useState(false)
   const [checkingIdentity, setCheckingIdentity] = useState(true)
   const [identityVerified, setIdentityVerified] = useState(false)
-  const [activePreview, setActivePreview] = useState<"card" | "detail">("card")
+  const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
 
   useEffect(() => {
     const checkIdentity = async () => {
@@ -116,33 +116,15 @@ export default function PublierOpportunitePage() {
 
   useEffect(() => {
     if (!isCropping || !cropperContainerRef.current) return
-
-    const updateAspect = () => {
-      const el = cropperContainerRef.current
-      if (!el) return
-      const width = el.clientWidth
-      const height = el.clientHeight
-      if (width > 0 && height > 0) {
-        const detailAspect = width / height
-        if (aspectMode === "detail") {
-          setCropAspect(detailAspect)
-          setAutoZoomed(false)
-        }
-      }
-    }
-
-    updateAspect()
-
-    const observer = new ResizeObserver(() => updateAspect())
+    const observer = new ResizeObserver(() => setAutoZoomed(false))
     observer.observe(cropperContainerRef.current)
-
     return () => observer.disconnect()
-  }, [isCropping, aspectMode])
+  }, [isCropping])
 
   useEffect(() => {
     if (!rawImageSrc) return
 
-    const img = new Image()
+    const img = new window.Image()
     img.onload = () => {
       setImageInfo({ width: img.width, height: img.height })
       setAutoZoomed(false)
@@ -176,10 +158,6 @@ export default function PublierOpportunitePage() {
         setZoom(1)
         setCrop({ x: 0, y: 0 })
         setCroppedAreaPixels(null)
-        setAspectMode("detail")
-        setOutputType("image/webp")
-        setQuality(0.85)
-        setMaxSize(1600)
         setImageInfo(null)
         setSizeWarning("")
         setAutoZoomed(false)
@@ -231,18 +209,24 @@ export default function PublierOpportunitePage() {
   const previewPrice = formData.prix_base ? Number(formData.prix_base) : 0
   const previewReducedPrice = formData.prix_reduit ? Number(formData.prix_reduit) : 0
   const previewDiscount = previewPrice > 0 && previewReducedPrice > 0
-    ? Math.round(((previewPrice - previewReducedPrice) / previewPrice) * 100)
+    ? Math.floor(((previewPrice - previewReducedPrice) / previewPrice) * 100)
     : 0
   const previewPlaces = formData.nombre_places ? Number(formData.nombre_places) : 0
   const previewResume = formData.resume || "<p>La description apparaîtra ici.</p>"
 
   const renderPreviewCard = () => (
     <Card className="overflow-hidden">
-      <div className="relative h-48 bg-gray-200">
+      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
         {previewImage ? (
-          <img src={previewImage} alt="Preview carte" className="w-full h-full object-cover" />
+          <Image
+            src={previewImage}
+            alt="Preview carte"
+            fill
+            className="object-cover"
+            unoptimized
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
             <Calendar className="w-10 h-10 text-gray-400" />
           </div>
         )}
@@ -290,11 +274,17 @@ export default function PublierOpportunitePage() {
 
   const renderPreviewDetail = () => (
     <Card className="overflow-hidden">
-      <div className="relative h-[400px] md:h-[500px] bg-gray-200">
+      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
         {previewImage ? (
-          <img src={previewImage} alt="Preview détail" className="w-full h-full object-cover" />
+          <Image
+            src={previewImage}
+            alt="Preview détail"
+            fill
+            className="object-cover"
+            unoptimized
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
             <Calendar className="w-12 h-12 text-gray-400" />
           </div>
         )}
@@ -363,7 +353,6 @@ export default function PublierOpportunitePage() {
     setZoom(1)
     setRotation(0)
     setCroppedAreaPixels(null)
-    setAspectMode("detail")
     setSizeWarning("")
   }
 
@@ -382,16 +371,6 @@ export default function PublierOpportunitePage() {
     }
   }, [imageInfo, isCropping])
 
-  useEffect(() => {
-    if (aspectMode === "card") {
-      setCropAspect(16 / 9)
-      setAutoZoomed(false)
-    }
-    if (aspectMode === "square") {
-      setCropAspect(1)
-      setAutoZoomed(false)
-    }
-  }, [aspectMode])
 
   const uploadImage = async (file: File, annonceurId: string): Promise<string | null> => {
     try {
@@ -487,9 +466,7 @@ export default function PublierOpportunitePage() {
     return true
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const submitOpportunity = async () => {
     if (!validateForm()) return
 
     setLoading(true)
@@ -597,6 +574,12 @@ export default function PublierOpportunitePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) return
+    setViewMode("preview")
   }
 
   // Affichage du loader pendant la vérification
@@ -711,6 +694,56 @@ export default function PublierOpportunitePage() {
     )
   }
 
+  if (viewMode === "preview") {
+    return (
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            Aperçu avant publication
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Vérifiez votre opportunité avant de la publier
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode vignette</h2>
+            {renderPreviewCard()}
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode détails</h2>
+            {renderPreviewDetail()}
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>
+        )}
+
+        <div className="flex flex-wrap gap-4 pt-6">
+          <Button type="button" variant="outline" onClick={() => setViewMode("edit")} disabled={loading}>
+            Revenir à l&apos;édition de l&apos;opportunité
+          </Button>
+          <Button
+            type="button"
+            className="bg-[#E63832] hover:bg-[#E63832]/90"
+            onClick={submitOpportunity}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Publication en cours...
+              </>
+            ) : (
+              "Publier l'opportunité"
+            )}
+          </Button>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 ">
       <div className="mb-8">
@@ -723,7 +756,7 @@ export default function PublierOpportunitePage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 gap-6 items-start">
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-6">
@@ -735,7 +768,7 @@ export default function PublierOpportunitePage() {
                   onChange={(e) => handleInputChange("type", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E63832] bg-white"
                 >
-                  <option value="">Sélectionner un type...</option>
+                 
                   {Object.entries(OPPORTUNITY_TYPE_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
@@ -763,7 +796,6 @@ export default function PublierOpportunitePage() {
                   placeholder="Décrivez votre opportunité de manière détaillée : programme, objectifs, prérequis, etc."
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="image">Image de présentation <span className="text-gray-500 text-xs">(facultatif, recommandé)</span></Label>
                 <div className="flex items-start gap-4">
@@ -774,190 +806,28 @@ export default function PublierOpportunitePage() {
                   <input id="image" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                   {formData.image && <span className="text-sm text-gray-600">{formData.image.name}</span>}
                 </div>
-                {isCropping && rawImageSrc && (
-                  <div className="space-y-5">
+                {imagePreview && (
+                  <div className="space-y-4">
                     <div
-                      ref={cropperContainerRef}
-                      className="relative -mx-6 w-[calc(100%+3rem)] h-[400px] md:h-[500px] rounded-none overflow-hidden border-y bg-black"
+                      className="relative w-full max-w-md rounded-md overflow-hidden border"
+                      style={{ aspectRatio: "16 / 9" }}
                     >
-                      <Cropper
-                        image={rawImageSrc}
-                        crop={crop}
-                        zoom={zoom}
-                        rotation={rotation}
-                        aspect={cropAspect}
-                        onCropChange={setCrop}
-                        onZoomChange={setZoom}
-                        onCropComplete={onCropComplete}
-                        objectFit="horizontal-cover"
+                      <Image
+                        src={imagePreview}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     </div>
-
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <span className="text-sm text-gray-600">Format</span>
-                      <Button
-                        type="button"
-                        variant={aspectMode === "detail" ? "default" : "outline"}
-                        className={aspectMode === "detail" ? "bg-[#E63832] hover:bg-[#E63832]/90" : ""}
-                        onClick={() => setAspectMode("detail")}
-                      >
-                        Détail
+                    <div className="flex flex-wrap gap-3">
+                      <Button type="button" variant="outline" onClick={() => setIsCropping(true)}>
+                        Recadrer l&apos;image
                       </Button>
-                      <Button
-                        type="button"
-                        variant={aspectMode === "card" ? "default" : "outline"}
-                        className={aspectMode === "card" ? "bg-[#E63832] hover:bg-[#E63832]/90" : ""}
-                        onClick={() => setAspectMode("card")}
-                      >
-                        Carte
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={aspectMode === "square" ? "default" : "outline"}
-                        className={aspectMode === "square" ? "bg-[#E63832] hover:bg-[#E63832]/90" : ""}
-                        onClick={() => setAspectMode("square")}
-                      >
-                        Carré
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => {
-                        setCrop({ x: 0, y: 0 })
-                        setZoom(1)
-                        setRotation(0)
-                        setAutoZoomed(false)
-                      }}>
-                        <RefreshCcw className="w-4 h-4 mr-2" />
-                        Réinitialiser
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm text-gray-600">Zoom</label>
-                          <input
-                            type="range"
-                            min={1}
-                            max={3}
-                            step={0.1}
-                            value={zoom}
-                            onChange={(e) => setZoom(Number(e.target.value))}
-                            className="w-40"
-                          />
-                          <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm text-gray-600">Rotation</label>
-                          <div className="flex gap-2">
-                            <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev - 90)}>
-                              <RotateCcw className="w-4 h-4" />
-                            </Button>
-                            <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev + 90)}>
-                              <RotateCw className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <input
-                            type="range"
-                            min={-45}
-                            max={45}
-                            step={1}
-                            value={rotation}
-                            onChange={(e) => setRotation(Number(e.target.value))}
-                            className="w-40"
-                          />
-                          <span className="text-xs text-gray-500">{rotation}°</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm text-gray-600">Format export</label>
-                          <select
-                            value={outputType}
-                            onChange={(e) => setOutputType(e.target.value as "image/webp" | "image/jpeg")}
-                            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                          >
-                            <option value="image/webp">WEBP (léger)</option>
-                            <option value="image/jpeg">JPEG (compatibilité)</option>
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm text-gray-600">Qualité</label>
-                          <input
-                            type="range"
-                            min={0.5}
-                            max={1}
-                            step={0.05}
-                            value={quality}
-                            onChange={(e) => setQuality(Number(e.target.value))}
-                            className="w-40"
-                          />
-                          <span className="text-xs text-gray-500">{Math.round(quality * 100)}%</span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm text-gray-600">Taille max</label>
-                          <input
-                            type="range"
-                            min={800}
-                            max={2400}
-                            step={100}
-                            value={maxSize}
-                            onChange={(e) => setMaxSize(Number(e.target.value))}
-                            className="w-40"
-                          />
-                          <span className="text-xs text-gray-500">{maxSize}px</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {sizeWarning && (
-                      <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-md p-3">
-                        {sizeWarning}
-                      </div>
-                    )}
-
-                    <div className="flex gap-3">
-                      <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>
-                        <Crop className="w-4 h-4 mr-2" />
-                        Appliquer le recadrage
-                      </Button>
-                      <Button type="button" variant="outline" onClick={resetCropper}>
-                        Annuler
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {!isCropping && imagePreview && (
-                  <div className="space-y-4">
-                    <div className="relative -mx-6 w-[calc(100%+3rem)] h-[400px] md:h-[500px] rounded-none overflow-hidden border-y">
-                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-500">Aperçu détail</p>
-                        <div className="relative w-full h-40 rounded-md overflow-hidden border">
-                          <img src={imagePreview} alt="Preview détail" className="w-full h-full object-cover" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-500">Aperçu carte</p>
-                        <div className="relative w-full h-32 rounded-md overflow-hidden border">
-                          <img src={imagePreview} alt="Preview carte" className="w-full h-full object-cover" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-500">Aperçu carré</p>
-                        <div className="relative w-32 h-32 rounded-md overflow-hidden border">
-                          <img src={imagePreview} alt="Preview carré" className="w-full h-full object-cover" />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="lien_infos">Lien vers plus d&apos;informations <span className="text-gray-500 text-xs">(facultatif)</span></Label>
                 <Input id="lien_infos" type="url" placeholder="https://www.votre-site.fr/stage-comedie" value={formData.lien_infos} onChange={(e) => handleInputChange("lien_infos", e.target.value)} />
@@ -974,8 +844,8 @@ export default function PublierOpportunitePage() {
                   <Input id="prix_reduit" type="number" step="0.01" min="0" placeholder="149.99" value={formData.prix_reduit} onChange={(e) => handleInputChange("prix_reduit", e.target.value)} />
                   {formData.prix_base && formData.prix_reduit && (
                     <p className="text-xs text-gray-600">
-                      Réduction: {Math.round(((parseFloat(formData.prix_base) - parseFloat(formData.prix_reduit)) / parseFloat(formData.prix_base)) * 100)}%
-                      {Math.round(((parseFloat(formData.prix_base) - parseFloat(formData.prix_reduit)) / parseFloat(formData.prix_base)) * 100) < 25 && (
+                      Réduction: {Math.floor(((parseFloat(formData.prix_base) - parseFloat(formData.prix_reduit)) / parseFloat(formData.prix_base)) * 100)}%
+                      {Math.floor(((parseFloat(formData.prix_base) - parseFloat(formData.prix_reduit)) / parseFloat(formData.prix_base)) * 100) < 25 && (
                         <span className="text-red-500"> (minimum 25% requis)</span>
                       )}
                     </p>
@@ -989,7 +859,7 @@ export default function PublierOpportunitePage() {
                   <Input id="nombre_places" type="number" min="1" placeholder="20" value={formData.nombre_places} onChange={(e) => handleInputChange("nombre_places", e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="date_evenement">Date et heure de l'événement <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="date_evenement">Date et heure de l&apos;événement <span className="text-red-500">*</span></Label>
                   <Input id="date_evenement" type="datetime-local" value={formData.date_evenement} onChange={(e) => handleInputChange("date_evenement", e.target.value)} />
                 </div>
               </div>
@@ -1009,55 +879,125 @@ export default function PublierOpportunitePage() {
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>
               )}
 
-              <div className="flex gap-4 pt-4">
+                            <div className="flex gap-4 pt-4">
                 <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Annuler</Button>
-                <Button type="submit" className="bg-[#E63832] hover:bg-[#E63832]/90 flex-1" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Publication en cours...
-                    </>
-                  ) : (
-                    "Publier l'opportunité"
-                  )}
+                <Button
+                  type="button"
+                  className="bg-[#E63832] hover:bg-[#E63832]/90 flex-1"
+                  onClick={() => {
+                    if (!validateForm()) return
+                    setViewMode("preview")
+                  }}
+                  disabled={loading}
+                >
+                  Passer à l&apos;aperçu et publier l&apos;opportunité
                 </Button>
               </div>
               </div>
             </CardContent>
           </Card>
-
-          <div className="lg:sticky lg:top-6 space-y-4">
-            <Card>
-              <CardContent className="p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Aperçu en temps réel</h3>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={activePreview === "card" ? "default" : "outline"}
-                      className={activePreview === "card" ? "bg-[#E63832] hover:bg-[#E63832]/90" : ""}
-                      onClick={() => setActivePreview("card")}
-                    >
-                      Carte
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={activePreview === "detail" ? "default" : "outline"}
-                      className={activePreview === "detail" ? "bg-[#E63832] hover:bg-[#E63832]/90" : ""}
-                      onClick={() => setActivePreview("detail")}
-                    >
-                      Détail
-                    </Button>
-                  </div>
-                </div>
-                {activePreview === "card" ? renderPreviewCard() : renderPreviewDetail()}
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </form>
+      {isCropping && rawImageSrc && (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
+          <div className="w-full max-w-3xl max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-gray-900">Recadrer l&apos;image</h2>
+                <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
+                  16:9
+                </span>
+              </div>
+              <Button type="button" variant="outline" onClick={resetCropper}>
+                Fermer
+              </Button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div
+                ref={cropperContainerRef}
+                className="relative w-full max-w-2xl mx-auto rounded-md overflow-hidden border bg-black"
+                style={{ aspectRatio: "16 / 9" }}
+              >
+                <Cropper
+                  image={rawImageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  rotation={rotation}
+                  aspect={cropAspect}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                  objectFit="horizontal-cover"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-600">Zoom</label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.1}
+                      value={zoom}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="w-40"
+                    />
+                    <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-600">Rotation</label>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev - 90)}>
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev + 90)}>
+                        <RotateCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <input
+                      type="range"
+                      min={-45}
+                      max={45}
+                      step={1}
+                      value={rotation}
+                      onChange={(e) => setRotation(Number(e.target.value))}
+                      className="w-40"
+                    />
+                    <span className="text-xs text-gray-500">{rotation}°</span>
+                  </div>
+                </div>
+              </div>
+
+              {sizeWarning && (
+                <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-md p-3">
+                  {sizeWarning}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>
+                  <Crop className="w-4 h-4 mr-2" />
+                  Appliquer le recadrage
+                </Button>
+                <Button type="button" variant="outline" onClick={() => {
+                  setCrop({ x: 0, y: 0 })
+                  setZoom(1)
+                  setRotation(0)
+                  setAutoZoomed(false)
+                }}>
+                  <RefreshCcw className="w-4 h-4 mr-2" />
+                  Réinitialiser
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+

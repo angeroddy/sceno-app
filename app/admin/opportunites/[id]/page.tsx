@@ -208,7 +208,10 @@ export default function AdminOpportuniteDetailsPage() {
             <Card className="overflow-hidden">
               <div className="relative">
                 {/* Image principale */}
-                <div className="relative h-[400px] md:h-[500px] bg-gray-200">
+                <div
+                  className="relative w-full bg-gray-200"
+                  style={{ aspectRatio: "16 / 9", minHeight: "200px" }}
+                >
                   {mainImage ? (
                     <Image
                       src={mainImage}
@@ -227,7 +230,7 @@ export default function AdminOpportuniteDetailsPage() {
                   {opportunite.reduction_pourcentage > 0 && (
                     <div className="absolute top-4 left-4 z-10">
                       <Badge className="bg-[#E63832] text-white text-lg px-4 py-2 hover:bg-[#E63832]">
-                        -{opportunite.reduction_pourcentage}% de réduction
+                        -{Math.floor(opportunite.reduction_pourcentage)}% de réduction
                       </Badge>
                     </div>
                   )}
@@ -501,7 +504,7 @@ export default function AdminOpportuniteDetailsPage() {
                         </span>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Réduction de {opportunite.reduction_pourcentage}%
+                        Réduction de {Math.floor(opportunite.reduction_pourcentage)}%
                       </p>
                     </div>
                   ) : (

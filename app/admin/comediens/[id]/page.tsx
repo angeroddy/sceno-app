@@ -65,6 +65,7 @@ interface ComedienDetails {
   id: string
   nom: string
   prenom: string
+  genre?: "masculin" | "feminin" | "non_genre" | null
   email: string
   photo_url: string | null
   lien_demo: string | null
@@ -143,6 +144,14 @@ export default function AdminComedienDetailsPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  const formatGender = (genre?: string | null) => {
+    if (!genre) return "Non renseigne"
+    if (genre === "masculin") return "Masculin"
+    if (genre === "feminin") return "Feminin"
+    if (genre === "non_genre") return "Non genre"
+    return genre
   }
 
   const initials = useMemo(() => {
@@ -254,6 +263,10 @@ export default function AdminComedienDetailsPage() {
               <div>
                 <p className="text-xs text-gray-500">Date de naissance</p>
                 <p className="font-medium">{formatDate(comedien.date_naissance)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Genre</p>
+                <p className="font-medium">{formatGender(comedien.genre)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Lien démo</p>

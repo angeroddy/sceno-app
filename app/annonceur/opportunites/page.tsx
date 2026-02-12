@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +14,8 @@ import {
   Search,
   PlusCircle,
   Eye,
-  Trash2
+  Trash2,
+  Pencil
 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { Opportunite } from "@/app/types"
@@ -194,11 +196,13 @@ export default function MesOpportunitesPage() {
                 <div className="flex flex-col lg:flex-row gap-6">
                   {/* Image */}
                   {opportunite.image_url && (
-                    <div className="w-full lg:w-48 h-32 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                      <img
+                    <div className="relative w-full lg:w-48 aspect-video rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                      <Image
                         src={opportunite.image_url}
                         alt={opportunite.titre}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     </div>
                   )}
@@ -219,15 +223,15 @@ export default function MesOpportunitesPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <Calendar className="w-4 h-4 shrink-0" />
                         <span className="truncate">{new Date(opportunite.date_evenement).toLocaleDateString('fr-FR')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users className="w-4 h-4 flex-shrink-0" />
+                        <Users className="w-4 h-4 shrink-0" />
                         <span>{opportunite.places_restantes}/{opportunite.nombre_places} places</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Euro className="w-4 h-4 flex-shrink-0" />
+                        <Euro className="w-4 h-4 shrink-0" />
                         <span className="truncate">{opportunite.prix_reduit}€ (-{Math.floor(opportunite.reduction_pourcentage)}%)</span>
                       </div>
                       <div className="text-sm text-gray-600">
@@ -244,6 +248,14 @@ export default function MesOpportunitesPage() {
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Voir
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/modifier`)}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Modifier
                       </Button>
                       {opportunite.statut === 'en_attente' && (
                         <Button

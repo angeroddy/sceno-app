@@ -1,17 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Crop, RotateCcw, RotateCw, RefreshCcw } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import Image from "next/image"
 import type { OpportunityType, OpportunityModel, Opportunite, Annonceur } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LABELS } from "@/app/types"
+import Cropper from "react-easy-crop"
+import { getCroppedImage } from "@/app/lib/crop-image"
 
 interface FormData {
   type: OpportunityType | ""
@@ -48,10 +50,30 @@ export default function ModifierOpportunitePage() {
     contact_email: "",
   })
   const [imagePreview, setImagePreview] = useState<string>("")
+  const [rawImageSrc, setRawImageSrc] = useState<string>("")
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
+    width: number
+    height: number
+    x: number
+    y: number
+  } | null>(null)
+  const [isCropping, setIsCropping] = useState(false)
+  const cropperContainerRef = useRef<HTMLDivElement | null>(null)
+  const cropAspect = 16 / 9
+  const outputType: "image/webp" | "image/jpeg" = "image/webp"
+  const quality = 0.85
+  const maxSize = 1600
+  const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
+  const [autoZoomed, setAutoZoomed] = useState(false)
+  const [sizeWarning, setSizeWarning] = useState("")
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
 
   // Extraire l'ID
   useEffect(() => {
@@ -115,17 +137,109 @@ export default function ModifierOpportunitePage() {
     setError("")
   }
 
+  useEffect(() => {
+    if (!isCropping || !cropperContainerRef.current) return
+    const observer = new ResizeObserver(() => setAutoZoomed(false))
+    observer.observe(cropperContainerRef.current)
+    return () => observer.disconnect()
+  }, [isCropping])
+
+  useEffect(() => {
+    if (!rawImageSrc) return
+
+    const img = new window.Image()
+    img.onload = () => {
+      setImageInfo({ width: img.width, height: img.height })
+      setAutoZoomed(false)
+    }
+    img.src = rawImageSrc
+  }, [rawImageSrc])
+
+  useEffect(() => {
+    if (!imageInfo || autoZoomed) return
+
+    const imageAspect = imageInfo.width / imageInfo.height
+    let nextZoom = 1
+    if (imageAspect > cropAspect) {
+      nextZoom = imageAspect / cropAspect
+    } else {
+      nextZoom = cropAspect / imageAspect
+    }
+
+    setZoom(Math.min(Math.max(nextZoom, 1), 3))
+    setAutoZoomed(true)
+  }, [imageInfo, cropAspect, autoZoomed])
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setFormData(prev => ({ ...prev, image: file }))
       const reader = new FileReader()
       reader.onloadend = () => {
-        setImagePreview(reader.result as string)
+        setRawImageSrc(reader.result as string)
+        setIsCropping(true)
+        setRotation(0)
+        setZoom(1)
+        setCrop({ x: 0, y: 0 })
+        setCroppedAreaPixels(null)
+        setImageInfo(null)
+        setSizeWarning("")
+        setAutoZoomed(false)
       }
       reader.readAsDataURL(file)
     }
   }
+
+  const onCropComplete = (_: unknown, croppedPixels: { width: number; height: number; x: number; y: number }) => {
+    setCroppedAreaPixels(croppedPixels)
+  }
+
+  const applyCrop = async () => {
+    if (!rawImageSrc || !croppedAreaPixels) return
+
+    try {
+      const croppedBlob = await getCroppedImage(rawImageSrc, croppedAreaPixels, {
+        rotation,
+        outputType,
+        quality,
+        maxSize,
+      })
+      const ext = outputType === "image/webp" ? "webp" : "jpg"
+      const fileName = `opportunite-${Date.now()}.${ext}`
+      const croppedFile = new File([croppedBlob], fileName, { type: outputType })
+
+      setFormData(prev => ({ ...prev, image: croppedFile }))
+      setImagePreview(URL.createObjectURL(croppedBlob))
+      setIsCropping(false)
+    } catch (cropError) {
+      console.error("Erreur recadrage image:", cropError)
+      setError("Impossible de recadrer l'image. Veuillez réessayer.")
+    }
+  }
+
+  const resetCropper = () => {
+    setRawImageSrc("")
+    setIsCropping(false)
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setRotation(0)
+    setCroppedAreaPixels(null)
+    setSizeWarning("")
+  }
+
+  useEffect(() => {
+    if (!cropperContainerRef.current || !imageInfo) return
+    const containerWidth = cropperContainerRef.current.clientWidth
+    const containerHeight = cropperContainerRef.current.clientHeight
+    if (containerWidth === 0 || containerHeight === 0) return
+
+    const minWidth = Math.round(containerWidth * 2)
+    const minHeight = Math.round(containerHeight * 2)
+    if (imageInfo.width < minWidth || imageInfo.height < minHeight) {
+      setSizeWarning("Image un peu petite : le rendu peut paraitre flou sur ecran large.")
+    } else {
+      setSizeWarning("")
+    }
+  }, [imageInfo, isCropping])
 
   const uploadImage = async (file: File, annonceurId: string): Promise<string | null> => {
     try {
@@ -234,9 +348,7 @@ export default function ModifierOpportunitePage() {
     return true
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const submitOpportunity = async () => {
     if (!validateForm()) {
       return
     }
@@ -329,6 +441,12 @@ export default function ModifierOpportunitePage() {
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) return
+    setViewMode("preview")
+  }
+
   if (loadingData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -364,6 +482,200 @@ export default function ModifierOpportunitePage() {
   const reductionPourcentage = formData.prix_base && formData.prix_reduit
     ? ((parseFloat(formData.prix_base) - parseFloat(formData.prix_reduit)) / parseFloat(formData.prix_base)) * 100
     : 0
+
+  const previewTitle = formData.titre.trim() || "Titre de l'opportunité"
+  const previewOrganizer = "Votre structure"
+  const previewCategory = formData.type ? OPPORTUNITY_TYPE_LABELS[formData.type as OpportunityType] : "Catégorie"
+  const previewModel = formData.modele ? OPPORTUNITY_MODEL_LABELS[formData.modele as OpportunityModel] : "Modèle"
+  const previewImage = imagePreview || ""
+  const previewDate = formData.date_evenement
+    ? new Date(formData.date_evenement)
+    : null
+  const previewDateLabel = previewDate
+    ? previewDate.toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "Date de l'événement"
+  const previewTimeLabel = previewDate
+    ? previewDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : "Heure"
+  const previewPrice = formData.prix_base ? Number(formData.prix_base) : 0
+  const previewReducedPrice = formData.prix_reduit ? Number(formData.prix_reduit) : 0
+  const previewDiscount = previewPrice > 0 && previewReducedPrice > 0
+    ? Math.floor(((previewPrice - previewReducedPrice) / previewPrice) * 100)
+    : 0
+  const previewPlaces = formData.nombre_places ? Number(formData.nombre_places) : 0
+  const previewResume = formData.resume || "<p>La description apparaîtra ici.</p>"
+
+  const renderPreviewCard = () => (
+    <Card className="overflow-hidden">
+      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
+        {previewImage ? (
+          <img src={previewImage} alt="Preview carte" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+            <Calendar className="w-10 h-10 text-gray-400" />
+          </div>
+        )}
+        {previewDiscount > 0 && (
+          <div className="absolute top-3 left-3 z-10">
+            <span className="text-white text-xs font-bold bg-[#E63832] px-2 py-1 rounded">
+              -{previewDiscount}%
+            </span>
+          </div>
+        )}
+      </div>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center rounded-full bg-[#E6DAD0] px-2 py-0.5 font-medium">
+            {previewCategory}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 font-medium">
+            {previewModel}
+          </span>
+        </div>
+        <h3 className="font-bold text-lg line-clamp-2">{previewTitle}</h3>
+        <div className="space-y-1 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            <span>France</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            <span>{previewDateLabel}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <Tag className="w-4 h-4 text-gray-500" />
+          {previewDiscount > 0 ? (
+            <div className="flex items-baseline gap-2">
+              <span className="font-semibold text-[#E63832]">{previewReducedPrice || previewPrice}€</span>
+              <span className="text-xs line-through text-gray-400">{previewPrice || 0}€</span>
+            </div>
+          ) : (
+            <span className="font-semibold text-gray-900">{previewPrice || 0}€</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Users className="w-4 h-4" />
+          <span>{previewPlaces || 0} place(s)</span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  const renderPreviewDetail = () => (
+    <Card className="overflow-hidden">
+      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
+        {previewImage ? (
+          <img src={previewImage} alt="Preview détail" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
+            <Calendar className="w-12 h-12 text-gray-400" />
+          </div>
+        )}
+        {previewDiscount > 0 && (
+          <div className="absolute top-4 left-4 z-10">
+            <span className="text-white text-sm font-bold bg-[#E63832] px-3 py-1 rounded">
+              -{previewDiscount}% de réduction
+            </span>
+          </div>
+        )}
+      </div>
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-center gap-2 text-xs text-gray-600">
+          <span className="rounded-full bg-[#E6DAD0] px-2 py-0.5">{previewCategory}</span>
+          <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5">{previewModel}</span>
+        </div>
+        <h3 className="text-xl font-bold">{previewTitle}</h3>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Building2 className="w-4 h-4" />
+          <span>{previewOrganizer}</span>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <span>{previewDateLabel}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-gray-400" />
+            <span>{previewTimeLabel}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-gray-400" />
+            <span>{previewPlaces || 0} place(s)</span>
+          </div>
+        </div>
+        <div className="border-y border-gray-200 py-3">
+          {previewDiscount > 0 ? (
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#E63832]">{previewReducedPrice || previewPrice}€</span>
+              <span className="text-sm text-gray-400 line-through">{previewPrice || 0}€</span>
+            </div>
+          ) : (
+            <span className="text-2xl font-bold text-gray-900">{previewPrice || 0}€</span>
+          )}
+        </div>
+        <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: previewResume }} />
+        <div className="flex gap-2 pt-2">
+          <Button size="sm" className="bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
+          <Button size="sm" variant="outline">
+            <ExternalLink className="w-4 h-4 mr-1" />
+            Voir le site
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (viewMode === "preview") {
+    return (
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            Aperçu avant mise à jour
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Vérifiez les modifications avant de les enregistrer
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode vignette</h2>
+            {renderPreviewCard()}
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode détails</h2>
+            {renderPreviewDetail()}
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>
+        )}
+
+        <div className="flex flex-wrap gap-4 pt-6">
+          <Button type="button" variant="outline" onClick={() => setViewMode("edit")} disabled={loading}>
+            Revenir à l&apos;édition
+          </Button>
+          <Button
+            type="button"
+            className="bg-[#E63832] hover:bg-[#E63832]/90"
+            onClick={submitOpportunity}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Mise à jour en cours...
+              </>
+            ) : (
+              "Enregistrer les modifications"
+            )}
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -458,7 +770,7 @@ export default function ModifierOpportunitePage() {
                 </Label>
                 <div className="mt-2">
                   {imagePreview && (
-                    <div className="mb-4 relative w-full h-64 rounded-lg overflow-hidden">
+                    <div className="mb-4 relative w-full max-w-md rounded-lg overflow-hidden border" style={{ aspectRatio: "16 / 9" }}>
                       <Image
                         src={imagePreview}
                         alt="Aperçu"
@@ -466,6 +778,27 @@ export default function ModifierOpportunitePage() {
                         className="object-cover"
                         unoptimized
                       />
+                    </div>
+                  )}
+                  {imagePreview && (
+                    <div className="mb-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setRawImageSrc(imagePreview)
+                          setIsCropping(true)
+                          setRotation(0)
+                          setZoom(1)
+                          setCrop({ x: 0, y: 0 })
+                          setCroppedAreaPixels(null)
+                          setImageInfo(null)
+                          setSizeWarning("")
+                          setAutoZoomed(false)
+                        }}
+                      >
+                        Recadrer l&apos;image
+                      </Button>
                     </div>
                   )}
                   <label className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#E63832] transition-colors">
@@ -627,11 +960,122 @@ export default function ModifierOpportunitePage() {
                   Mise à jour en cours...
                 </>
               ) : (
-                'Enregistrer les modifications'
+                "Passer a l'apercu des modifications"
               )}
             </Button>
           </div>
         </form>
+
+        {isCropping && rawImageSrc && (
+          <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
+            <div className="w-full max-w-3xl max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
+              <div className="flex items-center justify-between px-6 py-4 border-b">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Recadrer l&apos;image</h3>
+                  <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
+                    16:9
+                  </span>
+                </div>
+                <Button type="button" variant="outline" onClick={resetCropper}>
+                  Fermer
+                </Button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div
+                  ref={cropperContainerRef}
+                  className="relative w-full max-w-2xl mx-auto rounded-md overflow-hidden border bg-black"
+                  style={{ aspectRatio: "16 / 9" }}
+                >
+                  <Cropper
+                    image={rawImageSrc}
+                    crop={crop}
+                    zoom={zoom}
+                    rotation={rotation}
+                    aspect={cropAspect}
+                    cropShape="rect"
+                    showGrid={true}
+                    onCropChange={setCrop}
+                    onCropComplete={onCropComplete}
+                    onZoomChange={setZoom}
+                    onRotationChange={setRotation}
+                    objectFit="horizontal-cover"
+                  />
+                </div>
+
+                {sizeWarning && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    {sizeWarning}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Zoom</Label>
+                      <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.01}
+                      value={zoom}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setZoom(1)}>
+                        <RefreshCcw className="w-4 h-4 mr-2" />
+                        Reset zoom
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Rotation</Label>
+                      <span className="text-xs text-gray-500">{rotation}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-180}
+                      max={180}
+                      step={1}
+                      value={rotation}
+                      onChange={(e) => setRotation(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setRotation((r) => r - 90)}>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        -90°
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setRotation((r) => r + 90)}>
+                        <RotateCw className="w-4 h-4 mr-2" />
+                        +90°
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setRotation(0)}>
+                        <RefreshCcw className="w-4 h-4 mr-2" />
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t flex flex-wrap justify-end gap-3">
+                <Button type="button" variant="outline" onClick={resetCropper}>
+                  Annuler
+                </Button>
+                <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>
+                  <Crop className="w-4 h-4 mr-2" />
+                  Appliquer le recadrage
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

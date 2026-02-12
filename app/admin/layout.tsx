@@ -132,7 +132,7 @@ export default function AdminLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white">
+    <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
       {/* Mobile Header */}
       <div className="lg:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
@@ -157,7 +157,7 @@ export default function AdminLayout({
 
       {/* Mobile Logout Menu (compact) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
+        <div className="lg:hidden fixed inset-0 z-60 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute top-16 right-4 bg-white rounded-lg shadow-xl p-2 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={handleLogout}
