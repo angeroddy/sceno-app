@@ -65,15 +65,15 @@ export const Footer = ({
   ],
 }: FooterProps) => {
   return (
-    <section className="bg-black text-white py-16">
+    <footer className="bg-black text-white py-16" role="contentinfo">
       <div className="container mx-auto px-5">
-        <footer>
+        <div>
           <div className="grid grid-cols-2 gap-8 lg:grid-cols-6">
             <div className="col-span-2 mb-8 lg:mb-0">
               <div className="flex items-center gap-2 lg:justify-start">
                 <Image
                   src={logoApp}
-                  alt="Scenio Logo"
+                  alt="Scenio"
                   width={150}
                   height={50}
                   className="object-contain"
@@ -82,7 +82,7 @@ export const Footer = ({
               <p className="mt-4 text-[#E6DAD0] text-lg">{tagline}</p>
             </div>
             {menuItems.map((section, sectionIdx) => (
-              <div key={sectionIdx}>
+              <nav key={sectionIdx} aria-label={section.title}>
                 <h3 className="mb-4 font-bold text-[#E6DAD0]">{section.title}</h3>
                 <ul className="space-y-3">
                   {section.links.map((link, linkIdx) => (
@@ -94,7 +94,7 @@ export const Footer = ({
                     </li>
                   ))}
                 </ul>
-              </div>
+              </nav>
             ))}
           </div>
           <div className="mt-16 flex flex-col justify-between gap-4 border-t border-gray-700 pt-8 text-sm font-medium md:flex-row md:items-center">
@@ -107,8 +107,8 @@ export const Footer = ({
               ))}
             </ul>
           </div>
-        </footer>
+        </div>
       </div>
-    </section>
+    </footer>
   );
 };

@@ -228,7 +228,7 @@ export default function OpportuniteDetailsPage() {
                       alt={opportunite.titre}
                       fill
                       className="object-cover cursor-pointer"
-                      unoptimized
+                      sizes="(max-width: 768px) 100vw, 60vw"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">

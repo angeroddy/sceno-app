@@ -799,7 +799,7 @@ export default function ModifierOpportunitePage() {
                         alt="Aperçu"
                         fill
                         className="object-cover"
-                        unoptimized
+                        sizes="(max-width: 768px) 100vw, 448px"
                       />
                     </div>
                   )}

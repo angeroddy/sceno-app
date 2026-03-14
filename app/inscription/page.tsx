@@ -10,13 +10,10 @@ export default function SignupPage() {
     const router = useRouter();
 
     return (
-        <div className="grid min-h-screen lg:grid-cols-2">
+        <main className="grid min-h-screen lg:grid-cols-2">
             <div className="flex flex-col gap-4 p-6 md:p-10 min-h-screen">
                 <div className="flex justify-center gap-2 md:justify-start">
-
-                    <Image src={logoApp} alt="Logo" height={100} width={100} onClick={() => router.push("/")} className="cursor-pointer" />
-
-
+                    <Image src={logoApp} alt="Scenio — Retour à l'accueil" height={100} width={100} onClick={() => router.push("/")} className="cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') router.push("/") }} />
                 </div>
                 <div className="flex flex-1 items-center justify-center py-8">
                     <div className="w-full max-w-xl">
@@ -24,10 +21,10 @@ export default function SignupPage() {
                     </div>
                 </div>
             </div>
-            <div className="hidden lg:flex justify-center items-center bg-[#E6DAD0] min-h-screen sticky top-0">
+            <div className="hidden lg:flex justify-center items-center bg-[#E6DAD0] min-h-screen sticky top-0" aria-hidden="true">
                 <Image
                     src={logoApp}
-                    alt="Logo"
+                    alt=""
                     width={500}
                     height={500}
                     priority
@@ -35,6 +32,6 @@ export default function SignupPage() {
                 />
             </div>
 
-        </div>
+        </main>
     )
 }

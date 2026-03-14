@@ -244,7 +244,7 @@ export default function PublierOpportunitePage() {
             alt="Preview carte"
             fill
             className="object-cover"
-            unoptimized
+            sizes="(max-width: 768px) 100vw, 384px"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
@@ -302,7 +302,7 @@ export default function PublierOpportunitePage() {
             alt="Preview détail"
             fill
             className="object-cover"
-            unoptimized
+            sizes="(max-width: 768px) 100vw, 50vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
@@ -949,7 +949,7 @@ export default function PublierOpportunitePage() {
                         alt="Preview"
                         fill
                         className="object-cover"
-                        unoptimized
+                        sizes="(max-width: 768px) 100vw, 448px"
                       />
                     </div>
                     <div className="flex flex-wrap gap-3">

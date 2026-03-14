@@ -1,3 +1,5 @@
+import { Metadata } from 'next'
+import { JsonLd } from '@/components/json-ld'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -33,6 +35,41 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
 export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await getOpportunityReader()
+  const opportunite = await getPublicOpportunityDetails(supabase as never, id)
+
+  if (!opportunite) {
+    return { title: 'Opportunité introuvable' }
+  }
+
+  const title = opportunite.titre
+  const description = `${opportunite.titre} — proposée par ${opportunite.annonceur?.nom_formation || 'un organisme partenaire'} sur Scenio. Réservez votre place dès maintenant.`
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/opportunite/${id}` },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      ...(opportunite.image_url ? { images: [{ url: opportunite.image_url }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(opportunite.image_url ? { images: [opportunite.image_url] } : {}),
+    },
+  }
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('fr-FR', {
@@ -104,8 +141,53 @@ export default async function OpportunitePage({
         ? "Creer un compte pour voir d'autres opportunites"
         : 'Creer un compte pour reserver'
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://scenio.fr'
+
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] via-white to-[#F5F0EB]">
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Event',
+          name: opportunite.titre,
+          startDate: opportunite.date_evenement,
+          description: opportunite.resume?.replace(/<[^>]*>/g, '').slice(0, 300) || '',
+          organizer: {
+            '@type': 'Organization',
+            name: opportunite.annonceur?.nom_formation || 'Organisme partenaire',
+          },
+          offers: {
+            '@type': 'Offer',
+            price: opportunite.prix_reduit,
+            priceCurrency: 'EUR',
+            availability: isSoldOut
+              ? 'https://schema.org/SoldOut'
+              : 'https://schema.org/InStock',
+            url: `${siteUrl}/opportunite/${opportunite.id}`,
+          },
+          ...(opportunite.image_url ? { image: opportunite.image_url } : {}),
+        }}
+      />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            {
+              '@type': 'ListItem',
+              position: 1,
+              name: 'Accueil',
+              item: siteUrl,
+            },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: opportunite.titre,
+              item: `${siteUrl}/opportunite/${opportunite.id}`,
+            },
+          ],
+        }}
+      />
       <header className="border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="container mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3">
@@ -136,12 +218,15 @@ export default async function OpportunitePage({
       </header>
 
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <Button variant="ghost" className="mb-6 hover:bg-[#E6DAD0]" asChild>
-          <Link href="/">
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Retour a l&apos;accueil
+        <nav aria-label="Fil d'Ariane" className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+          <Link href="/" className="hover:text-[#E63832] transition-colors">
+            Accueil
           </Link>
-        </Button>
+          <ChevronLeft className="h-3 w-3 rotate-180" />
+          <span className="truncate text-gray-900 font-medium" aria-current="page">
+            {opportunite.titre}
+          </span>
+        </nav>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
           <section className="space-y-6">
@@ -152,8 +237,8 @@ export default async function OpportunitePage({
                     src={opportunite.image_url}
                     alt={opportunite.titre}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 60vw"
                     className="object-cover"
-                    unoptimized
                     priority
                   />
                 ) : (

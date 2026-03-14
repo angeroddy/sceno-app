@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <>
-      <div className="relative w-full">
+      <nav className="relative w-full" aria-label="Navigation principale">
         <Navbar01
           className="bg-[#E6DAD0]"
           isAuthenticated={isAuthenticated}
@@ -43,8 +43,9 @@ export default function Home() {
           }
           hideHamburger={true}
         />
-      </div>
-      <div className="main-section relative w-full min-h-[500px] sm:min-h-[600px] md:min-h-[700px] lg:h-200 bg-black">
+      </nav>
+      <main>
+      <section className="main-section relative w-full min-h-[500px] sm:min-h-[600px] md:min-h-[700px] lg:h-200 bg-black" aria-label="Héro">
         <ImageCarousel
           images={backgroundImages}
           interval={5000}
@@ -77,17 +78,18 @@ export default function Home() {
           </Link>
 
         </div>
-      </div>
-   
-      <motion.div
+      </section>
+
+      <motion.section
         className="cta-section p-5 sm:p-8 md:p-12 lg:p-16 xl:p-20"
+        aria-label="Appel à l'action"
         initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
         <div className="card-cta bg-[#E6DAD0] flex rounded-lg items-center justify-center p-6 sm:p-10 md:p-12 lg:p-16 xl:p-20 flex-col">
-          <h1 className="font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-center mb-4">Les bons plans, c&apos;est ici</h1>
+          <h2 className="font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-center mb-4">Les bons plans, c&apos;est ici</h2>
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-[25px] text-center max-w-3xl">Comédiennes, comédiens : recevez des offres exclusives au monde du théâtre et du cinéma. Organismes de formation, publiez vos plus chouettes opportunités.
 
  </p>
@@ -101,7 +103,8 @@ export default function Home() {
             </Link>
           </div>
         </div>
-      </motion.div>
+      </motion.section>
+      </main>
       <Footer />
 
     </>

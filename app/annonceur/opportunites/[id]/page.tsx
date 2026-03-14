@@ -180,7 +180,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                       alt={opportunite.titre}
                       fill
                       className="object-cover"
-                      unoptimized
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">

@@ -206,7 +206,7 @@ export default function MesOpportunitesPage() {
                         alt={opportunite.titre}
                         fill
                         className="object-cover"
-                        unoptimized
+                        sizes="(max-width: 640px) 100vw, 192px"
                       />
                     </div>
                   )}

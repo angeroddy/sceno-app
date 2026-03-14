@@ -778,7 +778,7 @@ export function ComedianSignupForm({
                       alt="Preview"
                       fill
                       className="object-cover"
-                      unoptimized
+                      sizes="96px"
                     />
                   </div>
                 )}
