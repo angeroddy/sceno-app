@@ -29,7 +29,7 @@ import {
   normalizeEmail,
   normalizeText,
 } from "@/app/lib/signup-validation"
-import { getDemoComedianData, isDevMode } from "@/app/lib/dev-signup-fixtures"
+import { getDemoComedianData } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = [
   "Préférences",
@@ -499,10 +499,6 @@ export function ComedianSignupForm({
   }
 
   const fillWithDevData = () => {
-    if (!isDevMode) {
-      return
-    }
-
     const fixture = getDemoComedianData()
     const nextAccountInfo = {
       ...accountInfo,
@@ -531,7 +527,7 @@ export function ComedianSignupForm({
           </p>
         </div>
 
-        {!isSuccess && isDevMode && (
+        {!isSuccess && (
           <div className="self-end">
             <Button
               type="button"

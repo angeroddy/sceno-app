@@ -40,7 +40,7 @@ import {
   normalizeIban,
   normalizeText,
 } from "@/app/lib/signup-validation"
-import { getDemoAdvertiserData, isDevMode } from "@/app/lib/dev-signup-fixtures"
+import { getDemoAdvertiserData } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = [
   "Type de compte",
@@ -517,10 +517,6 @@ export function AdvertiserSignupForm({
   }
 
   const fillWithDevData = () => {
-    if (!isDevMode) {
-      return
-    }
-
     const fixture = getDemoAdvertiserData(formData.type_annonceur)
     const nextFormData = {
       ...formData,
@@ -550,7 +546,7 @@ export function AdvertiserSignupForm({
           </p>
         </div>
 
-        {!isSuccess && isDevMode && (
+        {!isSuccess && (
           <div className="self-end">
             <Button
               type="button"
