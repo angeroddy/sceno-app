@@ -51,7 +51,7 @@ export default function InscriptionReussiePage() {
                   2
                 </span>
                 <span>
-                  <strong>Cliquez sur le lien de confirmation</strong> dans l'email
+                  <strong>Cliquez sur le lien de confirmation</strong> dans l&apos;email
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -96,13 +96,13 @@ export default function InscriptionReussiePage() {
               variant="outline"
               className="flex-1"
             >
-              Retour à l'accueil
+              Retour à l&apos;accueil
             </Button>
           </div>
 
           <div className="text-center text-sm text-gray-500 pt-4 border-t">
             <p>
-              Besoin d'aide ? Contactez-nous à{' '}
+              Besoin d&apos;aide ? Contactez-nous à{' '}
               <a href="mailto:support@scenio.com" className="text-[#E63832] hover:underline">
                 support@scenio.com
               </a>

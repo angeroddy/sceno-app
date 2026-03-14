@@ -5,9 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react"
+import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { Annonceur } from "@/app/types"
+
+interface StripeConnectStatus {
+  connected: boolean
+  stripe_account_id: string | null
+  stripe_onboarding_complete: boolean
+  stripe_charges_enabled: boolean
+  stripe_payouts_enabled: boolean
+  stripe_details_submitted: boolean
+}
 
 export default function ParametresPage() {
   const [annonceur, setAnnonceur] = useState<Annonceur | null>(null)
@@ -16,6 +25,10 @@ export default function ParametresPage() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
   const [showIban, setShowIban] = useState(false)
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null)
+  const [stripeLoading, setStripeLoading] = useState(true)
+  const [stripeActionLoading, setStripeActionLoading] = useState(false)
+  const [stripeError, setStripeError] = useState("")
 
   const [formData, setFormData] = useState({
     nom_formation: "",
@@ -26,7 +39,14 @@ export default function ParametresPage() {
   })
 
   useEffect(() => {
-    fetchAnnonceurData()
+    const initialize = async () => {
+      await Promise.all([
+        fetchAnnonceurData(),
+        fetchStripeStatus(true),
+      ])
+    }
+
+    void initialize()
   }, [])
 
   const fetchAnnonceurData = async () => {
@@ -56,6 +76,102 @@ export default function ParametresPage() {
       console.error('Erreur lors du chargement des données:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchStripeStatus = async (refresh: boolean) => {
+    try {
+      setStripeLoading(true)
+      setStripeError("")
+
+      const response = await fetch(`/api/stripe/connect/status?refresh=${refresh ? 'true' : 'false'}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Impossible de charger le statut Stripe')
+      }
+
+      setStripeStatus(data as StripeConnectStatus)
+    } catch (err) {
+      console.error('Erreur statut Stripe Connect:', err)
+      setStripeError(err instanceof Error ? err.message : 'Erreur lors du chargement Stripe')
+    } finally {
+      setStripeLoading(false)
+    }
+  }
+
+  const handleCreateOrSyncStripeAccount = async () => {
+    try {
+      setStripeActionLoading(true)
+      setStripeError("")
+
+      const response = await fetch('/api/stripe/connect/account', {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Impossible de créer le compte Stripe')
+      }
+
+      setStripeStatus(data as StripeConnectStatus)
+      await fetchStripeStatus(true)
+    } catch (err) {
+      console.error('Erreur create/sync Stripe:', err)
+      setStripeError(err instanceof Error ? err.message : 'Erreur Stripe Connect')
+    } finally {
+      setStripeActionLoading(false)
+    }
+  }
+
+  const handleStartStripeOnboarding = async () => {
+    try {
+      setStripeActionLoading(true)
+      setStripeError("")
+
+      const response = await fetch('/api/stripe/connect/onboarding-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          returnPath: '/annonceur/parametres?stripe=return',
+          refreshPath: '/annonceur/parametres?stripe=refresh',
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || 'Impossible de générer le lien Stripe')
+      }
+
+      window.location.href = data.url as string
+    } catch (err) {
+      console.error('Erreur onboarding Stripe:', err)
+      setStripeError(err instanceof Error ? err.message : 'Erreur Stripe Connect')
+    } finally {
+      setStripeActionLoading(false)
+    }
+  }
+
+  const handleOpenStripeDashboard = async () => {
+    try {
+      setStripeActionLoading(true)
+      setStripeError("")
+
+      const response = await fetch('/api/stripe/connect/dashboard-link', {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || 'Impossible d’ouvrir le dashboard Stripe')
+      }
+
+      window.location.href = data.url as string
+    } catch (err) {
+      console.error('Erreur ouverture dashboard Stripe:', err)
+      setStripeError(err instanceof Error ? err.message : 'Erreur Stripe Connect')
+    } finally {
+      setStripeActionLoading(false)
     }
   }
 
@@ -181,6 +297,12 @@ export default function ParametresPage() {
     const masked = firstFour + '*'.repeat(cleaned.length - 8) + lastFour
     return masked.match(/.{1,4}/g)?.join(' ') || masked
   }
+
+  const stripeDashboardReady = Boolean(
+    stripeStatus?.stripe_onboarding_complete &&
+    stripeStatus?.stripe_charges_enabled &&
+    stripeStatus?.stripe_payouts_enabled
+  )
 
 
   return (
@@ -334,6 +456,114 @@ export default function ParametresPage() {
                   Code d&apos;identification de votre banque (8 ou 11 caractères)
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Stripe Connect */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Paiements Stripe Connect</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {stripeLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Chargement du statut Stripe...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <p>
+                      Compte Connect:{" "}
+                      <span className={stripeStatus?.connected ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        {stripeStatus?.connected ? "Créé" : "Non créé"}
+                      </span>
+                    </p>
+                    <p>
+                      Onboarding:{" "}
+                      <span className={stripeStatus?.stripe_onboarding_complete ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        {stripeStatus?.stripe_onboarding_complete ? "Terminé" : "Incomplet"}
+                      </span>
+                    </p>
+                    <p>
+                      Paiements entrants:{" "}
+                      <span className={stripeStatus?.stripe_charges_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        {stripeStatus?.stripe_charges_enabled ? "Activés" : "Désactivés"}
+                      </span>
+                    </p>
+                    <p>
+                      Virements:{" "}
+                      <span className={stripeStatus?.stripe_payouts_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        {stripeStatus?.stripe_payouts_enabled ? "Activés" : "Désactivés"}
+                      </span>
+                    </p>
+                    {stripeStatus?.stripe_account_id && (
+                      <p className="text-xs text-gray-500 font-mono">
+                        {stripeStatus.stripe_account_id}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    {stripeDashboardReady ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleOpenStripeDashboard}
+                        disabled={stripeActionLoading}
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Ouvrir mon dashboard Stripe
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleCreateOrSyncStripeAccount}
+                          disabled={stripeActionLoading}
+                        >
+                          {stripeActionLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Synchronisation...
+                            </>
+                          ) : (
+                            'Créer / Synchroniser le compte Stripe'
+                          )}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          className="bg-[#E63832] hover:bg-[#E63832]/90"
+                          onClick={handleStartStripeOnboarding}
+                          disabled={stripeActionLoading}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Compléter l&apos;onboarding Stripe
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {stripeDashboardReady ? (
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
+                      Votre compte Stripe est prêt à recevoir les paiements.
+                    </div>
+                  ) : (
+                    <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
+                      Finalisez votre onboarding Stripe pour recevoir votre part sur les réservations.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {stripeError && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{stripeError}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 

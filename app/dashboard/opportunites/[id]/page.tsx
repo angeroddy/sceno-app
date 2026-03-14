@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,10 +25,12 @@ import {
   Building2
 } from "lucide-react"
 import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
+import { SafeRichText } from "@/components/safe-rich-text"
 
 export default function OpportuniteDetailsPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [opportunite, setOpportunite] = useState<OpportuniteWithAnnonceur | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,13 +38,15 @@ export default function OpportuniteDetailsPage() {
   const [opportuniteId, setOpportuniteId] = useState<string | null>(null)
   const [blockError, setBlockError] = useState<string | null>(null)
   const [blockSuccess, setBlockSuccess] = useState<string | null>(null)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [alreadyBooked, setAlreadyBooked] = useState(false)
 
   // Extraire l'ID des params
   useEffect(() => {
     const extractId = async () => {
       if (params?.id) {
         const id = typeof params.id === 'string' ? params.id : params.id[0]
-        console.log('ID de l\'opportunité:', id)
         setOpportuniteId(id)
       }
     }
@@ -54,7 +58,6 @@ export default function OpportuniteDetailsPage() {
 
     try {
       setLoading(true)
-      console.log('Appel API pour opportunité:', opportuniteId)
       const response = await fetch(`/api/comedien/opportunites/${opportuniteId}`)
 
       if (!response.ok) {
@@ -64,9 +67,18 @@ export default function OpportuniteDetailsPage() {
       }
 
       const data = await response.json()
-      console.log('Données reçues:', data)
       setOpportunite(data)
       setMainImage(data.image_url)
+
+      const achatsResponse = await fetch('/api/comedien/achats')
+      if (achatsResponse.ok) {
+        const achatsData = await achatsResponse.json()
+        const hasConfirmedPurchase = (achatsData.achats || []).some((achat: {
+          statut?: string
+          opportunite?: { id?: string } | null
+        }) => achat.statut === 'confirmee' && achat.opportunite?.id === opportuniteId)
+        setAlreadyBooked(hasConfirmedPurchase)
+      }
     } catch (err) {
       console.error('Erreur:', err)
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
@@ -100,6 +112,32 @@ export default function OpportuniteDetailsPage() {
     } catch (err) {
       console.error("Erreur blocage:", err)
       setBlockError(err instanceof Error ? err.message : "Erreur lors du blocage")
+    }
+  }
+
+  const handleCheckout = async () => {
+    if (!opportuniteId || opportunite?.places_restantes === 0 || bookingLoading || alreadyBooked) return
+
+    try {
+      setBookingLoading(true)
+      setBookingError(null)
+
+      const response = await fetch('/api/checkout/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opportuniteId }),
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || 'Impossible de lancer le paiement')
+      }
+
+      window.location.href = data.url as string
+    } catch (err) {
+      console.error('Erreur checkout:', err)
+      setBookingError(err instanceof Error ? err.message : 'Erreur lors de la reservation')
+      setBookingLoading(false)
     }
   }
 
@@ -150,6 +188,7 @@ export default function OpportuniteDetailsPage() {
     hour: '2-digit',
     minute: '2-digit'
   })
+  const checkoutWasCancelled = searchParams.get("checkout") === "cancel"
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
@@ -163,6 +202,14 @@ export default function OpportuniteDetailsPage() {
           <ChevronLeft className="w-4 h-4 mr-2" />
           Retour aux opportunités
         </Button>
+
+        {checkoutWasCancelled && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardContent className="p-4 text-sm text-orange-900">
+              Paiement annulé. Votre réservation n&apos;a pas été finalisée.
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Colonne gauche - Galerie et informations */}
@@ -283,7 +330,7 @@ export default function OpportuniteDetailsPage() {
                       <h3 className="text-xl font-bold mb-3 text-gray-900">
                         À propos de cette opportunité
                       </h3>
-                      <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: opportunite.resume }} />
+                      <SafeRichText html={opportunite.resume} className="prose max-w-none text-gray-700" />
 
                       {opportunite.lien_infos && (
                         <div className="mt-4">
@@ -448,9 +495,14 @@ export default function OpportuniteDetailsPage() {
                   <Button
                     size="lg"
                     className="w-full bg-[#E63832] hover:bg-[#E63832]/90 text-white font-semibold text-lg py-6"
-                    disabled={opportunite.places_restantes === 0}
+                    disabled={opportunite.places_restantes === 0 || bookingLoading || alreadyBooked}
+                    onClick={handleCheckout}
                   >
-                    {opportunite.places_restantes > 0 ? 'Réserver ma place' : 'Complet'}
+                    {alreadyBooked
+                      ? 'Déjà réservé'
+                      : opportunite.places_restantes > 0
+                      ? (bookingLoading ? 'Redirection vers le paiement...' : 'Réserver ma place')
+                      : 'Complet'}
                   </Button>
 
                   {opportunite.lien_infos && (
@@ -485,6 +537,11 @@ export default function OpportuniteDetailsPage() {
                 {blockError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
                     {blockError}
+                  </div>
+                )}
+                {bookingError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                    {bookingError}
                   </div>
                 )}
 

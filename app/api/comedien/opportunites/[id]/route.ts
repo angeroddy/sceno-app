@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { trackOpportunityView } from '@/app/lib/opportunity-views'
 
 export async function GET(
   request: NextRequest,
@@ -47,7 +49,7 @@ export async function GET(
         { status: 404 }
       )
     }
-    const opportuniteTyped = opportunite as { annonceur_id: string }
+    const opportuniteTyped = opportunite as { annonceur_id: string; places_restantes: number }
 
     // Verifier si l'annonceur de cette opportunite est bloque par le comedien
     const { data: blockedRow, error: blockedError } = await supabase
@@ -69,7 +71,14 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(opportunite)
+    const reconciledOpportunity = await reconcileOpportunityPlaces(supabase as never, id)
+    if (reconciledOpportunity) {
+      opportuniteTyped.places_restantes = reconciledOpportunity.places_restantes
+    }
+
+    await trackOpportunityView(supabase as never, id, comedienTyped.id)
+
+    return NextResponse.json(opportuniteTyped)
   } catch (error) {
     console.error('Erreur serveur:', error)
     return NextResponse.json(

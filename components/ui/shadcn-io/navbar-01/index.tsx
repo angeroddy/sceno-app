@@ -107,7 +107,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
       navigationLinks = defaultNavigationLinks,
       signInText = 'Se connecter',
       signInHref = '/connexion',
-      ctaText = 'Publier une annonce',
+      ctaText = 'Publier une opportunité',
       ctaHref = '/inscription/annonceur',
       onSignInClick,
       onCtaClick,
@@ -123,6 +123,9 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
     const router = useRouter();
     const [isMobile, setIsMobile] = useState(false);
     const containerRef = useRef<HTMLElement>(null);
+    const showAuthenticatedReturnButton =
+      isAuthenticated &&
+      (signInText !== 'Se connecter' || signInHref !== '/connexion');
 
     useEffect(() => {
       const checkWidth = () => {
@@ -280,6 +283,16 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
               </>
             ) : (
               <>
+                {showAuthenticatedReturnButton && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                    onClick={() => router.push(signInHref)}
+                  >
+                    {signInText}
+                  </Button>
+                )}
                 {userType === 'comedian' && (
                   <>
                     <Button

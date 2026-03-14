@@ -14,6 +14,8 @@ import type { OpportunityType, OpportunityModel, Opportunite, Annonceur } from "
 import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LABELS } from "@/app/types"
 import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
+import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
+import { SafeRichText } from "@/components/safe-rich-text"
 
 interface FormData {
   type: OpportunityType | ""
@@ -74,6 +76,7 @@ export default function ModifierOpportunitePage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
+  const [existingOpportunity, setExistingOpportunity] = useState<Opportunite | null>(null)
 
   // Extraire l'ID
   useEffect(() => {
@@ -103,6 +106,7 @@ export default function ModifierOpportunitePage() {
 
       const data = await response.json()
       const opp: Opportunite = data.opportunite
+      setExistingOpportunity(opp)
 
       // Pré-remplir le formulaire
       setFormData({
@@ -392,6 +396,23 @@ export default function ModifierOpportunitePage() {
       const prixBase = parseFloat(formData.prix_base)
       const prixReduit = parseFloat(formData.prix_reduit)
       const reductionPourcentage = ((prixBase - prixReduit) / prixBase) * 100
+      const nextNombrePlaces = parseInt(formData.nombre_places, 10)
+      const reservedPlaces = existingOpportunity
+        ? Math.max(existingOpportunity.nombre_places - existingOpportunity.places_restantes, 0)
+        : 0
+      const nextStatus = existingOpportunity?.statut === 'en_attente'
+        ? 'en_attente'
+        : existingOpportunity?.statut === 'complete' || existingOpportunity?.statut === 'expiree'
+          ? existingOpportunity.statut
+          : 'en_attente'
+
+      if (nextNombrePlaces < reservedPlaces) {
+        setError(`Impossible de définir ${nextNombrePlaces} place(s) car ${reservedPlaces} réservation(s) sont déjà confirmées.`)
+        setLoading(false)
+        return
+      }
+
+      const nextPlacesRestantes = Math.max(nextNombrePlaces - reservedPlaces, 0)
 
       // reduction_pourcentage est une colonne générée par trigger DB — on ne l'envoie pas dans le payload
       const { data: updatedRow, error: updateError } = await supabase
@@ -405,10 +426,12 @@ export default function ModifierOpportunitePage() {
           lien_infos: formData.lien_infos?.trim() || "",
           prix_base: prixBase,
           prix_reduit: prixReduit,
-          nombre_places: parseInt(formData.nombre_places),
+          nombre_places: nextNombrePlaces,
+          places_restantes: nextPlacesRestantes,
           date_evenement: new Date(formData.date_evenement).toISOString(),
           contact_telephone: formData.contact_telephone || null,
           contact_email: formData.contact_email,
+          statut: nextStatus,
         } as unknown as never)
         .eq('id', opportuniteId as string)
         .eq('annonceur_id', annonceur.id)
@@ -503,7 +526,7 @@ export default function ModifierOpportunitePage() {
     ? Math.floor(((previewPrice - previewReducedPrice) / previewPrice) * 100)
     : 0
   const previewPlaces = formData.nombre_places ? Number(formData.nombre_places) : 0
-  const previewResume = formData.resume || "<p>La description apparaîtra ici.</p>"
+  const previewResume = sanitizeOpportunityHtml(formData.resume) || "<p>La description apparaîtra ici.</p>"
 
   const renderPreviewCard = () => (
     <Card className="overflow-hidden">
@@ -614,7 +637,7 @@ export default function ModifierOpportunitePage() {
             <span className="text-2xl font-bold text-gray-900">{previewPrice || 0}€</span>
           )}
         </div>
-        <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: previewResume }} />
+        <SafeRichText html={previewResume} className="prose max-w-none text-gray-700" />
         <div className="flex gap-2 pt-2">
           <Button size="sm" className="bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
           <Button size="sm" variant="outline">
@@ -893,7 +916,7 @@ export default function ModifierOpportunitePage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="date_evenement">Date et heure de l'événement *</Label>
+                  <Label htmlFor="date_evenement">Date et heure de l&apos;événement *</Label>
                   <Input
                     id="date_evenement"
                     type="datetime-local"

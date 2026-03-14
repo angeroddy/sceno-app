@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 
 export async function GET(request: Request) {
   try {
@@ -45,8 +46,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Impossible de récupérer la liste des opportunités' }, { status: 500 })
     }
 
+    const opportunites = await Promise.all(
+      (data || []).map(async (opportunite) => {
+        const currentOpportunity = opportunite as Record<string, unknown> & { id: string }
+        const reconciledOpportunity = await reconcileOpportunityPlaces(
+          supabase as never,
+          currentOpportunity.id
+        )
+
+        if (!reconciledOpportunity) {
+          return currentOpportunity
+        }
+
+        return {
+          ...currentOpportunity,
+          places_restantes: reconciledOpportunity.places_restantes,
+        }
+      })
+    )
+
     return NextResponse.json({
-      opportunites: data,
+      opportunites,
       total: count,
       page,
       limit,

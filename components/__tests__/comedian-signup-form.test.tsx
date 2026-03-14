@@ -48,10 +48,35 @@ describe('ComedianSignupForm', () => {
     },
   }
 
+  const createProfileSelectChain = (data: unknown = null) => ({
+    eq: jest.fn().mockReturnValue({
+      maybeSingle: jest.fn().mockResolvedValue({
+        data,
+        error: null,
+      }),
+    }),
+  })
+
+  const createComedianFromMock = (insertMock?: jest.Mock) =>
+    jest.fn((table: string) => {
+      if (table === 'comediens') {
+        return {
+          select: jest.fn().mockReturnValue(createProfileSelectChain()),
+          insert: insertMock ?? jest.fn(),
+        }
+      }
+
+      return {
+        select: jest.fn().mockReturnValue(createProfileSelectChain()),
+        insert: jest.fn(),
+      }
+    })
+
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
+    mockSupabase.from.mockImplementation(createComedianFromMock())
 
     // window.location.origin is set in jest.setup.ts
   })
@@ -173,7 +198,7 @@ describe('ComedianSignupForm', () => {
       await user.click(nextButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Le nom est obligatoire/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/Le nom est obligatoire/i).length).toBeGreaterThan(0)
       })
     })
 
@@ -187,7 +212,7 @@ describe('ComedianSignupForm', () => {
       await user.click(nextButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Le prénom est obligatoire/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/Le prénom est obligatoire/i).length).toBeGreaterThan(0)
       })
     })
 
@@ -245,7 +270,7 @@ describe('ComedianSignupForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/L'adresse e-mail est obligatoire/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/L'adresse e-mail est obligatoire/i).length).toBeGreaterThan(0)
       })
     })
 
@@ -258,7 +283,7 @@ describe('ComedianSignupForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Veuillez entrer une adresse e-mail valide/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/Veuillez entrer une adresse e-mail valide/i).length).toBeGreaterThan(0)
       })
     })
 
@@ -272,7 +297,7 @@ describe('ComedianSignupForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Le mot de passe doit contenir au moins 8 caractères/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/Le mot de passe doit contenir au moins 8 caractères, avec au moins une lettre et un chiffre/i).length).toBeGreaterThan(0)
       })
     })
 
@@ -280,14 +305,14 @@ describe('ComedianSignupForm', () => {
       const user = await navigateToStep3()
 
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password123')
       await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password456')
 
       const submitButton = screen.getByRole('button', { name: /Créer mon compte/i })
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Les mots de passe ne correspondent pas/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/Les mots de passe ne correspondent pas/i).length).toBeGreaterThan(0)
       })
     })
 
@@ -295,14 +320,14 @@ describe('ComedianSignupForm', () => {
       const user = await navigateToStep3()
 
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
-      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password123')
+      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password123')
 
       const submitButton = screen.getByRole('button', { name: /Créer mon compte/i })
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Vous devez accepter les conditions générales/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/Vous devez accepter les conditions générales/i).length).toBeGreaterThan(0)
       })
     })
   })
@@ -319,14 +344,16 @@ describe('ComedianSignupForm', () => {
         error: null,
       })
 
-      mockSupabase.from.mockReturnValue({
-        insert: jest.fn().mockReturnValue({
-          select: jest.fn().mockResolvedValue({
-            data: [{ id: 1, auth_user_id: 'test-user-id' }],
-            error: null,
-          }),
-        }),
-      })
+      mockSupabase.from.mockImplementation(
+        createComedianFromMock(
+          jest.fn().mockReturnValue({
+            select: jest.fn().mockResolvedValue({
+              data: [{ id: 1, auth_user_id: 'test-user-id' }],
+              error: null,
+            }),
+          })
+        )
+      )
 
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
@@ -350,9 +377,14 @@ describe('ComedianSignupForm', () => {
         expect(screen.getByLabelText(/Adresse e-mail/i)).toBeInTheDocument()
       })
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
-      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password1234!')
+      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password1234!')
       await user.click(screen.getByLabelText(/J'accepte les conditions/i))
+
+      expect(screen.getByText(/Votre mot de passe doit inclure/i)).toBeInTheDocument()
+      expect(screen.getByText(/Au moins 8 caractères/i)).toBeInTheDocument()
+      expect(screen.getByText(/Au moins une lettre/i)).toBeInTheDocument()
+      expect(screen.getByText(/Au moins un chiffre/i)).toBeInTheDocument()
 
       const submitButton = screen.getByRole('button', { name: /Créer mon compte/i })
       await user.click(submitButton)
@@ -360,7 +392,7 @@ describe('ComedianSignupForm', () => {
       await waitFor(() => {
         expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password1234!',
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
@@ -397,8 +429,8 @@ describe('ComedianSignupForm', () => {
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
-      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password123')
+      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password123')
       await user.click(screen.getByLabelText(/J'accepte les conditions/i))
 
       const submitButton = screen.getByRole('button', { name: /Créer mon compte/i })
@@ -430,8 +462,8 @@ describe('ComedianSignupForm', () => {
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
-      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password123')
+      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password123')
       await user.click(screen.getByLabelText(/J'accepte les conditions/i))
 
       const submitButton = screen.getByRole('button', { name: /Créer mon compte/i })
@@ -460,9 +492,7 @@ describe('ComedianSignupForm', () => {
         }),
       })
 
-      mockSupabase.from.mockReturnValue({
-        insert: mockInsert,
-      })
+      mockSupabase.from.mockImplementation(createComedianFromMock(mockInsert))
 
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
@@ -481,8 +511,8 @@ describe('ComedianSignupForm', () => {
 
       await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
-      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password123')
+      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password123')
       await user.click(screen.getByLabelText(/J'accepte les conditions/i))
 
       await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))

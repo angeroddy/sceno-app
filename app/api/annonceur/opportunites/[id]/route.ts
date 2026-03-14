@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { countOpportunityViews } from '@/app/lib/opportunity-views'
 import { Annonceur, Achat } from '@/app/types'
 
 export async function GET(
@@ -38,8 +40,6 @@ export async function GET(
     // Récupérer les paramètres
     const { id } = await context.params
 
-    console.log('Récupération de l\'opportunité avec ID:', id)
-
     // Récupérer l'opportunité (doit appartenir à cet annonceur)
     const { data: opportunite, error: opportuniteError } = await supabase
       .from('opportunites')
@@ -63,19 +63,29 @@ export async function GET(
       )
     }
 
+    const reconciledOpportunity = await reconcileOpportunityPlaces(supabase as never, id)
+    if (reconciledOpportunity) {
+      ;(opportunite as { places_restantes: number }).places_restantes = reconciledOpportunity.places_restantes
+    }
+
     // Récupérer les statistiques de l'opportunité
     const { data: achatsData } = await supabase
       .from('achats')
-      .select('prix_paye')
+      .select('prix_paye, application_fee_amount')
       .eq('opportunite_id', id)
       .eq('statut', 'confirmee')
 
-    const achats = achatsData as Pick<Achat, 'prix_paye'>[] | null
+    const achats = achatsData as Pick<Achat, 'prix_paye' | 'application_fee_amount'>[] | null
+
+    const vues = await countOpportunityViews(supabase as never, id)
 
     const stats = {
-      vues: 0, // À implémenter avec un système de tracking
+      vues,
       reservations: achats?.length || 0,
-      revenu: achats?.reduce((sum, achat) => sum + achat.prix_paye, 0) || 0
+      revenu: achats?.reduce(
+        (sum, achat) => sum + achat.prix_paye - ((achat.application_fee_amount || 0) / 100),
+        0
+      ) || 0
     }
 
     return NextResponse.json({

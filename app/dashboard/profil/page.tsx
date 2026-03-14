@@ -23,7 +23,6 @@ interface ComedienProfile {
 export default function ProfilPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const supabase = createBrowserSupabaseClient();
 
   // États pour le profil
   const [profile, setProfile] = useState({
@@ -47,6 +46,7 @@ export default function ProfilPage() {
       if (!user) return;
 
       try {
+        const supabase = createBrowserSupabaseClient();
         const { data, error } = await supabase
           .from('comediens')
           .select('*')
@@ -76,7 +76,7 @@ export default function ProfilPage() {
     };
 
     loadProfile();
-  }, [user, supabase]);
+  }, [user]);
 
   // Gérer le changement de photo
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +100,7 @@ export default function ProfilPage() {
     setSuccess(false);
 
     try {
+      const supabase = createBrowserSupabaseClient();
       let photoUrl = profile.photoUrl;
 
       // Upload de la nouvelle photo si présente

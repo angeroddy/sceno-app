@@ -32,6 +32,8 @@ import {
   XCircle
 } from "lucide-react"
 import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
+import { SafeRichText } from "@/components/safe-rich-text"
+import { AppModal } from "@/components/ui/app-modal"
 
 export default function AdminOpportuniteDetailsPage() {
   const params = useParams()
@@ -42,6 +44,17 @@ export default function AdminOpportuniteDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   const [mainImage, setMainImage] = useState<string | null>(null)
   const [opportuniteId, setOpportuniteId] = useState<string | null>(null)
+  const [feedbackModal, setFeedbackModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    tone: "success" | "error"
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    tone: "success",
+  })
   const [stats, setStats] = useState({
     vues: 0,
     reservations: 0,
@@ -96,12 +109,13 @@ export default function AdminOpportuniteDetailsPage() {
 
     try {
       setValidating(true)
-      const newStatus = action === 'valider' ? 'validee' : 'refusee'
-
-      const response = await fetch(`/api/admin/opportunites/${opportuniteId}/statut`, {
-        method: 'PATCH',
+      const response = await fetch('/api/admin/opportunites/validate', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statut: newStatus })
+        body: JSON.stringify({
+          opportuniteId,
+          action,
+        })
       })
 
       if (!response.ok) {
@@ -111,10 +125,20 @@ export default function AdminOpportuniteDetailsPage() {
 
       // Rafraîchir les données
       await fetchOpportuniteDetails()
-      alert(`Opportunité ${action === 'valider' ? 'validée' : 'refusée'} avec succès`)
+      setFeedbackModal({
+        open: true,
+        title: `Opportunité ${action === 'valider' ? 'validée' : 'refusée'}`,
+        description: `Le statut de “${opportunite?.titre || "cette opportunité"}” a bien été mis à jour.`,
+        tone: "success",
+      })
     } catch (err) {
       console.error(err)
-      alert(err instanceof Error ? err.message : "Une erreur s'est produite lors de la validation")
+      setFeedbackModal({
+        open: true,
+        title: "Validation impossible",
+        description: err instanceof Error ? err.message : "Une erreur s'est produite lors de la validation.",
+        tone: "error",
+      })
     } finally {
       setValidating(false)
     }
@@ -356,7 +380,7 @@ export default function AdminOpportuniteDetailsPage() {
                       <h3 className="text-xl font-bold mb-4 text-gray-900">
                         Description de l&apos;opportunité
                       </h3>
-                      <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: opportunite.resume }} />
+                      <SafeRichText html={opportunite.resume} className="prose max-w-none text-gray-700" />
                     </div>
 
                     {opportunite.lien_infos && (
@@ -522,7 +546,7 @@ export default function AdminOpportuniteDetailsPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Calendar className="w-5 h-5 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">Date de l'événement</p>
+                      <p className="text-xs text-gray-500">Date de l&apos;événement</p>
                       <span className="text-gray-700 font-medium">{dateFormatted}</span>
                     </div>
                   </div>
@@ -655,6 +679,14 @@ export default function AdminOpportuniteDetailsPage() {
           </div>
         </div>
       </div>
+
+      <AppModal
+        open={feedbackModal.open}
+        onClose={() => setFeedbackModal((prev) => ({ ...prev, open: false }))}
+        title={feedbackModal.title}
+        description={feedbackModal.description}
+        tone={feedbackModal.tone}
+      />
     </div>
   )
 }

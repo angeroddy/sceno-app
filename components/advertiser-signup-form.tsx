@@ -6,28 +6,77 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordStrengthPanel } from "@/components/ui/password-strength-panel"
 import { Stepper } from "@/components/ui/stepper"
-import { Loader2, Building2, User } from "lucide-react"
+import { AlertCircle, Building2, CheckCircle2, User } from "lucide-react"
 import {
   Field,
+  FieldError,
   FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type {
+  Database,
   TypeJuridique,
   InscriptionAnnonceurForm
 } from "@/app/types"
 import {
   TYPE_JURIDIQUE_LABELS
 } from "@/app/types"
+import {
+  getAgeFromDate,
+  isStrongEnoughPassword,
+  isValidBic,
+  isValidEmail,
+  isValidFrenchBusinessId,
+  isValidIban,
+  isValidPhone,
+  isValidPostalCode,
+  normalizeBic,
+  normalizeDigits,
+  normalizeEmail,
+  normalizeIban,
+  normalizeText,
+} from "@/app/lib/signup-validation"
+import { getDemoAdvertiserData, isDevMode } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = [
   "Type de compte",
   "Informations",
   "Compte et paiement"
 ]
+
+type AdvertiserField =
+  | "type_annonceur"
+  | "nom"
+  | "prenom"
+  | "date_naissance"
+  | "adresse_rue"
+  | "adresse_code_postal"
+  | "adresse_ville"
+  | "telephone"
+  | "nom_formation"
+  | "nom_entreprise"
+  | "type_juridique"
+  | "numero_legal"
+  | "siege_rue"
+  | "siege_code_postal"
+  | "siege_ville"
+  | "representant_nom"
+  | "representant_prenom"
+  | "representant_date_naissance"
+  | "representant_adresse_rue"
+  | "representant_adresse_code_postal"
+  | "representant_adresse_ville"
+  | "email"
+  | "password"
+  | "iban"
+  | "nom_titulaire_compte"
+  | "bic_swift"
+
+type AdvertiserErrors = Partial<Record<AdvertiserField, string>>
 
 export function AdvertiserSignupForm({
   className,
@@ -43,193 +92,221 @@ export function AdvertiserSignupForm({
     representant_adresse_pays: 'France',
   })
   const [error, setError] = useState<string>("")
+  const [fieldErrors, setFieldErrors] = useState<AdvertiserErrors>({})
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<AdvertiserField, boolean>>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
   const updateFormData = (updates: Partial<InscriptionAnnonceurForm>) => {
-    setFormData(prev => ({ ...prev, ...updates }))
+    setFormData(prev => {
+      const next = { ...prev, ...updates }
+      setFieldErrors(getAdvertiserErrors(next))
+      return next
+    })
     setError("")
   }
+
+  const markTouched = (field: AdvertiserField) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }))
+  }
+
+  const getAdvertiserErrors = (data: Partial<InscriptionAnnonceurForm>): AdvertiserErrors => {
+    const errors: AdvertiserErrors = {}
+
+    if (!data.type_annonceur) {
+      errors.type_annonceur = "Veuillez sélectionner un type de compte"
+    }
+
+    if (data.type_annonceur === 'personne_physique') {
+      if (!normalizeText(data.nom)) errors.nom = "Le nom est obligatoire"
+      if (!normalizeText(data.prenom)) errors.prenom = "Le prénom est obligatoire"
+
+      if (!data.date_naissance) {
+        errors.date_naissance = "La date de naissance est obligatoire"
+      } else {
+        const age = getAgeFromDate(data.date_naissance)
+        if (age === null) {
+          errors.date_naissance = "La date de naissance n'est pas valide"
+        } else if (age < 18) {
+          errors.date_naissance = "Vous devez avoir au moins 18 ans pour vous inscrire"
+        }
+      }
+
+      if (!normalizeText(data.adresse_rue)) errors.adresse_rue = "L'adresse est obligatoire"
+      if (!normalizeText(data.adresse_ville)) errors.adresse_ville = "La ville est obligatoire"
+
+      if (!normalizeText(data.adresse_code_postal)) {
+        errors.adresse_code_postal = "Le code postal est obligatoire"
+      } else if (!isValidPostalCode(data.adresse_code_postal, data.adresse_pays || 'France')) {
+        errors.adresse_code_postal = "Le code postal n'est pas valide pour ce pays"
+      }
+
+      if (!normalizeText(data.telephone)) {
+        errors.telephone = "Le numéro de téléphone est obligatoire"
+      } else if (!isValidPhone(data.telephone)) {
+        errors.telephone = "Le numéro de téléphone n'est pas valide"
+      }
+    }
+
+    if (data.type_annonceur === 'entreprise') {
+      if (!normalizeText(data.nom_formation)) errors.nom_formation = "Le nom de l'organisme est obligatoire"
+      if (!normalizeText(data.nom_entreprise)) errors.nom_entreprise = "Le nom de l'entreprise est obligatoire"
+      if (!data.type_juridique) errors.type_juridique = "Veuillez sélectionner le statut juridique"
+
+      if (!normalizeText(data.numero_legal)) {
+        errors.numero_legal = "Le numéro SIREN/SIRET est obligatoire"
+      } else if ((data.pays_entreprise || 'France') === 'France' && !isValidFrenchBusinessId(data.numero_legal)) {
+        errors.numero_legal = "Le numéro SIREN doit contenir 9 chiffres, le SIRET 14"
+      }
+
+      if (!normalizeText(data.siege_rue)) errors.siege_rue = "L'adresse du siège social est obligatoire"
+      if (!normalizeText(data.siege_ville)) errors.siege_ville = "La ville du siège social est obligatoire"
+
+      if (!normalizeText(data.siege_code_postal)) {
+        errors.siege_code_postal = "Le code postal du siège social est obligatoire"
+      } else if (!isValidPostalCode(data.siege_code_postal, data.siege_pays || data.pays_entreprise || 'France')) {
+        errors.siege_code_postal = "Le code postal du siège social n'est pas valide"
+      }
+
+      if (!normalizeText(data.telephone)) {
+        errors.telephone = "Le numéro de téléphone est obligatoire"
+      } else if (!isValidPhone(data.telephone)) {
+        errors.telephone = "Le numéro de téléphone n'est pas valide"
+      }
+
+      if (!normalizeText(data.representant_nom)) errors.representant_nom = "Le nom du représentant légal est obligatoire"
+      if (!normalizeText(data.representant_prenom)) errors.representant_prenom = "Le prénom du représentant légal est obligatoire"
+
+      if (!data.representant_date_naissance) {
+        errors.representant_date_naissance = "La date de naissance du représentant légal est obligatoire"
+      } else {
+        const age = getAgeFromDate(data.representant_date_naissance)
+        if (age === null) {
+          errors.representant_date_naissance = "La date de naissance du représentant légal n'est pas valide"
+        } else if (age < 18) {
+          errors.representant_date_naissance = "Le représentant légal doit avoir au moins 18 ans"
+        }
+      }
+
+      if (!normalizeText(data.representant_adresse_rue)) errors.representant_adresse_rue = "L'adresse du représentant légal est obligatoire"
+      if (!normalizeText(data.representant_adresse_ville)) errors.representant_adresse_ville = "La ville du représentant légal est obligatoire"
+
+      if (!normalizeText(data.representant_adresse_code_postal)) {
+        errors.representant_adresse_code_postal = "Le code postal du représentant légal est obligatoire"
+      } else if (!isValidPostalCode(
+        data.representant_adresse_code_postal,
+        data.representant_adresse_pays || data.siege_pays || data.pays_entreprise || 'France'
+      )) {
+        errors.representant_adresse_code_postal = "Le code postal du représentant légal n'est pas valide"
+      }
+    }
+
+    if (!normalizeText(data.email)) {
+      errors.email = "L'adresse e-mail est obligatoire"
+    } else if (!isValidEmail(data.email)) {
+      errors.email = "Veuillez entrer une adresse e-mail valide"
+    }
+
+    if (!data.password) {
+      errors.password = "Le mot de passe est obligatoire"
+    } else if (!isStrongEnoughPassword(data.password)) {
+      errors.password = "Le mot de passe doit contenir au moins 8 caractères, avec au moins une lettre et un chiffre"
+    }
+
+    if (!normalizeText(data.iban)) {
+      errors.iban = "L'IBAN est obligatoire"
+    } else if (!isValidIban(data.iban)) {
+      errors.iban = "Le format de l'IBAN n'est pas valide"
+    }
+
+    if (!normalizeText(data.nom_titulaire_compte)) {
+      errors.nom_titulaire_compte = "Le nom du titulaire du compte est obligatoire"
+    }
+
+    if (!normalizeText(data.bic_swift)) {
+      errors.bic_swift = "Le code BIC/SWIFT est obligatoire"
+    } else if (!isValidBic(data.bic_swift)) {
+      errors.bic_swift = "Le format du code BIC/SWIFT n'est pas valide"
+    }
+
+    return errors
+  }
+
+  const getCurrentStepFields = (): AdvertiserField[] => {
+    if (currentStep === 1) return ["type_annonceur"]
+    if (currentStep === 2 && formData.type_annonceur === 'personne_physique') {
+      return ["nom", "prenom", "date_naissance", "adresse_rue", "adresse_code_postal", "adresse_ville", "telephone"]
+    }
+    if (currentStep === 2 && formData.type_annonceur === 'entreprise') {
+      return [
+        "nom_formation",
+        "nom_entreprise",
+        "type_juridique",
+        "numero_legal",
+        "siege_rue",
+        "siege_code_postal",
+        "siege_ville",
+        "telephone",
+        "representant_nom",
+        "representant_prenom",
+        "representant_date_naissance",
+        "representant_adresse_rue",
+        "representant_adresse_code_postal",
+        "representant_adresse_ville",
+      ]
+    }
+    return ["email", "password", "nom_titulaire_compte", "iban", "bic_swift"]
+  }
+
+  const getCurrentStepErrorMessages = (): string[] => {
+    const errors = getAdvertiserErrors(formData)
+    return getCurrentStepFields()
+      .map((field) => errors[field])
+      .filter((message): message is string => Boolean(message))
+  }
+
+  const showFieldError = (field: AdvertiserField) => Boolean(touchedFields[field] && fieldErrors[field])
+  const currentStepErrors = getCurrentStepErrorMessages()
+  const currentStepIsValid = currentStepErrors.length === 0
+  const getFieldClassName = (field: AdvertiserField) =>
+    cn(showFieldError(field) && "border-red-500 focus-visible:ring-red-200")
 
   // ============================================
   // VALIDATION PAR ÉTAPE
   // ============================================
 
   const validateStep1 = (): boolean => {
-    if (!formData.type_annonceur) {
-      setError("Veuillez sélectionner un type de compte")
-      return false
-    }
-    return true
+    const nextErrors = getAdvertiserErrors(formData)
+    setFieldErrors(nextErrors)
+    markTouched("type_annonceur")
+    setError("")
+    return !nextErrors.type_annonceur
   }
 
   const validateStep2 = (): boolean => {
-    if (formData.type_annonceur === 'personne_physique') {
-      // Validation personne physique
-      if (!formData.nom?.trim()) {
-        setError("Le nom est obligatoire")
-        return false
-      }
-      if (!formData.prenom?.trim()) {
-        setError("Le prénom est obligatoire")
-        return false
-      }
-      if (!formData.date_naissance) {
-        setError("La date de naissance est obligatoire")
-        return false
-      }
-      // Vérifier que la personne a au moins 18 ans
-      const birthDate = new Date(formData.date_naissance)
-      const today = new Date()
-      const age = today.getFullYear() - birthDate.getFullYear()
-      const monthDiff = today.getMonth() - birthDate.getMonth()
-      if (age < 18 || (age === 18 && monthDiff < 0)) {
-        setError("Vous devez avoir au moins 18 ans pour vous inscrire")
-        return false
-      }
-      if (!formData.adresse_rue?.trim()) {
-        setError("L'adresse est obligatoire")
-        return false
-      }
-      if (!formData.adresse_ville?.trim()) {
-        setError("La ville est obligatoire")
-        return false
-      }
-      if (!formData.adresse_code_postal?.trim()) {
-        setError("Le code postal est obligatoire")
-        return false
-      }
-      if (!formData.telephone?.trim()) {
-        setError("Le numéro de téléphone est obligatoire")
-        return false
-      }
-    } else if (formData.type_annonceur === 'entreprise') {
-      // Validation entreprise
-      if (!formData.nom_formation?.trim()) {
-        setError("Le nom de l'organisme est obligatoire")
-        return false
-      }
-      if (!formData.nom_entreprise?.trim()) {
-        setError("Le nom de l'entreprise est obligatoire")
-        return false
-      }
-      if (!formData.type_juridique) {
-        setError("Veuillez sélectionner le statut juridique")
-        return false
-      }
-      if (!formData.numero_legal?.trim()) {
-        setError("Le numéro SIREN/SIRET est obligatoire")
-        return false
-      }
-      // Validation basique du SIREN (9 chiffres)
-      if (formData.pays_entreprise === 'France') {
-        const sirenRegex = /^\d{9}(\d{5})?$/
-        if (!sirenRegex.test(formData.numero_legal.replace(/\s/g, ''))) {
-          setError("Le numéro SIREN doit contenir 9 chiffres (ou SIRET 14 chiffres)")
-          return false
-        }
-      }
-      if (!formData.siege_rue?.trim()) {
-        setError("L'adresse du siège social est obligatoire")
-        return false
-      }
-      if (!formData.siege_ville?.trim()) {
-        setError("La ville du siège social est obligatoire")
-        return false
-      }
-      if (!formData.siege_code_postal?.trim()) {
-        setError("Le code postal du siège social est obligatoire")
-        return false
-      }
-      if (!formData.telephone?.trim()) {
-        setError("Le numéro de téléphone est obligatoire")
-        return false
-      }
-
-      // Validation représentant légal
-      if (!formData.representant_nom?.trim()) {
-        setError("Le nom du représentant légal est obligatoire")
-        return false
-      }
-      if (!formData.representant_prenom?.trim()) {
-        setError("Le prénom du représentant légal est obligatoire")
-        return false
-      }
-      if (!formData.representant_date_naissance) {
-        setError("La date de naissance du représentant légal est obligatoire")
-        return false
-      }
-      // Vérifier que le représentant a au moins 18 ans
-      const repBirthDate = new Date(formData.representant_date_naissance)
-      const today = new Date()
-      const repAge = today.getFullYear() - repBirthDate.getFullYear()
-      const repMonthDiff = today.getMonth() - repBirthDate.getMonth()
-      if (repAge < 18 || (repAge === 18 && repMonthDiff < 0)) {
-        setError("Le représentant légal doit avoir au moins 18 ans")
-        return false
-      }
-      if (!formData.representant_adresse_rue?.trim()) {
-        setError("L'adresse du représentant légal est obligatoire")
-        return false
-      }
-      if (!formData.representant_adresse_ville?.trim()) {
-        setError("La ville du représentant légal est obligatoire")
-        return false
-      }
-      if (!formData.representant_adresse_code_postal?.trim()) {
-        setError("Le code postal du représentant légal est obligatoire")
-        return false
-      }
-    }
-    return true
+    const nextErrors = getAdvertiserErrors(formData)
+    setFieldErrors(nextErrors)
+    setTouchedFields((prev) => {
+      const next = { ...prev }
+      for (const field of getCurrentStepFields()) next[field] = true
+      return next
+    })
+    const firstError = getCurrentStepFields().map((field) => nextErrors[field]).find(Boolean)
+    setError("")
+    return !firstError
   }
 
   const validateStep3 = (): boolean => {
-    if (!formData.email?.trim()) {
-      setError("L'adresse e-mail est obligatoire")
-      return false
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      setError("Veuillez entrer une adresse e-mail valide")
-      return false
-    }
-    if (!formData.password) {
-      setError("Le mot de passe est obligatoire")
-      return false
-    }
-    if (formData.password.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères")
-      return false
-    }
-    if (!formData.iban?.trim()) {
-      setError("L'IBAN est obligatoire")
-      return false
-    }
-    const ibanRegex = /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/
-    if (!ibanRegex.test(formData.iban.replace(/\s/g, ''))) {
-      setError("Le format de l'IBAN n'est pas valide")
-      return false
-    }
-    const ibanClean = formData.iban.replace(/\s/g, '')
-    if (ibanClean.length < 15 || ibanClean.length > 34) {
-      setError("L'IBAN doit contenir entre 15 et 34 caractères")
-      return false
-    }
-    if (!formData.nom_titulaire_compte?.trim()) {
-      setError("Le nom du titulaire du compte est obligatoire")
-      return false
-    }
-    if (!formData.bic_swift?.trim()) {
-      setError("Le code BIC/SWIFT est obligatoire")
-      return false
-    }
-    const bicRegex = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/
-    if (!bicRegex.test(formData.bic_swift)) {
-      setError("Le format du code BIC/SWIFT n'est pas valide")
-      return false
-    }
-    return true
+    const nextErrors = getAdvertiserErrors(formData)
+    setFieldErrors(nextErrors)
+    setTouchedFields((prev) => {
+      const next = { ...prev }
+      for (const field of getCurrentStepFields()) next[field] = true
+      return next
+    })
+    const firstError = getCurrentStepFields().map((field) => nextErrors[field]).find(Boolean)
+    setError("")
+    return !firstError
   }
 
   // ============================================
@@ -276,6 +353,22 @@ export function AdvertiserSignupForm({
     return "Une erreur s'est produite lors de l'inscription. Veuillez réessayer"
   }
 
+  const checkExistingAdvertiserProfile = async (email: string): Promise<boolean> => {
+    const supabase = createBrowserSupabaseClient()
+    const { data, error } = await supabase
+      .from('annonceurs')
+      .select('id')
+      .eq('email', normalizeEmail(email))
+      .maybeSingle()
+
+    if (error) {
+      console.warn('Pré-vérification annonceur impossible:', error)
+      return false
+    }
+
+    return Boolean(data)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -285,10 +378,18 @@ export function AdvertiserSignupForm({
 
       try {
         const supabase = createBrowserSupabaseClient()
+        const normalizedEmail = normalizeEmail(formData.email)
+
+        const profileAlreadyExists = await checkExistingAdvertiserProfile(normalizedEmail)
+        if (profileAlreadyExists) {
+          setError("Un compte existe déjà avec cet email")
+          setIsLoading(false)
+          return
+        }
 
         // 1. Créer l'utilisateur dans Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email!,
+          email: normalizedEmail,
           password: formData.password!,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -308,49 +409,76 @@ export function AdvertiserSignupForm({
           return
         }
 
-        const profileData: any = {
+        const profileData: Database["public"]["Tables"]["annonceurs"]["Insert"] = {
           auth_user_id: authData.user.id,
-          email: formData.email,
-          type_annonceur: formData.type_annonceur,
-          telephone: formData.telephone,
-          iban: formData.iban!.replace(/\s/g, ''),
-          nom_titulaire_compte: formData.nom_titulaire_compte,
-          bic_swift: formData.bic_swift,
+          email: normalizedEmail,
+          type_annonceur: formData.type_annonceur!,
+          telephone: normalizeText(formData.telephone) || null,
+          iban: normalizeIban(formData.iban),
+          nom_titulaire_compte: normalizeText(formData.nom_titulaire_compte),
+          bic_swift: normalizeBic(formData.bic_swift),
+          nom_formation: '',
+          nom: null,
+          prenom: null,
+          date_naissance: null,
+          adresse_rue: null,
+          adresse_ville: null,
+          adresse_code_postal: null,
+          adresse_pays: null,
+          type_piece_identite: null,
+          piece_identite_url: null,
+          nom_entreprise: null,
+          type_juridique: null,
+          pays_entreprise: null,
+          numero_legal: null,
+          siege_rue: null,
+          siege_ville: null,
+          siege_code_postal: null,
+          siege_pays: null,
+          representant_nom: null,
+          representant_prenom: null,
+          representant_date_naissance: null,
+          representant_adresse_rue: null,
+          representant_adresse_ville: null,
+          representant_adresse_code_postal: null,
+          representant_adresse_pays: null,
+          representant_piece_identite_url: null,
+          representant_type_piece_identite: null,
         }
 
         if (formData.type_annonceur === 'personne_physique') {
           // Ajouter les champs personne physique
-          profileData.nom = formData.nom
-          profileData.prenom = formData.prenom
-          profileData.date_naissance = formData.date_naissance
-          profileData.adresse_rue = formData.adresse_rue
-          profileData.adresse_ville = formData.adresse_ville
-          profileData.adresse_code_postal = formData.adresse_code_postal
+          profileData.nom = normalizeText(formData.nom) || null
+          profileData.prenom = normalizeText(formData.prenom) || null
+          profileData.date_naissance = formData.date_naissance || null
+          profileData.adresse_rue = normalizeText(formData.adresse_rue) || null
+          profileData.adresse_ville = normalizeText(formData.adresse_ville) || null
+          profileData.adresse_code_postal = normalizeText(formData.adresse_code_postal) || null
           profileData.adresse_pays = formData.adresse_pays || 'France'
-          profileData.nom_formation = `${formData.prenom} ${formData.nom}` // Nom d'affichage par défaut
+          profileData.nom_formation = `${normalizeText(formData.prenom)} ${normalizeText(formData.nom)}`.trim()
         } else if (formData.type_annonceur === 'entreprise') {
           // Ajouter les champs entreprise
-          profileData.nom_formation = formData.nom_formation
-          profileData.nom_entreprise = formData.nom_entreprise
-          profileData.type_juridique = formData.type_juridique
+          profileData.nom_formation = normalizeText(formData.nom_formation)
+          profileData.nom_entreprise = normalizeText(formData.nom_entreprise) || null
+          profileData.type_juridique = formData.type_juridique || null
           profileData.pays_entreprise = formData.pays_entreprise || 'France'
-          profileData.numero_legal = formData.numero_legal
-          profileData.siege_rue = formData.siege_rue
-          profileData.siege_ville = formData.siege_ville
-          profileData.siege_code_postal = formData.siege_code_postal
+          profileData.numero_legal = normalizeDigits(formData.numero_legal) || null
+          profileData.siege_rue = normalizeText(formData.siege_rue) || null
+          profileData.siege_ville = normalizeText(formData.siege_ville) || null
+          profileData.siege_code_postal = normalizeText(formData.siege_code_postal) || null
           profileData.siege_pays = formData.siege_pays || 'France'
-          profileData.representant_nom = formData.representant_nom
-          profileData.representant_prenom = formData.representant_prenom
-          profileData.representant_date_naissance = formData.representant_date_naissance
-          profileData.representant_adresse_rue = formData.representant_adresse_rue
-          profileData.representant_adresse_ville = formData.representant_adresse_ville
-          profileData.representant_adresse_code_postal = formData.representant_adresse_code_postal
+          profileData.representant_nom = normalizeText(formData.representant_nom) || null
+          profileData.representant_prenom = normalizeText(formData.representant_prenom) || null
+          profileData.representant_date_naissance = formData.representant_date_naissance || null
+          profileData.representant_adresse_rue = normalizeText(formData.representant_adresse_rue) || null
+          profileData.representant_adresse_ville = normalizeText(formData.representant_adresse_ville) || null
+          profileData.representant_adresse_code_postal = normalizeText(formData.representant_adresse_code_postal) || null
           profileData.representant_adresse_pays = formData.representant_adresse_pays || 'France'
         }
 
         const { error: profileError } = await supabase
           .from('annonceurs')
-          .insert(profileData)
+          .insert(profileData as unknown as never)
 
         if (profileError) {
           console.error('Erreur lors de la création du profil:', profileError)
@@ -358,13 +486,20 @@ export function AdvertiserSignupForm({
               profileError.message.toLowerCase().includes('unique')) {
             setError("Un compte existe déjà avec cet email")
           } else {
-            setError("Une erreur s'est produite lors de la création du profil. Veuillez réessayer")
+            setError("Le compte a été créé côté authentification, mais le profil annonceur n'a pas pu être finalisé. Contactez le support avant de réessayer.")
           }
           setIsLoading(false)
           return
         }
 
         // 3. Succès !
+        // 2bis. Tenter d'initialiser Stripe Connect (non bloquant si session non active).
+        try {
+          await fetch('/api/stripe/connect/account', { method: 'POST' })
+        } catch (stripeInitError) {
+          console.warn('Initialisation Stripe Connect ignorée:', stripeInitError)
+        }
+
         setIsSuccess(true)
         setIsLoading(false)
 
@@ -381,12 +516,32 @@ export function AdvertiserSignupForm({
     }
   }
 
+  const fillWithDevData = () => {
+    if (!isDevMode) {
+      return
+    }
+
+    const fixture = getDemoAdvertiserData(formData.type_annonceur)
+    const nextFormData = {
+      ...formData,
+      ...fixture,
+      email: formData.email || "",
+      password: formData.password || "",
+    }
+
+    setFormData(nextFormData)
+    setFieldErrors(getAdvertiserErrors(nextFormData))
+    setTouchedFields({})
+    setError("")
+    setCurrentStep(3)
+  }
+
   // ============================================
   // RENDER
   // ============================================
 
   return (
-    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} noValidate {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-4 text-center mb-6">
           <h1 className="text-2xl font-bold">Inscription Annonceur</h1>
@@ -395,8 +550,44 @@ export function AdvertiserSignupForm({
           </p>
         </div>
 
+        {!isSuccess && isDevMode && (
+          <div className="self-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={fillWithDevData}
+              disabled={isLoading}
+              className="text-xs h-8"
+            >
+              Remplir des données test
+            </Button>
+          </div>
+        )}
+
         {/* Stepper */}
         <Stepper steps={STEPS} currentStep={currentStep} className="mb-8" />
+
+        {!isSuccess && currentStep > 1 && (
+          <div
+            className={cn(
+              "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
+              currentStepIsValid
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-900"
+            )}
+          >
+            {currentStepIsValid ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <div>
+              {currentStepIsValid
+                ? "Tous les champs de cette étape sont valides."
+                : `${currentStepErrors.length} champ${currentStepErrors.length > 1 ? "s" : ""} à corriger avant de continuer.`}
+            </div>
+          </div>
+        )}
 
         {/* ÉTAPE 1 : TYPE DE COMPTE */}
         {currentStep === 1 && !isSuccess && (
@@ -513,8 +704,12 @@ export function AdvertiserSignupForm({
                   placeholder="Dupont"
                   value={formData.nom || ''}
                   onChange={(e) => updateFormData({ nom: e.target.value })}
+                  onBlur={() => markTouched("nom")}
+                  aria-invalid={showFieldError("nom")}
+                  className={getFieldClassName("nom")}
                   required
                 />
+                {showFieldError("nom") && <FieldError>{fieldErrors.nom}</FieldError>}
               </Field>
 
               <Field>
@@ -525,8 +720,12 @@ export function AdvertiserSignupForm({
                   placeholder="Jean"
                   value={formData.prenom || ''}
                   onChange={(e) => updateFormData({ prenom: e.target.value })}
+                  onBlur={() => markTouched("prenom")}
+                  aria-invalid={showFieldError("prenom")}
+                  className={getFieldClassName("prenom")}
                   required
                 />
+                {showFieldError("prenom") && <FieldError>{fieldErrors.prenom}</FieldError>}
               </Field>
             </div>
 
@@ -537,9 +736,13 @@ export function AdvertiserSignupForm({
                 type="date"
                 value={formData.date_naissance || ''}
                 onChange={(e) => updateFormData({ date_naissance: e.target.value })}
+                onBlur={() => markTouched("date_naissance")}
                 max={new Date().toISOString().split('T')[0]}
+                aria-invalid={showFieldError("date_naissance")}
+                className={getFieldClassName("date_naissance")}
                 required
               />
+              {showFieldError("date_naissance") && <FieldError>{fieldErrors.date_naissance}</FieldError>}
               <FieldDescription>Vous devez avoir au moins 18 ans</FieldDescription>
             </Field>
 
@@ -551,8 +754,12 @@ export function AdvertiserSignupForm({
                 placeholder="123 rue de la République"
                 value={formData.adresse_rue || ''}
                 onChange={(e) => updateFormData({ adresse_rue: e.target.value })}
+                onBlur={() => markTouched("adresse_rue")}
+                aria-invalid={showFieldError("adresse_rue")}
+                className={getFieldClassName("adresse_rue")}
                 required
               />
+              {showFieldError("adresse_rue") && <FieldError>{fieldErrors.adresse_rue}</FieldError>}
             </Field>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -564,8 +771,12 @@ export function AdvertiserSignupForm({
                   placeholder="75001"
                   value={formData.adresse_code_postal || ''}
                   onChange={(e) => updateFormData({ adresse_code_postal: e.target.value })}
+                  onBlur={() => markTouched("adresse_code_postal")}
+                  aria-invalid={showFieldError("adresse_code_postal")}
+                  className={getFieldClassName("adresse_code_postal")}
                   required
                 />
+                {showFieldError("adresse_code_postal") && <FieldError>{fieldErrors.adresse_code_postal}</FieldError>}
               </Field>
 
               <Field>
@@ -576,8 +787,12 @@ export function AdvertiserSignupForm({
                   placeholder="Paris"
                   value={formData.adresse_ville || ''}
                   onChange={(e) => updateFormData({ adresse_ville: e.target.value })}
+                  onBlur={() => markTouched("adresse_ville")}
+                  aria-invalid={showFieldError("adresse_ville")}
+                  className={getFieldClassName("adresse_ville")}
                   required
                 />
+                {showFieldError("adresse_ville") && <FieldError>{fieldErrors.adresse_ville}</FieldError>}
               </Field>
             </div>
 
@@ -589,8 +804,12 @@ export function AdvertiserSignupForm({
                 placeholder="+33 6 12 34 56 78"
                 value={formData.telephone || ''}
                 onChange={(e) => updateFormData({ telephone: e.target.value })}
+                onBlur={() => markTouched("telephone")}
+                aria-invalid={showFieldError("telephone")}
+                className={getFieldClassName("telephone")}
                 required
               />
+              {showFieldError("telephone") && <FieldError>{fieldErrors.telephone}</FieldError>}
             </Field>
 
 
@@ -620,28 +839,36 @@ export function AdvertiserSignupForm({
 
               <div className="space-y-4">
                 <Field>
-                  <FieldLabel htmlFor="nom_formation">Nom de l'organisme <span className="text-red-500">*</span></FieldLabel>
+                  <FieldLabel htmlFor="nom_formation">Nom de l&apos;organisme <span className="text-red-500">*</span></FieldLabel>
                   <Input
                     id="nom_formation"
                     type="text"
                     placeholder="École de théâtre Paris"
                     value={formData.nom_formation || ''}
                     onChange={(e) => updateFormData({ nom_formation: e.target.value })}
+                    onBlur={() => markTouched("nom_formation")}
+                    aria-invalid={showFieldError("nom_formation")}
+                    className={getFieldClassName("nom_formation")}
                     required
                   />
+                  {showFieldError("nom_formation") && <FieldError>{fieldErrors.nom_formation}</FieldError>}
                   <FieldDescription>Nom affiché publiquement sur la plateforme</FieldDescription>
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="nom_entreprise">Nom légal de l'entreprise <span className="text-red-500">*</span></FieldLabel>
+                  <FieldLabel htmlFor="nom_entreprise">Nom légal de l&apos;entreprise <span className="text-red-500">*</span></FieldLabel>
                   <Input
                     id="nom_entreprise"
                     type="text"
                     placeholder="École de théâtre Paris SARL"
                     value={formData.nom_entreprise || ''}
                     onChange={(e) => updateFormData({ nom_entreprise: e.target.value })}
+                    onBlur={() => markTouched("nom_entreprise")}
+                    aria-invalid={showFieldError("nom_entreprise")}
+                    className={getFieldClassName("nom_entreprise")}
                     required
                   />
+                  {showFieldError("nom_entreprise") && <FieldError>{fieldErrors.nom_entreprise}</FieldError>}
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -651,7 +878,12 @@ export function AdvertiserSignupForm({
                       id="type_juridique"
                       value={formData.type_juridique || ''}
                       onChange={(e) => updateFormData({ type_juridique: e.target.value as TypeJuridique })}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onBlur={() => markTouched("type_juridique")}
+                      aria-invalid={showFieldError("type_juridique")}
+                      className={cn(
+                        "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        showFieldError("type_juridique") && "border-red-500 focus-visible:ring-red-200"
+                      )}
                       required
                     >
                       <option value="">Sélectionnez...</option>
@@ -659,6 +891,7 @@ export function AdvertiserSignupForm({
                         <option key={key} value={key}>{label}</option>
                       ))}
                     </select>
+                    {showFieldError("type_juridique") && <FieldError>{fieldErrors.type_juridique}</FieldError>}
                   </Field>
 
                   <Field>
@@ -669,8 +902,12 @@ export function AdvertiserSignupForm({
                       placeholder="123456789"
                       value={formData.numero_legal || ''}
                       onChange={(e) => updateFormData({ numero_legal: e.target.value })}
+                      onBlur={() => markTouched("numero_legal")}
+                      aria-invalid={showFieldError("numero_legal")}
+                      className={getFieldClassName("numero_legal")}
                       required
                     />
+                    {showFieldError("numero_legal") && <FieldError>{fieldErrors.numero_legal}</FieldError>}
                     <FieldDescription>9 chiffres (SIREN) ou 14 chiffres (SIRET)</FieldDescription>
                   </Field>
                 </div>
@@ -683,8 +920,12 @@ export function AdvertiserSignupForm({
                     placeholder="+33 1 23 45 67 89"
                     value={formData.telephone || ''}
                     onChange={(e) => updateFormData({ telephone: e.target.value })}
+                    onBlur={() => markTouched("telephone")}
+                    aria-invalid={showFieldError("telephone")}
+                    className={getFieldClassName("telephone")}
                     required
                   />
+                  {showFieldError("telephone") && <FieldError>{fieldErrors.telephone}</FieldError>}
                 </Field>
               </div>
             </div>
@@ -702,8 +943,12 @@ export function AdvertiserSignupForm({
                     placeholder="45 avenue des Champs-Élysées"
                     value={formData.siege_rue || ''}
                     onChange={(e) => updateFormData({ siege_rue: e.target.value })}
+                    onBlur={() => markTouched("siege_rue")}
+                    aria-invalid={showFieldError("siege_rue")}
+                    className={getFieldClassName("siege_rue")}
                     required
                   />
+                  {showFieldError("siege_rue") && <FieldError>{fieldErrors.siege_rue}</FieldError>}
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -715,8 +960,12 @@ export function AdvertiserSignupForm({
                       placeholder="75008"
                       value={formData.siege_code_postal || ''}
                       onChange={(e) => updateFormData({ siege_code_postal: e.target.value })}
+                      onBlur={() => markTouched("siege_code_postal")}
+                      aria-invalid={showFieldError("siege_code_postal")}
+                      className={getFieldClassName("siege_code_postal")}
                       required
                     />
+                    {showFieldError("siege_code_postal") && <FieldError>{fieldErrors.siege_code_postal}</FieldError>}
                   </Field>
 
                   <Field>
@@ -727,8 +976,12 @@ export function AdvertiserSignupForm({
                       placeholder="Paris"
                       value={formData.siege_ville || ''}
                       onChange={(e) => updateFormData({ siege_ville: e.target.value })}
+                      onBlur={() => markTouched("siege_ville")}
+                      aria-invalid={showFieldError("siege_ville")}
+                      className={getFieldClassName("siege_ville")}
                       required
                     />
+                    {showFieldError("siege_ville") && <FieldError>{fieldErrors.siege_ville}</FieldError>}
                   </Field>
                 </div>
               </div>
@@ -748,8 +1001,12 @@ export function AdvertiserSignupForm({
                       placeholder="Martin"
                       value={formData.representant_nom || ''}
                       onChange={(e) => updateFormData({ representant_nom: e.target.value })}
+                      onBlur={() => markTouched("representant_nom")}
+                      aria-invalid={showFieldError("representant_nom")}
+                      className={getFieldClassName("representant_nom")}
                       required
                     />
+                    {showFieldError("representant_nom") && <FieldError>{fieldErrors.representant_nom}</FieldError>}
                   </Field>
 
                   <Field>
@@ -760,8 +1017,12 @@ export function AdvertiserSignupForm({
                       placeholder="Sophie"
                       value={formData.representant_prenom || ''}
                       onChange={(e) => updateFormData({ representant_prenom: e.target.value })}
+                      onBlur={() => markTouched("representant_prenom")}
+                      aria-invalid={showFieldError("representant_prenom")}
+                      className={getFieldClassName("representant_prenom")}
                       required
                     />
+                    {showFieldError("representant_prenom") && <FieldError>{fieldErrors.representant_prenom}</FieldError>}
                   </Field>
                 </div>
 
@@ -772,9 +1033,13 @@ export function AdvertiserSignupForm({
                     type="date"
                     value={formData.representant_date_naissance || ''}
                     onChange={(e) => updateFormData({ representant_date_naissance: e.target.value })}
+                    onBlur={() => markTouched("representant_date_naissance")}
                     max={new Date().toISOString().split('T')[0]}
+                    aria-invalid={showFieldError("representant_date_naissance")}
+                    className={getFieldClassName("representant_date_naissance")}
                     required
                   />
+                  {showFieldError("representant_date_naissance") && <FieldError>{fieldErrors.representant_date_naissance}</FieldError>}
                 </Field>
 
                 <Field>
@@ -785,8 +1050,12 @@ export function AdvertiserSignupForm({
                     placeholder="10 rue de la Paix"
                     value={formData.representant_adresse_rue || ''}
                     onChange={(e) => updateFormData({ representant_adresse_rue: e.target.value })}
+                    onBlur={() => markTouched("representant_adresse_rue")}
+                    aria-invalid={showFieldError("representant_adresse_rue")}
+                    className={getFieldClassName("representant_adresse_rue")}
                     required
                   />
+                  {showFieldError("representant_adresse_rue") && <FieldError>{fieldErrors.representant_adresse_rue}</FieldError>}
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -798,8 +1067,12 @@ export function AdvertiserSignupForm({
                       placeholder="75002"
                       value={formData.representant_adresse_code_postal || ''}
                       onChange={(e) => updateFormData({ representant_adresse_code_postal: e.target.value })}
+                      onBlur={() => markTouched("representant_adresse_code_postal")}
+                      aria-invalid={showFieldError("representant_adresse_code_postal")}
+                      className={getFieldClassName("representant_adresse_code_postal")}
                       required
                     />
+                    {showFieldError("representant_adresse_code_postal") && <FieldError>{fieldErrors.representant_adresse_code_postal}</FieldError>}
                   </Field>
 
                   <Field>
@@ -810,8 +1083,12 @@ export function AdvertiserSignupForm({
                       placeholder="Paris"
                       value={formData.representant_adresse_ville || ''}
                       onChange={(e) => updateFormData({ representant_adresse_ville: e.target.value })}
+                      onBlur={() => markTouched("representant_adresse_ville")}
+                      aria-invalid={showFieldError("representant_adresse_ville")}
+                      className={getFieldClassName("representant_adresse_ville")}
                       required
                     />
+                    {showFieldError("representant_adresse_ville") && <FieldError>{fieldErrors.representant_adresse_ville}</FieldError>}
                   </Field>
                 </div>
 
@@ -851,8 +1128,12 @@ export function AdvertiserSignupForm({
                     placeholder="contact@exemple.fr"
                     value={formData.email || ''}
                     onChange={(e) => updateFormData({ email: e.target.value })}
+                    onBlur={() => markTouched("email")}
+                    aria-invalid={showFieldError("email")}
+                    className={getFieldClassName("email")}
                     required
                   />
+                  {showFieldError("email") && <FieldError>{fieldErrors.email}</FieldError>}
                 </Field>
 
                 <Field>
@@ -863,9 +1144,13 @@ export function AdvertiserSignupForm({
                     placeholder="••••••••"
                     value={formData.password || ''}
                     onChange={(e) => updateFormData({ password: e.target.value })}
+                    onBlur={() => markTouched("password")}
+                    aria-invalid={showFieldError("password")}
+                    className={getFieldClassName("password")}
                     required
                   />
-                  <FieldDescription>Minimum 8 caractères</FieldDescription>
+                  {showFieldError("password") && <FieldError>{fieldErrors.password}</FieldError>}
+                  <PasswordStrengthPanel password={formData.password || ""} />
                 </Field>
               </div>
             </div>
@@ -886,8 +1171,12 @@ export function AdvertiserSignupForm({
                     placeholder="Nom de la personne ou de l'entreprise"
                     value={formData.nom_titulaire_compte || ''}
                     onChange={(e) => updateFormData({ nom_titulaire_compte: e.target.value })}
+                    onBlur={() => markTouched("nom_titulaire_compte")}
+                    aria-invalid={showFieldError("nom_titulaire_compte")}
+                    className={getFieldClassName("nom_titulaire_compte")}
                     required
                   />
+                  {showFieldError("nom_titulaire_compte") && <FieldError>{fieldErrors.nom_titulaire_compte}</FieldError>}
                 </Field>
 
                 <Field>
@@ -898,14 +1187,17 @@ export function AdvertiserSignupForm({
                     placeholder="FR76 1234 5678 9012 3456 7890 123"
                     value={formData.iban || ''}
                     onChange={(e) => {
-                      const cleaned = e.target.value.replace(/\s/g, '').toUpperCase()
+                      const cleaned = normalizeIban(e.target.value)
                       const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned
                       updateFormData({ iban: formatted })
                     }}
-                    className="font-mono"
+                    onBlur={() => markTouched("iban")}
+                    className={cn("font-mono", getFieldClassName("iban"))}
+                    aria-invalid={showFieldError("iban")}
                     required
                     maxLength={34}
                   />
+                  {showFieldError("iban") && <FieldError>{fieldErrors.iban}</FieldError>}
                 </Field>
 
                 <Field>
@@ -915,11 +1207,14 @@ export function AdvertiserSignupForm({
                     type="text"
                     placeholder="BNPAFRPP"
                     value={formData.bic_swift || ''}
-                    onChange={(e) => updateFormData({ bic_swift: e.target.value.toUpperCase() })}
-                    className="font-mono"
+                    onChange={(e) => updateFormData({ bic_swift: normalizeBic(e.target.value) })}
+                    onBlur={() => markTouched("bic_swift")}
+                    className={cn("font-mono", getFieldClassName("bic_swift"))}
+                    aria-invalid={showFieldError("bic_swift")}
                     required
                     maxLength={11}
                   />
+                  {showFieldError("bic_swift") && <FieldError>{fieldErrors.bic_swift}</FieldError>}
                   <FieldDescription>8 ou 11 caractères</FieldDescription>
                 </Field>
               </div>

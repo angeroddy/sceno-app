@@ -120,6 +120,13 @@ export interface Annonceur {
   representant_adresse_pays: string | null
   representant_piece_identite_url: string | null
   representant_type_piece_identite: TypePieceIdentite | null
+
+  // Stripe Connect
+  stripe_account_id: string | null
+  stripe_onboarding_complete: boolean
+  stripe_charges_enabled: boolean
+  stripe_payouts_enabled: boolean
+  stripe_details_submitted: boolean
 }
 
 export interface Admin {
@@ -158,6 +165,12 @@ export interface Achat {
   opportunite_id: string
   prix_paye: number
   stripe_payment_id: string | null
+  stripe_checkout_session_id: string | null
+  stripe_payment_intent_id: string | null
+  stripe_refund_id: string | null
+  application_fee_amount: number | null
+  transfer_destination: string | null
+  last_stripe_event_id: string | null
   statut: PurchaseStatus
   created_at: string
   updated_at: string
@@ -177,6 +190,25 @@ export interface NotificationEmail {
   objet: string
   envoye: boolean
   envoye_at: string | null
+  created_at: string
+}
+
+export interface OpportuniteVue {
+  id: string
+  opportunite_id: string
+  comedien_id: string
+  created_at: string
+  updated_at: string
+  last_viewed_at: string
+}
+
+export interface StripeEvent {
+  id: string
+  event_id: string
+  event_type: string
+  payload: Record<string, unknown>
+  processed_at: string | null
+  processing_error: string | null
   created_at: string
 }
 
@@ -341,7 +373,19 @@ export interface Database {
       }
       annonceurs: {
         Row: Annonceur
-        Insert: Omit<Annonceur, 'id' | 'created_at' | 'updated_at' | 'email_verifie' | 'identite_verifiee'>
+        Insert: Omit<
+          Annonceur,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'email_verifie'
+          | 'identite_verifiee'
+          | 'stripe_account_id'
+          | 'stripe_onboarding_complete'
+          | 'stripe_charges_enabled'
+          | 'stripe_payouts_enabled'
+          | 'stripe_details_submitted'
+        >
         Update: Partial<Omit<Annonceur, 'id' | 'auth_user_id' | 'created_at' | 'updated_at'>>
       }
       admins: {
@@ -369,6 +413,16 @@ export interface Database {
         Insert: Omit<NotificationEmail, 'id' | 'created_at' | 'envoye' | 'envoye_at'>
         Update: Partial<Pick<NotificationEmail, 'envoye' | 'envoye_at'>>
       }
+      opportunite_vues: {
+        Row: OpportuniteVue
+        Insert: Omit<OpportuniteVue, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<OpportuniteVue, 'id' | 'created_at'>>
+      }
+      stripe_events: {
+        Row: StripeEvent
+        Insert: Omit<StripeEvent, 'id' | 'created_at' | 'processed_at' | 'processing_error'>
+        Update: Partial<Pick<StripeEvent, 'processed_at' | 'processing_error'>>
+      }
       moderations: {
         Row: Moderation
         Insert: Omit<Moderation, 'id' | 'created_at'>
@@ -376,7 +430,25 @@ export interface Database {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      confirm_checkout_purchase: {
+        Args: {
+          p_achat_id: string
+          p_checkout_session_id: string
+          p_payment_intent_id: string | null
+          p_last_event_id: string
+        }
+        Returns: Array<{ success: boolean; code: string; message: string }>
+      }
+      mark_purchase_refunded: {
+        Args: {
+          p_achat_id: string
+          p_refund_id: string | null
+          p_last_event_id: string
+        }
+        Returns: Array<{ success: boolean }>
+      }
+    }
     Enums: {
       opportunity_type: OpportunityType
       opportunity_model: OpportunityModel

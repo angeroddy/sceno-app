@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -91,6 +90,9 @@ export default function AdminComedienDetailsPage() {
   const [notifications, setNotifications] = useState<NotificationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [refundError, setRefundError] = useState("")
+  const [refundSuccess, setRefundSuccess] = useState("")
+  const [refundingAchatId, setRefundingAchatId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!comedienId || comedienId === "undefined") {
@@ -152,6 +154,33 @@ export default function AdminComedienDetailsPage() {
     if (genre === "feminin") return "Feminin"
     if (genre === "non_genre") return "Non genre"
     return genre
+  }
+
+  const handleRefund = async (achatId: string) => {
+    try {
+      setRefundingAchatId(achatId)
+      setRefundError("")
+      setRefundSuccess("")
+
+      const response = await fetch(`/api/admin/achats/${achatId}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "admin_manual_refund" }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data.error || "Remboursement impossible")
+      }
+
+      setRefundSuccess("Remboursement effectué avec succès.")
+      await fetchDetails()
+    } catch (err) {
+      console.error("Erreur remboursement:", err)
+      setRefundError(err instanceof Error ? err.message : "Erreur lors du remboursement")
+    } finally {
+      setRefundingAchatId(null)
+    }
   }
 
   const initials = useMemo(() => {
@@ -285,7 +314,7 @@ export default function AdminComedienDetailsPage() {
                 )}
               </div>
               <div>
-                <p className="text-xs text-gray-500">Préférences d'opportunités</p>
+                <p className="text-xs text-gray-500">Préférences d&apos;opportunités</p>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {(comedien.preferences_opportunites || []).length > 0 ? (
                     comedien.preferences_opportunites.map((pref) => (
@@ -309,6 +338,16 @@ export default function AdminComedienDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {refundError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {refundError}
+                </div>
+              )}
+              {refundSuccess && (
+                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                  {refundSuccess}
+                </div>
+              )}
               {achats.length === 0 ? (
                 <p className="text-sm text-gray-500">Aucun achat enregistré.</p>
               ) : (
@@ -337,7 +376,7 @@ export default function AdminComedienDetailsPage() {
                         </div>
                       )}
                       <div>
-                        <span className="text-gray-500">Date d'achat:</span> {formatDateTime(achat.created_at)}
+                        <span className="text-gray-500">Date d&apos;achat:</span> {formatDateTime(achat.created_at)}
                       </div>
                       {achat.annonceur && (
                         <div className="text-gray-500">
@@ -345,6 +384,17 @@ export default function AdminComedienDetailsPage() {
                         </div>
                       )}
                     </div>
+                    {achat.statut === "confirmee" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-[#E63832] text-[#E63832] hover:bg-[#E63832]/10"
+                        disabled={refundingAchatId === achat.id}
+                        onClick={() => void handleRefund(achat.id)}
+                      >
+                        {refundingAchatId === achat.id ? "Remboursement..." : "Rembourser"}
+                      </Button>
+                    )}
                   </div>
                 ))
               )}

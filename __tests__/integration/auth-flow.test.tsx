@@ -44,8 +44,52 @@ jest.mock('@/components/ui/checkbox', () => ({
   ),
 }))
 
+const completePersonalInfoStep = async (
+  user: ReturnType<typeof userEvent.setup>,
+  {
+    firstName = 'Jean',
+    lastName = 'Dupont',
+  }: {
+    firstName?: string
+    lastName?: string
+  } = {}
+) => {
+  await waitFor(() => {
+    expect(screen.getByLabelText(/^Nom/i)).toBeInTheDocument()
+  })
+
+  await user.type(screen.getByLabelText(/^Nom/i), lastName)
+  await user.type(screen.getByLabelText(/^Prénom/i), firstName)
+  await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+  await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
+  await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+  await waitFor(() => {
+    expect(screen.getByLabelText(/Adresse e-mail/i)).toBeInTheDocument()
+  })
+}
+
 describe('Flow d\'authentification complet', () => {
   let mockSupabase: any
+
+  const createDefaultSelectChain = ({
+    maybeSingleData = null,
+    singleData = null,
+  }: {
+    maybeSingleData?: unknown
+    singleData?: unknown
+  } = {}) => ({
+    eq: jest.fn().mockReturnValue({
+      single: jest.fn().mockResolvedValue({
+        data: singleData,
+        error: null,
+      }),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: maybeSingleData,
+        error: null,
+      }),
+    }),
+  })
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -65,6 +109,25 @@ describe('Flow d\'authentification complet', () => {
         from: jest.fn(),
       },
     }
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'comediens') {
+        return {
+          select: jest.fn().mockReturnValue(createDefaultSelectChain()),
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockResolvedValue({
+              data: [{ id: 1, auth_user_id: 'default-user-id' }],
+              error: null,
+            }),
+          }),
+        }
+      }
+
+      return {
+        select: jest.fn().mockReturnValue(createDefaultSelectChain()),
+        insert: jest.fn(),
+      }
+    })
 
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
 
@@ -92,25 +155,41 @@ describe('Flow d\'authentification complet', () => {
         error: null,
       })
 
-      mockSupabase.from.mockReturnValue({
-        insert: jest.fn().mockReturnValue({
-          select: jest.fn().mockResolvedValue({
-            data: [{ id: 1, auth_user_id: mockUserId }],
-            error: null,
-          }),
-        }),
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: { id: 1, auth_user_id: mockUserId },
-              error: null,
+      const comedianMaybeSingle = jest.fn()
+        .mockResolvedValueOnce({
+          data: null,
+          error: null,
+        })
+        .mockResolvedValue({
+          data: { id: 1, auth_user_id: mockUserId },
+          error: null,
+        })
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'comediens') {
+          return {
+            insert: jest.fn().mockReturnValue({
+              select: jest.fn().mockResolvedValue({
+                data: [{ id: 1, auth_user_id: mockUserId }],
+                error: null,
+              }),
             }),
-            maybeSingle: jest.fn().mockResolvedValue({
-              data: { id: 1, auth_user_id: mockUserId },
-              error: null,
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: { id: 1, auth_user_id: mockUserId },
+                  error: null,
+                }),
+                maybeSingle: comedianMaybeSingle,
+              }),
             }),
-          }),
-        }),
+          }
+        }
+
+        return {
+          select: jest.fn().mockReturnValue(createDefaultSelectChain()),
+          insert: jest.fn(),
+        }
       })
 
       // ÉTAPE 1: INSCRIPTION
@@ -125,18 +204,7 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Étape 2 : Informations personnelles
-      await waitFor(() => {
-        expect(screen.getByLabelText(/^Nom/i)).toBeInTheDocument()
-      })
-
-      await user.type(screen.getByLabelText(/^Nom/i), testUser.lastName)
-      await user.type(screen.getByLabelText(/^Prénom/i), testUser.firstName)
-      await user.click(screen.getByRole('button', { name: /Suivant/i }))
-
-      // Étape 3 : Création de compte
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Adresse e-mail/i)).toBeInTheDocument()
-      })
+      await completePersonalInfoStep(user, testUser)
 
       await user.type(screen.getByLabelText(/Adresse e-mail/i), testUser.email)
       await user.type(screen.getByLabelText(/^Mot de passe/i), testUser.password)
@@ -207,12 +275,7 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/^Nom/i))
-      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
-      await user.click(screen.getByRole('button', { name: /Suivant/i }))
-
-      await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
+      await completePersonalInfoStep(user)
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'existing@example.com')
       await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
       await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
@@ -221,7 +284,7 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/Erreur d'inscription: User already registered/i)).toBeInTheDocument()
+        expect(screen.getByText(/Un compte existe déjà avec cet email/i)).toBeInTheDocument()
       })
     })
   })
@@ -261,12 +324,7 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/^Nom/i))
-      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
-      await user.click(screen.getByRole('button', { name: /Suivant/i }))
-
-      await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
+      await completePersonalInfoStep(user)
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'invalid-email')
       await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
       await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')
@@ -291,12 +349,7 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/^Nom/i))
-      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
-      await user.click(screen.getByRole('button', { name: /Suivant/i }))
-
-      await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
+      await completePersonalInfoStep(user)
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
       await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
       await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'differentpassword')
@@ -320,12 +373,7 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
-      await waitFor(() => screen.getByLabelText(/^Nom/i))
-      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
-      await user.click(screen.getByRole('button', { name: /Suivant/i }))
-
-      await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
+      await completePersonalInfoStep(user)
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
       await user.type(screen.getByLabelText(/^Mot de passe/i), '12345')
       await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), '12345')
@@ -360,8 +408,18 @@ describe('Flow d\'authentification complet', () => {
         }),
       })
 
-      mockSupabase.from.mockReturnValue({
-        insert: mockInsert,
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue(createDefaultSelectChain()),
+            insert: mockInsert,
+          }
+        }
+
+        return {
+          select: jest.fn().mockReturnValue(createDefaultSelectChain()),
+          insert: jest.fn(),
+        }
       })
 
       const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
@@ -375,13 +433,9 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
       // Remplir les informations personnelles
-      await waitFor(() => screen.getByLabelText(/^Nom/i))
-      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
-      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
-      await user.click(screen.getByRole('button', { name: /Suivant/i }))
+      await completePersonalInfoStep(user)
 
       // Créer le compte
-      await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'test@example.com')
       await user.type(screen.getByLabelText(/^Mot de passe/i), 'password123')
       await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'password123')

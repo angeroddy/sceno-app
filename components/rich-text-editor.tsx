@@ -11,6 +11,7 @@ import {
   Heading2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
 
 interface RichTextEditorProps {
   value: string
@@ -40,7 +41,7 @@ export function RichTextEditor({
   // Charger le contenu initial UNE seule fois (évite de réinitialiser le curseur)
   useEffect(() => {
     if (editorRef.current && value) {
-      editorRef.current.innerHTML = value
+      editorRef.current.innerHTML = sanitizeOpportunityHtml(value)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -53,13 +54,13 @@ export function RichTextEditor({
       isInternalUpdate.current = false
       return
     }
-    editorRef.current.innerHTML = value
+    editorRef.current.innerHTML = sanitizeOpportunityHtml(value)
   }, [value])
 
   const handleInput = useCallback(() => {
     if (!editorRef.current) return
     isInternalUpdate.current = true
-    onChange(editorRef.current.innerHTML)
+    onChange(sanitizeOpportunityHtml(editorRef.current.innerHTML))
   }, [onChange])
 
   /**
@@ -74,7 +75,7 @@ export function RichTextEditor({
     // Synchroniser immédiatement après la commande
     if (editorRef.current) {
       isInternalUpdate.current = true
-      onChange(editorRef.current.innerHTML)
+      onChange(sanitizeOpportunityHtml(editorRef.current.innerHTML))
     }
   }, [onChange])
 

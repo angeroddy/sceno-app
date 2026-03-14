@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AppModal } from "@/components/ui/app-modal"
 import {
   Users,
   Search,
@@ -37,6 +38,17 @@ export default function AnnonceursPage() {
   const [selectedAnnonceur, setSelectedAnnonceur] = useState<AnnonceurWithStats | null>(null)
   const [modalAction, setModalAction] = useState<'valider' | 'refuser'>('valider')
   const [refusRaison, setRefusRaison] = useState("")
+  const [feedbackModal, setFeedbackModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    tone: "success" | "error"
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    tone: "success",
+  })
 
   useEffect(() => {
     fetchAnnonceurs()
@@ -91,10 +103,20 @@ export default function AnnonceursPage() {
       await fetchAnnonceurs()
       setShowModal(false)
       setRefusRaison("")
-      alert(`Annonceur ${modalAction === 'valider' ? 'validé' : 'refusé'} avec succès`)
+      setFeedbackModal({
+        open: true,
+        title: `Annonceur ${modalAction === 'valider' ? 'validé' : 'refusé'}`,
+        description: `Le compte de “${selectedAnnonceur.nom_formation}” a bien été mis à jour.`,
+        tone: "success",
+      })
     } catch (error) {
       console.error('Erreur:', error)
-      alert(error instanceof Error ? error.message : "Une erreur s'est produite lors de la validation")
+      setFeedbackModal({
+        open: true,
+        title: "Validation impossible",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite lors de la validation.",
+        tone: "error",
+      })
     } finally {
       setValidatingId(null)
     }
@@ -360,6 +382,14 @@ export default function AnnonceursPage() {
           </Card>
         </div>
       )}
+
+      <AppModal
+        open={feedbackModal.open}
+        onClose={() => setFeedbackModal((prev) => ({ ...prev, open: false }))}
+        title={feedbackModal.title}
+        description={feedbackModal.description}
+        tone={feedbackModal.tone}
+      />
     </div>
   )
 }

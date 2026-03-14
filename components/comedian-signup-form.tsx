@@ -8,16 +8,28 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { PasswordStrengthPanel } from "@/components/ui/password-strength-panel"
 import { Stepper } from "@/components/ui/stepper"
-import { Upload, Loader2 } from "lucide-react"
+import { Upload, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import {
   Field,
+  FieldError,
   FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { OpportunityType, ComedianGender } from "@/app/types"
+import {
+  getAgeFromDate,
+  isPastOrToday,
+  isStrongEnoughPassword,
+  isValidEmail,
+  isValidUrl,
+  normalizeEmail,
+  normalizeText,
+} from "@/app/lib/signup-validation"
+import { getDemoComedianData, isDevMode } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = [
   "Préférences",
@@ -48,6 +60,20 @@ interface AccountInfo {
   acceptTerms: boolean
 }
 
+type ComedianField =
+  | "preferences"
+  | "lastName"
+  | "firstName"
+  | "birthDate"
+  | "gender"
+  | "demoLink"
+  | "email"
+  | "password"
+  | "confirmPassword"
+  | "acceptTerms"
+
+type ComedianErrors = Partial<Record<ComedianField, string>>
+
 export function ComedianSignupForm({
   className,
   ...props
@@ -75,6 +101,8 @@ export function ComedianSignupForm({
     acceptTerms: false,
   })
   const [error, setError] = useState<string>("")
+  const [fieldErrors, setFieldErrors] = useState<ComedianErrors>({})
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<ComedianField, boolean>>>({})
   const [photoPreview, setPhotoPreview] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -85,24 +113,111 @@ export function ComedianSignupForm({
       ...prev,
       [key]: !prev[key],
     }))
+    setFieldErrors(getComedianErrors(
+      {
+        ...preferences,
+        [key]: !preferences[key],
+      },
+      personalInfo,
+      accountInfo
+    ))
     setError("")
   }
 
   const handlePersonalInfoChange = (field: keyof PersonalInfo, value: string) => {
-    setPersonalInfo((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
+    setPersonalInfo((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      }
+      setFieldErrors(getComedianErrors(preferences, next, accountInfo))
+      return next
+    })
     setError("")
   }
 
   const handleAccountInfoChange = (field: keyof AccountInfo, value: string | boolean) => {
-    setAccountInfo((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
+    setAccountInfo((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      }
+      setFieldErrors(getComedianErrors(preferences, personalInfo, next))
+      return next
+    })
     setError("")
   }
+
+  const markTouched = (field: ComedianField) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }))
+  }
+
+  const getComedianErrors = (
+    nextPreferences: OpportunityPreferences,
+    nextPersonalInfo: PersonalInfo,
+    nextAccountInfo: AccountInfo
+  ): ComedianErrors => {
+    const errors: ComedianErrors = {}
+
+    if (!Object.values(nextPreferences).some(Boolean)) {
+      errors.preferences = "Veuillez sélectionner au moins un type d'opportunité"
+    }
+
+    if (!normalizeText(nextPersonalInfo.lastName)) errors.lastName = "Le nom est obligatoire"
+    if (!normalizeText(nextPersonalInfo.firstName)) errors.firstName = "Le prénom est obligatoire"
+
+    if (!nextPersonalInfo.birthDate) {
+      errors.birthDate = "La date de naissance est obligatoire"
+    } else if (!isPastOrToday(nextPersonalInfo.birthDate)) {
+      errors.birthDate = "La date de naissance n'est pas valide"
+    } else {
+      const age = getAgeFromDate(nextPersonalInfo.birthDate)
+      if (age !== null && age < 13) {
+        errors.birthDate = "Vous devez avoir au moins 13 ans pour créer un compte"
+      }
+    }
+
+    if (!nextPersonalInfo.gender) errors.gender = "Le genre est obligatoire"
+    if (!isValidUrl(nextPersonalInfo.demoLink)) errors.demoLink = "Veuillez entrer une URL valide (http ou https)"
+
+    if (!normalizeText(nextAccountInfo.email)) {
+      errors.email = "L'adresse e-mail est obligatoire"
+    } else if (!isValidEmail(nextAccountInfo.email)) {
+      errors.email = "Veuillez entrer une adresse e-mail valide"
+    }
+
+    if (!nextAccountInfo.password) {
+      errors.password = "Le mot de passe est obligatoire"
+    } else if (!isStrongEnoughPassword(nextAccountInfo.password)) {
+      errors.password = "Le mot de passe doit contenir au moins 8 caractères, avec au moins une lettre et un chiffre"
+    }
+
+    if (!nextAccountInfo.confirmPassword) {
+      errors.confirmPassword = "Veuillez confirmer votre mot de passe"
+    } else if (nextAccountInfo.password !== nextAccountInfo.confirmPassword) {
+      errors.confirmPassword = "Les mots de passe ne correspondent pas"
+    }
+
+    if (!nextAccountInfo.acceptTerms) {
+      errors.acceptTerms = "Vous devez accepter les conditions générales d'utilisation"
+    }
+
+    return errors
+  }
+
+  const getCurrentStepFields = (): ComedianField[] => {
+    if (currentStep === 1) return ["preferences"]
+    if (currentStep === 2) return ["lastName", "firstName", "birthDate", "gender", "demoLink"]
+    return ["email", "password", "confirmPassword", "acceptTerms"]
+  }
+
+  const currentStepErrors = getCurrentStepFields()
+    .map((field) => getComedianErrors(preferences, personalInfo, accountInfo)[field])
+    .filter((message): message is string => Boolean(message))
+  const currentStepIsValid = currentStepErrors.length === 0
+  const showFieldError = (field: ComedianField) => Boolean(touchedFields[field] && fieldErrors[field])
+  const getFieldClassName = (field: ComedianField) =>
+    cn(showFieldError(field) && "border-red-500 focus-visible:ring-red-200")
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -118,62 +233,42 @@ export function ComedianSignupForm({
   }
 
   const validateStep1 = () => {
-    const hasAtLeastOne = Object.values(preferences).some((value) => value)
-    if (!hasAtLeastOne) {
-      setError("Veuillez sélectionner au moins un type d'opportunité")
-      return false
-    }
-    return true
+    const errors = getComedianErrors(preferences, personalInfo, accountInfo)
+    setFieldErrors(errors)
+    markTouched("preferences")
+    setError("")
+    return !errors.preferences
   }
 
   const validateStep2 = () => {
-    if (!personalInfo.lastName.trim()) {
-      setError("Le nom est obligatoire")
-      return false
-    }
-    if (!personalInfo.firstName.trim()) {
-      setError("Le prénom est obligatoire")
-      return false
-    }
-    if (!personalInfo.birthDate) {
-      setError("La date de naissance est obligatoire")
-      return false
-    }
-    if (!personalInfo.gender) {
-      setError("Le genre est obligatoire")
-      return false
-    }
-    return true
+    const errors = getComedianErrors(preferences, personalInfo, accountInfo)
+    setFieldErrors(errors)
+    setTouchedFields((prev) => ({
+      ...prev,
+      lastName: true,
+      firstName: true,
+      birthDate: true,
+      gender: true,
+      demoLink: true,
+    }))
+    const firstError = getCurrentStepFields().map((field) => errors[field]).find(Boolean)
+    setError("")
+    return !firstError
   }
 
   const validateStep3 = () => {
-    if (!accountInfo.email.trim()) {
-      setError("L'adresse e-mail est obligatoire")
-      return false
-    }
-    // Validation format email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(accountInfo.email)) {
-      setError("Veuillez entrer une adresse e-mail valide")
-      return false
-    }
-    if (!accountInfo.password) {
-      setError("Le mot de passe est obligatoire")
-      return false
-    }
-    if (accountInfo.password.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères")
-      return false
-    }
-    if (accountInfo.password !== accountInfo.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas")
-      return false
-    }
-    if (!accountInfo.acceptTerms) {
-      setError("Vous devez accepter les conditions générales d'utilisation")
-      return false
-    }
-    return true
+    const errors = getComedianErrors(preferences, personalInfo, accountInfo)
+    setFieldErrors(errors)
+    setTouchedFields((prev) => ({
+      ...prev,
+      email: true,
+      password: true,
+      confirmPassword: true,
+      acceptTerms: true,
+    }))
+    const firstError = getCurrentStepFields().map((field) => errors[field]).find(Boolean)
+    setError("")
+    return !firstError
   }
 
   const handleNext = () => {
@@ -231,6 +326,22 @@ export function ComedianSignupForm({
     return types
   }
 
+  const checkExistingComedianProfile = async (email: string): Promise<boolean> => {
+    const supabase = createBrowserSupabaseClient()
+    const { data, error } = await supabase
+      .from('comediens')
+      .select('id')
+      .eq('email', normalizeEmail(email))
+      .maybeSingle()
+
+    if (error) {
+      console.warn('Pré-vérification comédien impossible:', error)
+      return false
+    }
+
+    return Boolean(data)
+  }
+
   // Upload de la photo vers Supabase Storage
   const uploadPhoto = async (file: File, userId: string): Promise<string | null> => {
     try {
@@ -239,9 +350,7 @@ export function ComedianSignupForm({
       const fileName = `${userId}-${Date.now()}.${fileExt}`
       const filePath = `comediens/${fileName}`
 
-      console.log('Tentative d\'upload de la photo:', { fileName, filePath, fileSize: file.size })
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('photos')
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -257,14 +366,11 @@ export function ComedianSignupForm({
         return null
       }
 
-      console.log('Photo uploadée avec succès:', uploadData)
-
       // Récupérer l'URL publique
       const { data } = supabase.storage
         .from('photos')
         .getPublicUrl(filePath)
 
-      console.log('URL publique générée:', data.publicUrl)
       return data.publicUrl
     } catch (error) {
       console.warn("Upload photo ignoré (exception):", error)
@@ -282,12 +388,18 @@ export function ComedianSignupForm({
 
       try {
         const supabase = createBrowserSupabaseClient()
+        const normalizedEmail = normalizeEmail(accountInfo.email)
+
+        const profileAlreadyExists = await checkExistingComedianProfile(normalizedEmail)
+        if (profileAlreadyExists) {
+          setError("Un compte existe déjà avec cet email")
+          setIsLoading(false)
+          return
+        }
 
         // 1. Créer l'utilisateur dans Supabase Auth
-        console.log('Tentative de création de compte pour:', accountInfo.email)
-
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: accountInfo.email,
+          email: normalizedEmail,
           password: accountInfo.password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -303,8 +415,6 @@ export function ComedianSignupForm({
           setIsLoading(false)
           return
         }
-
-        console.log('Compte créé:', authData)
 
         if (!authData.user) {
           setError("Erreur lors de la création du compte")
@@ -329,21 +439,19 @@ export function ComedianSignupForm({
         }
 
         // 3. Créer le profil comédien dans la table
-        console.log('Création du profil comédien...')
-
         const profilePayload: Record<string, unknown> = {
           auth_user_id: authData.user.id,
-          nom: personalInfo.lastName,
-          prenom: personalInfo.firstName,
-          email: accountInfo.email,
+          nom: normalizeText(personalInfo.lastName),
+          prenom: normalizeText(personalInfo.firstName),
+          email: normalizedEmail,
           photo_url: photoUrl,
-          lien_demo: personalInfo.demoLink || null,
+          lien_demo: normalizeText(personalInfo.demoLink) || null,
           date_naissance: personalInfo.birthDate,
           preferences_opportunites: mapPreferencesToOpportunityTypes(),
           genre: personalInfo.gender,
         }
 
-        let { data: profileData, error: profileError } = await supabase
+        let { error: profileError } = await supabase
           .from('comediens')
           .insert(profilePayload as never)
           .select()
@@ -357,7 +465,6 @@ export function ComedianSignupForm({
             .from('comediens')
             .insert(profilePayload as never)
             .select()
-          profileData = retry.data
           profileError = retry.error
         }
 
@@ -368,13 +475,11 @@ export function ComedianSignupForm({
               profileError.message.toLowerCase().includes('unique')) {
             setError("Un compte existe déjà avec cet email")
           } else {
-            setError("Une erreur s'est produite lors de la création du profil. Veuillez réessayer")
+            setError("Le compte a été créé côté authentification, mais le profil comédien n'a pas pu être finalisé. Contactez le support avant de réessayer.")
           }
           setIsLoading(false)
           return
         }
-
-        console.log('Profil créé avec succès:', profileData)
 
         // 4. Succès !
         setIsSuccess(true)
@@ -393,6 +498,29 @@ export function ComedianSignupForm({
     }
   }
 
+  const fillWithDevData = () => {
+    if (!isDevMode) {
+      return
+    }
+
+    const fixture = getDemoComedianData()
+    const nextAccountInfo = {
+      ...accountInfo,
+      ...fixture.accountInfo,
+      email: accountInfo.email,
+      password: accountInfo.password,
+      confirmPassword: accountInfo.confirmPassword,
+    }
+
+    setPreferences(fixture.preferences)
+    setPersonalInfo(fixture.personalInfo)
+    setAccountInfo(nextAccountInfo)
+    setFieldErrors(getComedianErrors(fixture.preferences, fixture.personalInfo, nextAccountInfo))
+    setTouchedFields({})
+    setError("")
+    setCurrentStep(3)
+  }
+
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} noValidate {...props}>
       <FieldGroup>
@@ -403,8 +531,44 @@ export function ComedianSignupForm({
           </p>
         </div>
 
+        {!isSuccess && isDevMode && (
+          <div className="self-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={fillWithDevData}
+              disabled={isLoading}
+              className="text-xs h-8"
+            >
+              Remplir des données test
+            </Button>
+          </div>
+        )}
+
         {/* Stepper */}
         <Stepper steps={STEPS} currentStep={currentStep} className="mb-8" />
+
+        {!isSuccess && (
+          <div
+            className={cn(
+              "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
+              currentStepIsValid
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-900"
+            )}
+          >
+            {currentStepIsValid ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <div>
+              {currentStepIsValid
+                ? "Cette étape est complète."
+                : `${currentStepErrors.length} point${currentStepErrors.length > 1 ? "s" : ""} à corriger avant de continuer.`}
+            </div>
+          </div>
+        )}
 
         {/* Étape 1 : Préférences d'opportunités */}
         {currentStep === 1 && (
@@ -484,6 +648,8 @@ export function ComedianSignupForm({
               </div>
             </div>
 
+            {showFieldError("preferences") && <FieldError>{fieldErrors.preferences}</FieldError>}
+
             {error && (
               <div className="text-sm text-red-500 text-center bg-red-50 p-3 rounded-md">
                 {error}
@@ -514,7 +680,11 @@ export function ComedianSignupForm({
                 placeholder="Dupont"
                 value={personalInfo.lastName}
                 onChange={(e) => handlePersonalInfoChange("lastName", e.target.value)}
-                              />
+                onBlur={() => markTouched("lastName")}
+                aria-invalid={showFieldError("lastName")}
+                className={getFieldClassName("lastName")}
+              />
+              {showFieldError("lastName") && <FieldError>{fieldErrors.lastName}</FieldError>}
             </Field>
 
             <Field>
@@ -527,7 +697,11 @@ export function ComedianSignupForm({
                 placeholder="Jean"
                 value={personalInfo.firstName}
                 onChange={(e) => handlePersonalInfoChange("firstName", e.target.value)}
-                              />
+                onBlur={() => markTouched("firstName")}
+                aria-invalid={showFieldError("firstName")}
+                className={getFieldClassName("firstName")}
+              />
+              {showFieldError("firstName") && <FieldError>{fieldErrors.firstName}</FieldError>}
             </Field>
 
             <Field>
@@ -539,8 +713,12 @@ export function ComedianSignupForm({
                 type="date"
                 value={personalInfo.birthDate}
                 onChange={(e) => handlePersonalInfoChange("birthDate", e.target.value)}
+                onBlur={() => markTouched("birthDate")}
                 max={new Date().toISOString().split("T")[0]}
-                              />
+                aria-invalid={showFieldError("birthDate")}
+                className={getFieldClassName("birthDate")}
+              />
+              {showFieldError("birthDate") && <FieldError>{fieldErrors.birthDate}</FieldError>}
               <FieldDescription>
                 Cette information reste privée
               </FieldDescription>
@@ -554,13 +732,21 @@ export function ComedianSignupForm({
                 id="gender"
                 value={personalInfo.gender}
                 onChange={(e) => handlePersonalInfoChange("gender", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+                onBlur={() => markTouched("gender")}
+                aria-invalid={showFieldError("gender")}
+                className={cn(
+                  "w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm",
+                  showFieldError("gender") && "border-red-500 focus-visible:ring-red-200"
+                )}
               >
-             
-                <option value="masculin">Masculin</option>
-                <option value="feminin">Feminin</option>
-                <option value="non_genre">Non genre</option>
+                <option value="" disabled hidden>
+                  Sélectionnez un genre
+                </option>
+                <option value="masculin">Homme / Masculin</option>
+                <option value="feminin">Femme / Féminin</option>
+                <option value="non_genre">Non genré / Autre / Préfère ne pas préciser</option>
               </select>
+              {showFieldError("gender") && <FieldError>{fieldErrors.gender}</FieldError>}
             </Field>
 
             <Field>
@@ -616,7 +802,11 @@ export function ComedianSignupForm({
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={personalInfo.demoLink}
                 onChange={(e) => handlePersonalInfoChange("demoLink", e.target.value)}
+                onBlur={() => markTouched("demoLink")}
+                aria-invalid={showFieldError("demoLink")}
+                className={getFieldClassName("demoLink")}
               />
+              {showFieldError("demoLink") && <FieldError>{fieldErrors.demoLink}</FieldError>}
               <FieldDescription>
                 Partagez un lien vers votre travail (YouTube, Vimeo, etc.)
               </FieldDescription>
@@ -652,7 +842,11 @@ export function ComedianSignupForm({
                 placeholder="exemple@email.com"
                 value={accountInfo.email}
                 onChange={(e) => handleAccountInfoChange("email", e.target.value)}
-                              />
+                onBlur={() => markTouched("email")}
+                aria-invalid={showFieldError("email")}
+                className={getFieldClassName("email")}
+              />
+              {showFieldError("email") && <FieldError>{fieldErrors.email}</FieldError>}
               <FieldDescription>
                 Nous utiliserons cette adresse pour vous contacter
               </FieldDescription>
@@ -668,10 +862,12 @@ export function ComedianSignupForm({
                 placeholder="••••••••"
                 value={accountInfo.password}
                 onChange={(e) => handleAccountInfoChange("password", e.target.value)}
-                              />
-              <FieldDescription>
-                Doit contenir au moins 8 caractères
-              </FieldDescription>
+                onBlur={() => markTouched("password")}
+                aria-invalid={showFieldError("password")}
+                className={getFieldClassName("password")}
+              />
+              {showFieldError("password") && <FieldError>{fieldErrors.password}</FieldError>}
+              <PasswordStrengthPanel password={accountInfo.password} />
             </Field>
 
             <Field>
@@ -684,7 +880,11 @@ export function ComedianSignupForm({
                 placeholder="••••••••"
                 value={accountInfo.confirmPassword}
                 onChange={(e) => handleAccountInfoChange("confirmPassword", e.target.value)}
-                              />
+                onBlur={() => markTouched("confirmPassword")}
+                aria-invalid={showFieldError("confirmPassword")}
+                className={getFieldClassName("confirmPassword")}
+              />
+              {showFieldError("confirmPassword") && <FieldError>{fieldErrors.confirmPassword}</FieldError>}
             </Field>
 
             <div className="flex items-start space-x-3 p-4 rounded-lg border bg-accent/30">
@@ -692,7 +892,7 @@ export function ComedianSignupForm({
                 id="acceptTerms"
                 checked={accountInfo.acceptTerms}
                 onCheckedChange={(checked) => handleAccountInfoChange("acceptTerms", checked as boolean)}
-                              />
+              />
               <div className="flex-1">
                 <label
                   htmlFor="acceptTerms"
@@ -711,6 +911,7 @@ export function ComedianSignupForm({
                   </a>
                   .
                 </p>
+                {showFieldError("acceptTerms") && <FieldError>{fieldErrors.acceptTerms}</FieldError>}
               </div>
             </div>
 

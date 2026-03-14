@@ -34,6 +34,10 @@ describe('useAuth', () => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(global as typeof globalThis & { fetch: jest.Mock }).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ userType: null }),
+    })
 
     mockSupabase.auth.onAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: jest.fn() } },
@@ -64,42 +68,12 @@ describe('useAuth', () => {
         email: 'test@example.com',
       }
 
-      const mockComedien = { id: 1, auth_user_id: 'test-user-id' }
-
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: { user: mockUser } },
       })
-
-      // Mock pour la vérification du type d'utilisateur
-      mockSupabase.from.mockImplementation((table: string) => {
-        if (table === 'admins') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        if (table === 'comediens') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: mockComedien }),
-              }),
-            }),
-          }
-        }
-        if (table === 'annonceurs') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        return {}
+      ;(global as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userType: 'comedian' }),
       })
 
       const { result } = renderHook(() => useAuth())
@@ -119,43 +93,12 @@ describe('useAuth', () => {
         email: 'advertiser@example.com',
       }
 
-      const mockAnnonceur = { id: 1, auth_user_id: 'test-advertiser-id' }
-
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: { user: mockUser } },
       })
-
-      // Mock pour la vérification du type d'utilisateur
-      // Premier appel (comedien) retourne null, second (annonceur) retourne l'annonceur
-      mockSupabase.from.mockImplementation((table: string) => {
-        if (table === 'admins') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        if (table === 'comediens') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        if (table === 'annonceurs') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: mockAnnonceur }),
-              }),
-            }),
-          }
-        }
-        return {}
+      ;(global as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userType: 'advertiser' }),
       })
 
       const { result } = renderHook(() => useAuth())
@@ -178,18 +121,9 @@ describe('useAuth', () => {
         data: { session: { user: mockUser } },
       })
 
-      // Mock retournant null pour tous les types d'utilisateurs
-      mockSupabase.from.mockImplementation((table: string) => {
-        if (table === 'admins' || table === 'comediens' || table === 'annonceurs') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        return {}
+      ;(global as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userType: null }),
       })
 
       const { result } = renderHook(() => useAuth())
@@ -253,37 +187,9 @@ describe('useAuth', () => {
         email: 'newuser@example.com',
       }
 
-      mockSupabase.from.mockImplementation((table: string) => {
-        if (table === 'admins') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        if (table === 'comediens') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({
-                  data: { id: 1, auth_user_id: 'new-user-id' }
-                }),
-              }),
-            }),
-          }
-        }
-        if (table === 'annonceurs') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-              }),
-            }),
-          }
-        }
-        return {}
+      ;(global as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userType: 'comedian' }),
       })
 
       await act(async () => {

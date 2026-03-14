@@ -14,7 +14,6 @@ import { OPPORTUNITY_TYPE_LABELS } from "@/app/types";
 export default function PreferencesPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const supabase = createBrowserSupabaseClient();
 
   type ComedienRow = {
     id: string;
@@ -52,6 +51,7 @@ export default function PreferencesPage() {
       if (!user) return;
 
       try {
+        const supabase = createBrowserSupabaseClient();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase as any)
           .from('comediens')
@@ -82,7 +82,7 @@ export default function PreferencesPage() {
     };
 
     loadPreferences();
-  }, [user, supabase]);
+  }, [user]);
 
   useEffect(() => {
     const loadBlocked = async () => {
@@ -118,6 +118,7 @@ export default function PreferencesPage() {
     setSuccess(false);
 
     try {
+      const supabase = createBrowserSupabaseClient();
       // Convertir le format de l'interface vers le format de base de données
       const preferencesArray: OpportunityType[] = [];
       if (preferences.stages_ateliers) preferencesArray.push('stages_ateliers');
@@ -296,7 +297,7 @@ export default function PreferencesPage() {
             <CardHeader>
               <CardTitle className="text-2xl">Organismes bloqués</CardTitle>
               <CardDescription>
-                Gérez la liste des organismes dont vous ne souhaitez plus recevoir d'opportunités
+                Gérez la liste des organismes dont vous ne souhaitez plus recevoir d&apos;opportunités
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

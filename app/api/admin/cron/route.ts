@@ -22,7 +22,11 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get("Authorization")
   const expectedSecret = process.env.CRON_SECRET
 
-  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+  if (!expectedSecret) {
+    return NextResponse.json({ error: "Configuration manquante : CRON_SECRET" }, { status: 500 })
+  }
+
+  if (authHeader !== `Bearer ${expectedSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

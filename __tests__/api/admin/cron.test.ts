@@ -23,6 +23,21 @@ describe('POST /api/admin/cron', () => {
     expect(response.status).toBe(401)
   })
 
+  it('retourne 500 si le secret cron n’est pas configuré', async () => {
+    delete process.env.CRON_SECRET
+
+    const response = await POST(
+      new Request('http://localhost/api/admin/cron', {
+        method: 'POST',
+      })
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Configuration manquante : CRON_SECRET',
+    })
+  })
+
   it('retourne 200 même si aucune opportunité à traiter', async () => {
     process.env.CRON_SECRET = 'secret'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role'

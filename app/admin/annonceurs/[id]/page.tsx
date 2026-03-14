@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { AppModal } from "@/components/ui/app-modal"
 import {
   ArrowLeft,
   CheckCircle2,
@@ -36,6 +37,17 @@ export default function AnnonceurDetailsPage() {
   const [showValidateModal, setShowValidateModal] = useState(false)
   const [modalAction, setModalAction] = useState<'valider' | 'refuser'>('valider')
   const [refusRaison, setRefusRaison] = useState("")
+  const [feedbackModal, setFeedbackModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    tone: "success" | "error"
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    tone: "success",
+  })
 
   useEffect(() => {
     fetchAnnonceurDetails()
@@ -84,10 +96,20 @@ export default function AnnonceurDetailsPage() {
       await fetchAnnonceurDetails()
       setShowValidateModal(false)
       setRefusRaison("")
-      alert(`Annonceur ${modalAction === 'valider' ? 'validé' : 'refusé'} avec succès`)
+      setFeedbackModal({
+        open: true,
+        title: `Annonceur ${modalAction === 'valider' ? 'validé' : 'refusé'}`,
+        description: `Le compte de “${annonceur.nom_formation}” a bien été mis à jour.`,
+        tone: "success",
+      })
     } catch (error) {
       console.error('Erreur:', error)
-      alert(error instanceof Error ? error.message : "Une erreur s'est produite lors de la validation")
+      setFeedbackModal({
+        open: true,
+        title: "Validation impossible",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite lors de la validation.",
+        tone: "error",
+      })
     } finally {
       setValidating(false)
     }
@@ -467,6 +489,14 @@ export default function AnnonceurDetailsPage() {
           </Card>
         </div>
       )}
+
+      <AppModal
+        open={feedbackModal.open}
+        onClose={() => setFeedbackModal((prev) => ({ ...prev, open: false }))}
+        title={feedbackModal.title}
+        description={feedbackModal.description}
+        tone={feedbackModal.tone}
+      />
     </div>
   )
 }

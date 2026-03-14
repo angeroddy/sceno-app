@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '../types'
+import type { User } from '@supabase/supabase-js'
 
 // ============================================
 // CLIENT SUPABASE - CÔTÉ SERVEUR
@@ -116,16 +117,58 @@ export async function getAdminProfile() {
 
 export type UserType = 'comedian' | 'advertiser' | 'admin' | null
 
-export async function getUserType(): Promise<UserType> {
-  const [comedien, annonceur, admin] = await Promise.all([
-    getComedienProfile(),
-    getAnnonceurProfile(),
-    getAdminProfile()
+type RoleAwareSupabase = {
+  from: (table: 'admins' | 'annonceurs' | 'comediens') => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        maybeSingle: () => Promise<{ data: { id: string } | null }>
+      }
+    }
+  }
+}
+
+export async function resolveUserTypeForAuthUser(
+  supabase: RoleAwareSupabase,
+  userId: string
+): Promise<UserType> {
+  const [adminResult, annonceurResult, comedienResult] = await Promise.all([
+    supabase.from('admins').select('id').eq('auth_user_id', userId).maybeSingle(),
+    supabase.from('annonceurs').select('id').eq('auth_user_id', userId).maybeSingle(),
+    supabase.from('comediens').select('id').eq('auth_user_id', userId).maybeSingle(),
   ])
-  
-  if (admin) return 'admin'
-  if (annonceur) return 'advertiser'
-  if (comedien) return 'comedian'
-  
+
+  if (adminResult.data) return 'admin'
+  if (annonceurResult.data) return 'advertiser'
+  if (comedienResult.data) return 'comedian'
+
   return null
+}
+
+export async function getAuthenticatedUserContext() {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    return {
+      supabase,
+      user: null as User | null,
+      userType: null as UserType,
+    }
+  }
+
+  const userType = await resolveUserTypeForAuthUser(supabase as unknown as RoleAwareSupabase, user.id)
+
+  return {
+    supabase,
+    user,
+    userType,
+  }
+}
+
+export async function getUserType(): Promise<UserType> {
+  const { user, userType } = await getAuthenticatedUserContext()
+  return user ? userType : null
 }

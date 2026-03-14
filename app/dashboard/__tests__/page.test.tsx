@@ -1,6 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import DashboardPage from '../page'
 
+jest.mock('next/navigation', () => ({
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+}))
+
 jest.mock('next/image', () => (props: any) => {
   // eslint-disable-next-line @next/next/no-img-element
   return <img {...props} alt={props.alt || 'image'} />
@@ -29,7 +33,7 @@ describe('DashboardPage', () => {
     render(<DashboardPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Configurez vos préférences/i)).toBeInTheDocument()
+      expect(screen.getByText(/Configurez vos preferences/i)).toBeInTheDocument()
     })
   })
 })

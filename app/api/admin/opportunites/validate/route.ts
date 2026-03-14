@@ -1,7 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
 import { sendMail } from '@/app/lib/mailer'
-import type { Opportunite, Admin } from '@/app/types'
+import type { Admin, Annonceur, Opportunite } from '@/app/types'
+
+type OpportuniteForValidation = Opportunite & {
+  annonceur: Pick<
+    Annonceur,
+    | 'email'
+    | 'nom_formation'
+    | 'stripe_account_id'
+    | 'stripe_charges_enabled'
+    | 'stripe_payouts_enabled'
+  > | null
+}
+
+function getAppUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    'http://localhost:3000'
+  ).replace(/\/$/, '')
+}
 
 export async function POST(request: Request) {
   try {
@@ -38,11 +57,11 @@ export async function POST(request: Request) {
     // Récupérer l'opportunité avec l'annonceur
     const { data: opportuniteData, error: opportuniteError } = await supabase
       .from('opportunites')
-      .select('*, annonceur:annonceurs(email, nom_formation)')
+      .select('*, annonceur:annonceurs(email, nom_formation, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled)')
       .eq('id', opportuniteId)
       .single()
 
-    const opportunite = opportuniteData as any
+    const opportunite = opportuniteData as OpportuniteForValidation | null
 
     if (opportuniteError || !opportunite) {
       return NextResponse.json(
@@ -54,10 +73,40 @@ export async function POST(request: Request) {
     // Mettre à jour le statut de l'opportunité
     const nouveauStatut = action === 'valider' ? 'validee' : 'refusee'
 
+    if (opportunite.statut === nouveauStatut) {
+      return NextResponse.json({
+        success: true,
+        message: action === 'valider'
+          ? 'Opportunité déjà validée'
+          : 'Opportunité déjà refusée',
+        opportunite,
+      })
+    }
+
+    if (opportunite.statut !== 'en_attente') {
+      return NextResponse.json(
+        { error: "Seules les opportunités en attente peuvent être modérées" },
+        { status: 409 }
+      )
+    }
+
+    if (
+      action === 'valider' &&
+      (!opportunite.annonceur?.stripe_account_id ||
+        !opportunite.annonceur.stripe_charges_enabled ||
+        !opportunite.annonceur.stripe_payouts_enabled)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Impossible de valider cette opportunité tant que Stripe Connect n'est pas actif pour l'annonceur",
+        },
+        { status: 409 }
+      )
+    }
+
     const { error: updateError } = await supabase
       .from('opportunites')
-      // @ts-expect-error - Supabase type inference issue
-      .update({ statut: nouveauStatut })
+      .update({ statut: nouveauStatut } as unknown as never)
       .eq('id', opportuniteId)
 
     if (updateError) {
@@ -71,14 +120,13 @@ export async function POST(request: Request) {
     // Insérer dans la table moderations
     const { error: moderationError } = await supabase
       .from('moderations')
-      // @ts-expect-error - Supabase type inference issue
       .insert({
         admin_id: admin.id,
         type: 'opportunite',
         entity_id: opportuniteId,
         action: action === 'valider' ? 'validee' : 'refusee',
         raison_refus: raison || null,
-      })
+      } as unknown as never)
 
     if (moderationError) {
       console.error('Erreur lors de l\'insertion de la modération:', moderationError)
@@ -91,7 +139,7 @@ export async function POST(request: Request) {
         const opportunityType = opportunite.type
         const annonceurId = opportunite.annonceur_id
         const annonceurNom = opportunite.annonceur?.nom_formation || 'Un organisme'
-        const appUrl = process.env.APP_URL || 'http://localhost:3000'
+        const appUrl = getAppUrl()
 
         const { data: comediens } = await supabase
           .from('comediens')

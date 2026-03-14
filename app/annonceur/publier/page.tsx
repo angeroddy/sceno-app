@@ -14,6 +14,8 @@ import type { OpportunityType, OpportunityModel } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
 import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
+import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
+import { SafeRichText } from "@/components/safe-rich-text"
 
 interface FormData {
   type: OpportunityType | ""
@@ -28,6 +30,14 @@ interface FormData {
   date_evenement: string
   contact_telephone: string
   contact_email: string
+}
+
+interface PublishingEligibility {
+  identite_verifiee: boolean
+  stripe_onboarding_complete: boolean
+  stripe_account_id: string | null
+  stripe_charges_enabled: boolean
+  stripe_payouts_enabled: boolean
 }
 
 export default function PublierOpportunitePage() {
@@ -71,6 +81,8 @@ export default function PublierOpportunitePage() {
   const [success, setSuccess] = useState(false)
   const [checkingIdentity, setCheckingIdentity] = useState(true)
   const [identityVerified, setIdentityVerified] = useState(false)
+  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false)
+  const [stripeReady, setStripeReady] = useState(false)
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
 
   useEffect(() => {
@@ -86,9 +98,9 @@ export default function PublierOpportunitePage() {
 
         const { data: annonceur, error: annonceurError } = await supabase
           .from('annonceurs')
-          .select('identite_verifiee')
+          .select('identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
           .eq('auth_user_id', user.id)
-          .single<{ identite_verifiee: boolean }>()
+          .single<PublishingEligibility>()
 
         if (annonceurError || !annonceur) {
           console.error('Erreur récupération annonceur:', annonceurError)
@@ -98,6 +110,15 @@ export default function PublierOpportunitePage() {
         }
 
         setIdentityVerified(annonceur.identite_verifiee)
+        setStripeOnboardingComplete(Boolean(annonceur.stripe_onboarding_complete))
+        setStripeReady(
+          Boolean(
+            annonceur.stripe_onboarding_complete &&
+            annonceur.stripe_account_id &&
+            annonceur.stripe_charges_enabled &&
+            annonceur.stripe_payouts_enabled
+          )
+        )
       } catch (error) {
         console.error('Erreur lors de la vérification:', error)
         setError("Une erreur s'est produite")
@@ -212,7 +233,7 @@ export default function PublierOpportunitePage() {
     ? Math.floor(((previewPrice - previewReducedPrice) / previewPrice) * 100)
     : 0
   const previewPlaces = formData.nombre_places ? Number(formData.nombre_places) : 0
-  const previewResume = formData.resume || "<p>La description apparaîtra ici.</p>"
+  const previewResume = sanitizeOpportunityHtml(formData.resume) || "<p>La description apparaîtra ici.</p>"
 
   const renderPreviewCard = () => (
     <Card className="overflow-hidden">
@@ -333,7 +354,7 @@ export default function PublierOpportunitePage() {
           )}
         </div>
 
-        <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: previewResume }} />
+        <SafeRichText html={previewResume} className="prose max-w-none text-gray-700" />
 
         <div className="flex gap-2 pt-2">
           <Button size="sm" className="bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
@@ -484,9 +505,9 @@ export default function PublierOpportunitePage() {
 
       const { data: annonceur, error: annonceurError } = await supabase
         .from('annonceurs')
-        .select('id, identite_verifiee')
+        .select('id, identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
         .eq('auth_user_id', user.id)
-        .single<{ id: string; identite_verifiee: boolean }>()
+        .single<PublishingEligibility & { id: string }>()
 
       if (annonceurError || !annonceur) {
         console.error('Erreur récupération annonceur:', annonceurError)
@@ -498,6 +519,20 @@ export default function PublierOpportunitePage() {
       // Vérifier que le compte est vérifié (double sécurité)
       if (!annonceur.identite_verifiee) {
         setError("Votre compte doit être vérifié avant de publier des opportunités")
+        setLoading(false)
+        return
+      }
+      if (!annonceur.stripe_onboarding_complete) {
+        setError("Finalisez le onboarding Stripe avant de publier une opportunité")
+        setLoading(false)
+        return
+      }
+      if (
+        !annonceur.stripe_account_id ||
+        !annonceur.stripe_charges_enabled ||
+        !annonceur.stripe_payouts_enabled
+      ) {
+        setError("Votre compte Stripe Connect doit être entièrement activé avant de publier des opportunités")
         setLoading(false)
         return
       }
@@ -546,19 +581,16 @@ export default function PublierOpportunitePage() {
         statut: 'en_attente',
       }
 
-      const { error: insertError } = await supabase
-        .from('opportunites')
-        .insert(insertPayload as unknown as never)
+      const response = await fetch('/api/annonceur/opportunites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(insertPayload),
+      })
 
-      if (insertError) {
-        console.error('Erreur lors de la création:', {
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint,
-          code: insertError.code,
-          fullError: insertError
-        })
-        setError("Impossible de publier l'opportunité. Veuillez vérifier vos informations et réessayer")
+      const responseData = await response.json().catch(() => null) as { error?: string } | null
+
+      if (!response.ok) {
+        setError(responseData?.error || "Impossible de publier l'opportunité. Veuillez vérifier vos informations et réessayer")
         setLoading(false)
         return
       }
@@ -658,6 +690,104 @@ export default function PublierOpportunitePage() {
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
                   Voir mes informations
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!stripeOnboardingComplete) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="text-center py-8 space-y-6">
+              <div className="flex justify-center">
+                <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-10 h-10 text-orange-600" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-orange-900">
+                  Onboarding Stripe requis
+                </h2>
+                <p className="text-orange-800 text-lg max-w-2xl mx-auto">
+                  Tant que vous n&apos;avez pas terminé le onboarding Stripe, vous ne pouvez pas créer d&apos;opportunité.
+                </p>
+              </div>
+
+              <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
+                <p className="text-sm text-orange-800">
+                  Allez dans vos paramètres, créez ou synchronisez votre compte Stripe, puis terminez l&apos;onboarding.
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-center pt-4">
+                <Button
+                  onClick={() => router.push('/annonceur')}
+                  variant="outline"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  Retour au tableau de bord
+                </Button>
+                <Button
+                  onClick={() => router.push('/annonceur/parametres')}
+                  className="bg-[#E63832] hover:bg-[#E63832]/90"
+                >
+                  Ouvrir mes paramètres
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!stripeReady) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="text-center py-8 space-y-6">
+              <div className="flex justify-center">
+                <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-10 h-10 text-orange-600" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-orange-900">
+                  Activation Stripe requise
+                </h2>
+                <p className="text-orange-800 text-lg max-w-2xl mx-auto">
+                  Votre onboarding Stripe est terminé, mais votre compte n&apos;est pas encore complètement activé pour les paiements et virements.
+                </p>
+              </div>
+
+              <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
+                <p className="text-sm text-orange-800">
+                  Revenez dans vos paramètres Stripe et vérifiez que les paiements et virements sont bien activés.
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-center pt-4">
+                <Button
+                  onClick={() => router.push('/annonceur')}
+                  variant="outline"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  Retour au tableau de bord
+                </Button>
+                <Button
+                  onClick={() => router.push('/annonceur/parametres')}
+                  className="bg-[#E63832] hover:bg-[#E63832]/90"
+                >
+                  Ouvrir mes paramètres
                 </Button>
               </div>
             </div>
@@ -768,7 +898,9 @@ export default function PublierOpportunitePage() {
                   onChange={(e) => handleInputChange("type", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E63832] bg-white"
                 >
-                 
+                  <option value="" disabled hidden>
+                    Sélectionner type d&apos;opportunité
+                  </option>
                   {Object.entries(OPPORTUNITY_TYPE_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}

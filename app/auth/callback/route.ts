@@ -6,9 +6,6 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
 
-  console.log('[AUTH CALLBACK] URL reçue:', requestUrl.href)
-  console.log('[AUTH CALLBACK] Code présent:', !!code)
-
   if (code) {
     const cookieStore = await cookies()
 
@@ -35,12 +32,9 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    console.log('[AUTH CALLBACK] Tentative d\'échange du code...')
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && data.user) {
-      console.log('[AUTH CALLBACK] ✅ Échange réussi pour l\'utilisateur:', data.user.id)
-
       // Vérifier si c'est un admin, comédien ou annonceur et mettre à jour email_verifie
       let userType = 'unknown'
 
@@ -53,7 +47,6 @@ export async function GET(request: NextRequest) {
 
       if (admin) {
         userType = 'admin'
-        console.log('[AUTH CALLBACK] ✅ Utilisateur admin détecté')
       } else {
         // Essayer dans la table comediens
         const { data: comedien } = await supabase
@@ -71,9 +64,7 @@ export async function GET(request: NextRequest) {
             .eq('auth_user_id', data.user.id)
 
           if (updateError) {
-            console.error('[AUTH CALLBACK] ⚠️ Erreur mise à jour email_verifie (comedien):', updateError)
-          } else {
-            console.log('[AUTH CALLBACK] ✅ email_verifie mis à jour à true (comedien)')
+            console.error('[AUTH CALLBACK] Erreur mise à jour email_verifie (comedien)')
           }
         } else {
           // Essayer dans la table annonceurs
@@ -91,12 +82,8 @@ export async function GET(request: NextRequest) {
               .eq('auth_user_id', data.user.id)
 
             if (updateError) {
-              console.error('[AUTH CALLBACK] ⚠️ Erreur mise à jour email_verifie (annonceur):', updateError)
-            } else {
-              console.log('[AUTH CALLBACK] ✅ email_verifie mis à jour à true (annonceur)')
+              console.error('[AUTH CALLBACK] Erreur mise à jour email_verifie (annonceur)')
             }
-          } else {
-            console.error('[AUTH CALLBACK] ⚠️ Utilisateur non trouvé dans admins, comediens ni annonceurs')
           }
         }
       }
@@ -106,13 +93,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    console.error('[AUTH CALLBACK] ❌ Erreur lors de l\'échange du code:', error)
-  } else {
-    console.error('[AUTH CALLBACK] ❌ Pas de code dans l\'URL')
+    console.error('[AUTH CALLBACK] Erreur lors de l\'échange du code')
   }
 
   // En cas d'erreur, rediriger vers la page de confirmation avec une erreur
-  console.log('[AUTH CALLBACK] Redirection vers /auth/confirm?error=true')
   const errorRedirectUrl = `${requestUrl.origin}/auth/confirm?error=true`
   return NextResponse.redirect(errorRedirectUrl)
 }

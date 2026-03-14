@@ -5,17 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Eye,
-  TrendingUp,
   Users,
   Euro,
   Calendar,
   CheckCircle2,
   Clock,
-  XCircle,
-  PlusCircle
+  PlusCircle,
+  Eye
 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { countOpportunityViewsForIds } from "@/app/lib/opportunity-views"
 import { useRouter } from "next/navigation"
 import type { Opportunite, Annonceur, Achat } from "@/app/types"
 
@@ -66,14 +65,13 @@ export default function AnnonceurPage() {
       if (!annonceurError && annonceurData) {
         setAnnonceur(annonceurData as Annonceur)
 
-        // Récupérer toutes les opportunités de cet annonceur
-        const { data: opportunitesData } = await supabase
-          .from('opportunites')
-          .select('*')
-          .eq('annonceur_id', (annonceurData as Annonceur).id)
-          .order('created_at', { ascending: false })
+        const opportunitesResponse = await fetch('/api/annonceur/opportunites?limit=100')
+        if (!opportunitesResponse.ok) {
+          throw new Error('Impossible de recuperer les opportunites annonceur')
+        }
 
-        const opportunites = opportunitesData as Opportunite[] | null
+        const opportunitesPayload = await opportunitesResponse.json()
+        const opportunites = (opportunitesPayload.opportunites || []) as Opportunite[] | null
 
         if (opportunites) {
           // Calculer les statistiques
@@ -84,20 +82,27 @@ export default function AnnonceurPage() {
           // Récupérer les achats pour calculer revenus et réservations
           const { data: achatsData } = await supabase
             .from('achats')
-            .select('*, opportunite:opportunites!inner(annonceur_id)')
+            .select('prix_paye, application_fee_amount, opportunite:opportunites!inner(annonceur_id)')
             .eq('opportunite.annonceur_id', (annonceurData as Annonceur).id)
             .eq('statut', 'confirmee')
 
-          const achats = achatsData as Achat[] | null
-          const revenu = achats?.reduce((sum, achat) => sum + achat.prix_paye, 0) || 0
+          const achats = achatsData as Pick<Achat, 'prix_paye' | 'application_fee_amount'>[] | null
+          const revenu = achats?.reduce(
+            (sum, achat) => sum + achat.prix_paye - ((achat.application_fee_amount || 0) / 100),
+            0
+          ) || 0
           const reservations = achats?.length || 0
+          const totalVues = await countOpportunityViewsForIds(
+            supabase as never,
+            opportunites.map((opportunite) => opportunite.id)
+          )
 
           setStats({
             totalOpportunites: opportunites.length,
             opportunitesValidees: validees,
             opportunitesEnAttente: enAttente,
             opportunitesRefusees: refusees,
-            totalVues: 0, // À implémenter avec un système de tracking
+            totalVues,
             totalReservations: reservations,
             revenuTotal: revenu,
           })
@@ -142,6 +147,13 @@ export default function AnnonceurPage() {
       icon: <Clock className="w-5 h-5" />,
       color: "text-orange-600",
       bgColor: "bg-orange-100",
+    },
+    {
+      title: "Total vues",
+      value: stats.totalVues,
+      icon: <Eye className="w-5 h-5" />,
+      color: "text-sky-600",
+      bgColor: "bg-sky-100",
     },
     {
       title: "Total réservations",
@@ -208,7 +220,7 @@ export default function AnnonceurPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6 mb-8">
         {statCards.map((stat, index) => (
           <Card key={index} className="hover:shadow-lg transition-shadow">
             <CardContent className="p-6">

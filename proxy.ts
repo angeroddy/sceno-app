@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import type { Database } from '@/app/types'
+import { resolveUserTypeForAuthUser } from '@/app/lib/supabase'
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -8,7 +10,7 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -35,6 +37,9 @@ export async function proxy(request: NextRequest) {
 
   // Récupérer la session
   const { data: { user } } = await supabase.auth.getUser()
+  const userType = user
+    ? await resolveUserTypeForAuthUser(supabase as never, user.id)
+    : null
 
   const pathname = request.nextUrl.pathname
 
@@ -46,14 +51,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/connexion', request.url))
     }
 
-    // Vérifier que c'est bien un comédien
-    const { data: comedien } = await supabase
-      .from('comediens')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (!comedien) {
+    if (userType !== 'comedian') {
       return NextResponse.redirect(new URL('/connexion', request.url))
     }
   }
@@ -71,14 +69,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/connexion', request.url))
     }
 
-    // Vérifier que c'est bien un annonceur
-    const { data: annonceur } = await supabase
-      .from('annonceurs')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (!annonceur) {
+    if (userType !== 'advertiser') {
       return NextResponse.redirect(new URL('/connexion', request.url))
     }
   }
@@ -91,14 +82,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/connexion', request.url))
     }
 
-    // Vérifier que c'est bien un admin
-    const { data: admin } = await supabase
-      .from('admins')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (!admin) {
+    if (userType !== 'admin') {
       // Rediriger vers l'accueil si pas admin
       return NextResponse.redirect(new URL('/', request.url))
     }
@@ -110,33 +94,15 @@ export async function proxy(request: NextRequest) {
   if (pathname === '/connexion' || pathname === '/inscription') {
     if (user) {
       // Déterminer où rediriger selon le type d'utilisateur
-      const { data: comedien } = await supabase
-        .from('comediens')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single()
-
-      if (comedien) {
+      if (userType === 'comedian') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
 
-      const { data: annonceur } = await supabase
-        .from('annonceurs')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single()
-
-      if (annonceur) {
+      if (userType === 'advertiser') {
         return NextResponse.redirect(new URL('/annonceur', request.url))
       }
 
-      const { data: admin } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single()
-
-      if (admin) {
+      if (userType === 'admin') {
         return NextResponse.redirect(new URL('/admin', request.url))
       }
     }

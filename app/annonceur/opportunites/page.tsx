@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AppModal } from "@/components/ui/app-modal"
 import {
   Calendar,
   Users,
@@ -17,7 +18,6 @@ import {
   Trash2,
   Pencil
 } from "lucide-react"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { Opportunite } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
 
@@ -30,6 +30,18 @@ export default function MesOpportunitesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [opportuniteToDelete, setOpportuniteToDelete] = useState<Opportunite | null>(null)
+  const [feedbackModal, setFeedbackModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    tone: "success" | "error"
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    tone: "success",
+  })
 
   useEffect(() => {
     fetchOpportunites()
@@ -58,28 +70,17 @@ export default function MesOpportunitesPage() {
 
   const fetchOpportunites = async () => {
     try {
-      const supabase = createBrowserSupabaseClient()
+      const response = await fetch('/api/annonceur/opportunites?limit=100')
+      if (!response.ok) {
+        throw new Error('Impossible de charger les opportunités')
+      }
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: annonceur } = await supabase
-        .from('annonceurs')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single<{ id: string }>()
-
-      if (!annonceur) return
-
-      const { data: opportunitesData } = await supabase
-        .from('opportunites')
-        .select('*')
-        .eq('annonceur_id', annonceur.id)
-        .order('created_at', { ascending: false })
+      const data = await response.json()
+      const opportunitesData = (data.opportunites || []) as Opportunite[]
 
       if (opportunitesData) {
-        setOpportunites(opportunitesData as Opportunite[])
-        setFilteredOpportunites(opportunitesData as Opportunite[])
+        setOpportunites(opportunitesData)
+        setFilteredOpportunites(opportunitesData)
       }
     } catch (error) {
       console.error('Erreur lors du chargement des opportunités:', error)
@@ -106,21 +107,24 @@ export default function MesOpportunitesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette opportunité ?")) return
-
     try {
-      const supabase = createBrowserSupabaseClient()
-      const { error } = await supabase
-        .from('opportunites')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      const supabaseModule = await import("@/app/lib/supabase-client")
+      const supabase = supabaseModule.createBrowserSupabaseClient()
+      const { error } = await supabase.from('opportunites').delete().eq('id', id)
+      if (error) {
+        throw error
+      }
 
       setOpportunites(prev => prev.filter(opp => opp.id !== id))
+      setOpportuniteToDelete(null)
     } catch (error) {
       console.error('Erreur lors de la suppression:', error)
-      alert("Une erreur s'est produite lors de la suppression")
+      setFeedbackModal({
+        open: true,
+        title: "Suppression impossible",
+        description: "Une erreur s'est produite lors de la suppression de cette opportunité.",
+        tone: "error",
+      })
     }
   }
 
@@ -262,7 +266,7 @@ export default function MesOpportunitesPage() {
                           size="sm"
                           variant="outline"
                           className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDelete(opportunite.id)}
+                          onClick={() => setOpportuniteToDelete(opportunite)}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
                           Supprimer
@@ -298,6 +302,35 @@ export default function MesOpportunitesPage() {
           </CardContent>
         </Card>
       )}
+
+      <AppModal
+        open={Boolean(opportuniteToDelete)}
+        onClose={() => setOpportuniteToDelete(null)}
+        title="Supprimer cette opportunité ?"
+        description={opportuniteToDelete ? `Cette action est définitive pour “${opportuniteToDelete.titre}”.` : undefined}
+        tone="warning"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpportuniteToDelete(null)}>
+              Annuler
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => opportuniteToDelete && handleDelete(opportuniteToDelete.id)}
+            >
+              Supprimer
+            </Button>
+          </>
+        }
+      />
+
+      <AppModal
+        open={feedbackModal.open}
+        onClose={() => setFeedbackModal((prev) => ({ ...prev, open: false }))}
+        title={feedbackModal.title}
+        description={feedbackModal.description}
+        tone={feedbackModal.tone}
+      />
     </div>
   )
 }

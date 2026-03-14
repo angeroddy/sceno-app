@@ -16,73 +16,40 @@ export function useAuth() {
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
 
-    // Vérifier la session actuelle immédiatement
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        checkUserType(session.user.id)
-      } else {
+    async function hydrateUserState(sessionUser: User | null) {
+      setUser(sessionUser)
+
+      if (!sessionUser) {
+        setUserType(null)
+        setLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'same-origin' })
+        if (!response.ok) {
+          setUserType(null)
+          return
+        }
+
+        const data = await response.json() as { userType: UserType }
+        setUserType(data.userType ?? null)
+      } catch {
+        setUserType(null)
+      } finally {
         setLoading(false)
       }
+    }
+
+    // Vérifier la session actuelle immédiatement
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      void hydrateUserState(session?.user ?? null)
     })
 
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        checkUserType(session.user.id)
-      } else {
-        setUserType(null)
-        setLoading(false)
-      }
+      void hydrateUserState(session?.user ?? null)
     })
-
-    // Vérifier le type d'utilisateur
-    async function checkUserType(userId: string) {
-      const supabase = createBrowserSupabaseClient()
-
-      // Vérifier admin (priorité)
-      const { data: admin } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('auth_user_id', userId)
-        .maybeSingle()
-
-      if (admin) {
-        setUserType('admin')
-        setLoading(false)
-        return
-      }
-
-      // Vérifier comédien
-      const { data: comedien } = await supabase
-        .from('comediens')
-        .select('id')
-        .eq('auth_user_id', userId)
-        .maybeSingle()
-
-      if (comedien) {
-        setUserType('comedian')
-        setLoading(false)
-        return
-      }
-
-      // Vérifier annonceur
-      const { data: annonceur } = await supabase
-        .from('annonceurs')
-        .select('id')
-        .eq('auth_user_id', userId)
-        .maybeSingle()
-
-      if (annonceur) {
-        setUserType('advertiser')
-        setLoading(false)
-        return
-      }
-
-      setUserType(null)
-      setLoading(false)
-    }
 
     return () => subscription.unsubscribe()
   }, [])

@@ -17,7 +17,7 @@ import Link from 'next/link'
 import { useAuth } from "./hooks/useAuth";
 
 export default function Home() {
-  const { isAuthenticated, userType, loading } = useAuth();
+  const { isAuthenticated, userType, loading, logout } = useAuth();
 
   // Ajoutez vos images ici - pour l'instant j'utilise mainImg, mais vous pouvez ajouter plus d'images
   const backgroundImages = [
@@ -31,7 +31,9 @@ export default function Home() {
       <div className="relative w-full">
         <Navbar01
           className="bg-[#E6DAD0]"
-          isAuthenticated={false}
+          isAuthenticated={isAuthenticated}
+          userType={userType === 'comedian' ? 'comedian' : 'advertiser'}
+          onLogout={logout}
           loading={loading}
           signInText={isAuthenticated ? "Retourner sur mon espace" : "Se connecter"}
           signInHref={

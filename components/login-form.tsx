@@ -52,8 +52,6 @@ export function LoginForm({
     try {
       const supabase = createBrowserSupabaseClient()
 
-      console.log('Tentative de connexion pour:', email)
-
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
@@ -82,8 +80,6 @@ export function LoginForm({
         return
       }
 
-      console.log('Connexion réussie:', data.user)
-
       // Vérifier le type d'utilisateur pour rediriger correctement
       // 1. Vérifier si c'est un admin (priorité)
       const { data: adminData } = await supabase
@@ -94,7 +90,6 @@ export function LoginForm({
 
       if (adminData) {
         // L'utilisateur est un admin
-        console.log('Utilisateur admin détecté')
         setIsLoading(false)
         router.push('/admin')
         return
@@ -109,7 +104,6 @@ export function LoginForm({
 
       if (comedienData) {
         // L'utilisateur est un comédien
-        console.log('Utilisateur comédien détecté')
         setIsLoading(false)
         router.push('/dashboard')
         return
@@ -124,7 +118,6 @@ export function LoginForm({
 
       if (annonceurData) {
         // L'utilisateur est un annonceur
-        console.log('Utilisateur annonceur détecté')
         setIsLoading(false)
         router.push('/annonceur')
         return
