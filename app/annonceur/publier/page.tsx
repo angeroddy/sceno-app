@@ -356,9 +356,9 @@ export default function PublierOpportunitePage() {
 
         <SafeRichText html={previewResume} className="prose max-w-none text-gray-700" />
 
-        <div className="flex gap-2 pt-2">
-          <Button size="sm" className="bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
-          <Button size="sm" variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 pt-2">
+          <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
+          <Button size="sm" variant="outline" className="w-full sm:w-auto">
             <ExternalLink className="w-4 h-4 mr-1" />
             Voir le site
           </Button>
@@ -677,7 +677,7 @@ export default function PublierOpportunitePage() {
                 </p>
               </div>
 
-              <div className="flex gap-3 justify-center pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                 <Button
                   onClick={() => router.push('/annonceur')}
                   variant="outline"
@@ -726,7 +726,7 @@ export default function PublierOpportunitePage() {
                 </p>
               </div>
 
-              <div className="flex gap-3 justify-center pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                 <Button
                   onClick={() => router.push('/annonceur')}
                   variant="outline"
@@ -775,7 +775,7 @@ export default function PublierOpportunitePage() {
                 </p>
               </div>
 
-              <div className="flex gap-3 justify-center pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                 <Button
                   onClick={() => router.push('/annonceur')}
                   variant="outline"
@@ -828,10 +828,10 @@ export default function PublierOpportunitePage() {
     return (
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             Aperçu avant publication
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-base sm:text-lg">
             Vérifiez votre opportunité avant de la publier
           </p>
         </div>
@@ -851,13 +851,13 @@ export default function PublierOpportunitePage() {
           <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>
         )}
 
-        <div className="flex flex-wrap gap-4 pt-6">
-          <Button type="button" variant="outline" onClick={() => setViewMode("edit")} disabled={loading}>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-6">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setViewMode("edit")} disabled={loading}>
             Revenir à l&apos;édition de l&apos;opportunité
           </Button>
           <Button
             type="button"
-            className="bg-[#E63832] hover:bg-[#E63832]/90"
+            className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
             onClick={submitOpportunity}
             disabled={loading}
           >
@@ -877,10 +877,10 @@ export default function PublierOpportunitePage() {
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 ">
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
           Publier une opportunité
         </h1>
-        <p className="text-gray-600 text-lg">
+        <p className="text-gray-600 text-base sm:text-lg">
           Remplissez le formulaire ci-dessous pour créer une nouvelle opportunité
         </p>
       </div>
@@ -1032,8 +1032,8 @@ export default function PublierOpportunitePage() {
       </form>
       {isCropping && rawImageSrc && (
         <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
-          <div className="w-full max-w-3xl max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="w-full max-w-3xl max-h-[85vh] sm:max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-semibold text-gray-900">Recadrer l&apos;image</h2>
                 <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
@@ -1082,7 +1082,7 @@ export default function PublierOpportunitePage() {
 
                   <div className="flex items-center gap-3">
                     <label className="text-sm text-gray-600">Rotation</label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev - 90)}>
                         <RotateCcw className="w-4 h-4" />
                       </Button>

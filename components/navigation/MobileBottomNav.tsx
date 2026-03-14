@@ -40,7 +40,7 @@ export default function MobileBottomNav({ items }: MobileBottomNavProps) {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-t border-gray-200 pb-safe">
-      <div className="flex items-center justify-around px-2 py-2 max-w-lg mx-auto">
+      <div className="grid grid-cols-4 items-stretch gap-1 px-2 py-2 max-w-lg mx-auto">
         {items.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
@@ -50,7 +50,7 @@ export default function MobileBottomNav({ items }: MobileBottomNavProps) {
               key={item.href}
               onClick={() => router.push(item.href)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all min-w-[70px]",
+                "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 transition-all",
                 active
                   ? "bg-[#A8D5BA] text-gray-900"
                   : "text-gray-600 hover:text-gray-900 active:scale-95"
@@ -64,7 +64,7 @@ export default function MobileBottomNav({ items }: MobileBottomNavProps) {
               />
               <span
                 className={cn(
-                  "text-xs font-medium transition-all",
+                  "max-w-full text-center text-[11px] leading-tight font-medium transition-all",
                   active ? "font-semibold" : "font-normal"
                 )}
               >

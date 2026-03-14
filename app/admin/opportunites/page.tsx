@@ -165,12 +165,12 @@ export default function OpportunitesPage() {
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               Gestion des Opportunités
             </h1>
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-600 text-base sm:text-lg">
               Validez ou refusez les opportunités publiées par les annonceurs
             </p>
           </div>
@@ -215,10 +215,10 @@ export default function OpportunitesPage() {
           {filteredOpportunites.map((opportunite) => (
             <Card key={opportunite.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                   {/* Image */}
                   {opportunite.image_url && (
-                    <div className="w-full lg:w-48 aspect-[16/9] rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                    <div className="w-full sm:w-40 md:w-48 aspect-[16/9] rounded-lg overflow-hidden bg-gray-100 shrink-0">
                       <img
                         src={opportunite.image_url}
                         alt={opportunite.titre}
@@ -229,10 +229,10 @@ export default function OpportunitesPage() {
 
                   {/* Contenu */}
                   <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="font-bold text-xl truncate">{opportunite.titre}</h3>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="font-bold text-lg sm:text-xl break-words">{opportunite.titre}</h3>
                           {getStatusBadge(opportunite.statut)}
                           <Badge variant="outline">{OPPORTUNITY_TYPE_LABELS[opportunite.type]}</Badge>
                         </div>
@@ -275,10 +275,11 @@ export default function OpportunitesPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="grid grid-cols-1 sm:flex sm:flex-row sm:flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto justify-start sm:justify-center"
                         onClick={() => router.push(`/admin/opportunites/${opportunite.id}`)}
                       >
                         <Eye className="w-4 h-4 mr-1" />
@@ -288,9 +289,9 @@ export default function OpportunitesPage() {
                         <>
                           <Button
                             size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleValidation(opportunite, 'valider')}
+                            className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                             disabled={validatingId === opportunite.id}
+                            onClick={() => handleValidation(opportunite, 'valider')}
                           >
                             {validatingId === opportunite.id ? (
                               <Loader2 className="w-4 h-4 mr-1 animate-spin" />
@@ -302,7 +303,7 @@ export default function OpportunitesPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-red-600 hover:text-red-700 border-red-300"
+                            className="text-red-600 hover:text-red-700 border-red-300 w-full sm:w-auto"
                             onClick={() => handleValidation(opportunite, 'refuser')}
                             disabled={validatingId === opportunite.id}
                           >
@@ -337,8 +338,8 @@ export default function OpportunitesPage() {
 
       {/* Modal de confirmation */}
       {showModal && selectedOpportunite && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-md w-full">
+        <div className="fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+          <Card className="max-w-md w-full my-auto">
             <CardContent className="pt-6">
               <div className="mb-4">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
@@ -376,7 +377,7 @@ export default function OpportunitesPage() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   variant="outline"
                   className="flex-1"

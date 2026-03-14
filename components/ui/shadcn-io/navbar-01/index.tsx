@@ -242,19 +242,19 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
           </div>
           
           {/* Right side */}
-          <div className="flex items-center gap-3 min-h-[36px]">
+          <div className="flex w-full min-h-[36px] flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-3">
             {loading ? (
               // État de chargement : afficher des skeletons pour éviter le flash
               <>
+                <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-200 animate-pulse rounded-none" />
                 <div className="h-8 sm:h-9 w-20 sm:w-24 bg-gray-200 animate-pulse rounded-none" />
-                <div className="h-8 sm:h-9 w-24 sm:w-32 bg-gray-200 animate-pulse rounded-none" />
               </>
             ) : !isAuthenticated ? (
               <>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+                  className="cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium whitespace-nowrap hover:bg-accent hover:text-accent-foreground bg-[#E63832] shrink-0"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onSignInClick) {
@@ -268,7 +268,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 </Button>
                 <Button
                   size="sm"
-                  className="text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm"
+                  className="text-xs sm:text-sm font-medium px-2 sm:px-4 h-8 sm:h-9 shadow-sm whitespace-nowrap shrink-0"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onCtaClick) {
@@ -287,7 +287,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                    className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
                     onClick={() => router.push(signInHref)}
                   >
                     {signInText}
@@ -298,7 +298,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-base sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
                       onClick={() => router.push('/dashboard/profil')}
                     >
                       Mon profil
@@ -306,7 +306,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-base sm:text-sm font-medium hover:bg-[#E6DAD0]"
+                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
                       onClick={() => router.push('/dashboard/preferences')}
                     >
                       Préférences
@@ -316,7 +316,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-accent hover:text-accent-foreground bg-[#E63832]"
+                  className="cursor-pointer text-white px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium whitespace-nowrap hover:bg-accent hover:text-accent-foreground bg-[#E63832] shrink-0"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onLogout) {

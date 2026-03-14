@@ -190,7 +190,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
 
                   {opportunite.reduction_pourcentage > 0 && (
                     <div className="absolute top-4 left-4 z-10">
-                      <Badge className="bg-[#E63832] text-white text-lg px-4 py-2 hover:bg-[#E63832]">
+                      <Badge className="bg-[#E63832] px-3 py-1.5 text-sm sm:text-base text-white hover:bg-[#E63832]">
                         -{Math.floor(opportunite.reduction_pourcentage)}% de réduction
                       </Badge>
                     </div>
@@ -202,16 +202,16 @@ export default function AnnonceurOpportuniteDetailsPage() {
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="informations" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6 bg-[#E6DAD0]/50">
-                    <TabsTrigger value="informations" className="flex items-center gap-2 cursor-pointer">
+                  <TabsList className="mb-6 grid h-auto w-full grid-cols-3 bg-[#E6DAD0]/50">
+                    <TabsTrigger value="informations" className="flex items-center justify-center gap-2 px-2 py-2 text-xs sm:text-sm cursor-pointer">
                       <Info className="w-4 h-4" />
                       <span className="hidden sm:inline">Informations</span>
                     </TabsTrigger>
-                    <TabsTrigger value="contact" className="flex items-center gap-2 cursor-pointer">
+                    <TabsTrigger value="contact" className="flex items-center justify-center gap-2 px-2 py-2 text-xs sm:text-sm cursor-pointer">
                       <Contact className="w-4 h-4" />
                       <span className="hidden sm:inline">Contact</span>
                     </TabsTrigger>
-                    <TabsTrigger value="statistiques" className="flex items-center gap-2 cursor-pointer">
+                    <TabsTrigger value="statistiques" className="flex items-center justify-center gap-2 px-2 py-2 text-xs sm:text-sm cursor-pointer">
                       <BarChart3 className="w-4 h-4" />
                       <span className="hidden sm:inline">Statistiques</span>
                     </TabsTrigger>
@@ -293,7 +293,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                             <p className="text-sm text-gray-600 mb-1">Email</p>
                             <a
                               href={`mailto:${opportunite.contact_email}`}
-                              className="font-medium text-gray-900 hover:text-[#E63832] transition-colors"
+                              className="break-all font-medium text-gray-900 hover:text-[#E63832] transition-colors"
                             >
                               {opportunite.contact_email}
                             </a>
@@ -307,7 +307,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                               <p className="text-sm text-gray-600 mb-1">Téléphone</p>
                               <a
                                 href={`tel:${opportunite.contact_telephone}`}
-                                className="font-medium text-gray-900 hover:text-[#E63832] transition-colors"
+                                className="break-all font-medium text-gray-900 hover:text-[#E63832] transition-colors"
                               >
                                 {opportunite.contact_telephone}
                               </a>
@@ -365,10 +365,10 @@ export default function AnnonceurOpportuniteDetailsPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <Card className="sticky top-8 shadow-lg">
+            <Card className="shadow-lg lg:sticky lg:top-8">
               <CardContent className="p-6 space-y-6">
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
                     <Badge className="bg-[#E6DAD0] text-gray-900 hover:bg-[#E6DAD0]">
                       {OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}
                     </Badge>
@@ -383,12 +383,12 @@ export default function AnnonceurOpportuniteDetailsPage() {
                       </Badge>
                     )}
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h1 className="break-words text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                     {opportunite.titre}
                   </h1>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Building2 className="w-4 h-4" />
-                    <span>Créée le {new Date(opportunite.created_at).toLocaleDateString("fr-FR")}</span>
+                    <span className="break-words">Créée le {new Date(opportunite.created_at).toLocaleDateString("fr-FR")}</span>
                   </div>
                 </div>
 
@@ -438,7 +438,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                 <div className="space-y-3 pt-4">
                   <Button
                     size="lg"
-                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90 text-white font-semibold text-lg py-6"
+                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90 py-5 text-base font-semibold text-white sm:py-6 sm:text-lg"
                     onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/modifier`)}
                   >
                     <Edit className="w-4 h-4 mr-2" />

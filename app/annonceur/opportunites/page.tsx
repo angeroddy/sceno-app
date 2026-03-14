@@ -141,10 +141,10 @@ export default function MesOpportunitesPage() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               Mes opportunités
             </h1>
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-600 text-base sm:text-lg">
               Gérez toutes vos opportunités publiées
             </p>
           </div>
@@ -197,10 +197,10 @@ export default function MesOpportunitesPage() {
           {filteredOpportunites.map((opportunite) => (
             <Card key={opportunite.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                   {/* Image */}
                   {opportunite.image_url && (
-                    <div className="relative w-full lg:w-48 aspect-video rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                    <div className="relative w-full sm:w-40 md:w-48 aspect-video rounded-lg overflow-hidden bg-gray-100 shrink-0">
                       <Image
                         src={opportunite.image_url}
                         alt={opportunite.titre}
@@ -213,10 +213,10 @@ export default function MesOpportunitesPage() {
 
                   {/* Contenu */}
                   <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="font-bold text-xl truncate">{opportunite.titre}</h3>
+                          <h3 className="font-bold text-lg sm:text-xl break-words">{opportunite.titre}</h3>
                           {getStatusBadge(opportunite.statut)}
                         </div>
                         <p className="text-sm text-gray-600 line-clamp-2">
@@ -244,10 +244,11 @@ export default function MesOpportunitesPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="grid grid-cols-1 sm:flex sm:flex-row sm:flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto justify-start sm:justify-center"
                         onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}`)}
                       >
                         <Eye className="w-4 h-4 mr-1" />
@@ -256,6 +257,7 @@ export default function MesOpportunitesPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto justify-start sm:justify-center"
                         onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/modifier`)}
                       >
                         <Pencil className="w-4 h-4 mr-1" />
@@ -265,7 +267,7 @@ export default function MesOpportunitesPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-red-600 hover:text-red-700"
+                          className="w-full sm:w-auto justify-start sm:justify-center text-red-600 hover:text-red-700"
                           onClick={() => setOpportuniteToDelete(opportunite)}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />

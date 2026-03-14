@@ -198,10 +198,10 @@ export default function AnnonceurPage() {
     <div className="container mx-auto px-4 py-8 md:py-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="break-words text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
           Bienvenue, {annonceur?.nom_formation} !
         </h1>
-        <p className="text-gray-600 text-lg">
+        <p className="text-gray-600 text-base sm:text-lg">
           Voici un aperçu de vos opportunités
         </p>
       </div>
@@ -243,12 +243,13 @@ export default function AnnonceurPage() {
       {/* Recent Opportunities */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-xl sm:text-2xl font-bold">
               Opportunités récentes
             </CardTitle>
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => router.push('/annonceur/opportunites')}
             >
               Voir tout
@@ -267,7 +268,7 @@ export default function AnnonceurPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h3 className="font-bold text-lg truncate">{opportunite.titre}</h3>
+                        <h3 className="font-bold text-base sm:text-lg break-words">{opportunite.titre}</h3>
                         {getStatusBadge(opportunite.statut)}
                       </div>
                       <p className="text-sm text-gray-600 line-clamp-2 mb-3">

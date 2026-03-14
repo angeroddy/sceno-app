@@ -308,10 +308,10 @@ export default function ParametresPage() {
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
           Mes informations
         </h1>
-        <p className="text-gray-600 text-lg">
+        <p className="text-gray-600 text-base sm:text-lg">
           Gérez les informations de votre organisme
         </p>
       </div>
@@ -504,11 +504,12 @@ export default function ParametresPage() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
                     {stripeDashboardReady ? (
                       <Button
                         type="button"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={handleOpenStripeDashboard}
                         disabled={stripeActionLoading}
                       >
@@ -520,6 +521,7 @@ export default function ParametresPage() {
                         <Button
                           type="button"
                           variant="outline"
+                          className="w-full sm:w-auto"
                           onClick={handleCreateOrSyncStripeAccount}
                           disabled={stripeActionLoading}
                         >
@@ -535,7 +537,7 @@ export default function ParametresPage() {
 
                         <Button
                           type="button"
-                          className="bg-[#E63832] hover:bg-[#E63832]/90"
+                          className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
                           onClick={handleStartStripeOnboarding}
                           disabled={stripeActionLoading}
                         >

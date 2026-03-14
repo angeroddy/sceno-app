@@ -143,7 +143,7 @@ export default async function OpportunitePage({
           </Link>
         </Button>
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
           <section className="space-y-6">
             <Card className="overflow-hidden border-0 shadow-xl shadow-black/5">
               <div className="relative aspect-[16/9] bg-linear-to-br from-[#E6DAD0] via-[#F5F0EB] to-white">
