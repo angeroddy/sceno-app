@@ -1011,11 +1011,11 @@ export default function PublierOpportunitePage() {
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>
               )}
 
-                            <div className="flex gap-4 pt-4">
-                <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Annuler</Button>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()} disabled={loading}>Annuler</Button>
                 <Button
                   type="button"
-                  className="bg-[#E63832] hover:bg-[#E63832]/90 flex-1"
+                  className="w-full sm:flex-1 whitespace-normal text-left sm:text-center bg-[#E63832] hover:bg-[#E63832]/90"
                   onClick={() => {
                     if (!validateForm()) return
                     setViewMode("preview")
