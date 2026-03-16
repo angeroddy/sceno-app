@@ -1,11 +1,26 @@
 import type Stripe from 'stripe'
 import type { Annonceur } from '@/app/types'
+import {
+  normalizeBusinessId,
+  normalizeCountry,
+  normalizeHumanText,
+  normalizePhone,
+  normalizePostalCode,
+} from '@/app/lib/signup-validation'
 
 export interface StripeAccountStatus {
   stripe_onboarding_complete: boolean
   stripe_charges_enabled: boolean
   stripe_payouts_enabled: boolean
   stripe_details_submitted: boolean
+}
+
+export interface StripeAccountRequirementsSummary {
+  stripe_requirements_currently_due: string[]
+  stripe_requirements_pending_verification: string[]
+  stripe_requirements_eventually_due: string[]
+  stripe_requirements_disabled_reason: string | null
+  stripe_has_pending_representative_verification: boolean
 }
 
 export function toStripeCountryCode(rawCountry: string | null | undefined): string {
@@ -35,9 +50,38 @@ export function extractStripeAccountStatus(account: Stripe.Account): StripeAccou
   }
 }
 
+export function extractStripeAccountRequirementsSummary(
+  account: Stripe.Account
+): StripeAccountRequirementsSummary {
+  const currentlyDue = account.requirements?.currently_due ?? []
+  const pendingVerification = account.requirements?.pending_verification ?? []
+  const eventuallyDue = account.requirements?.eventually_due ?? []
+  const disabledReason = account.requirements?.disabled_reason ?? null
+
+  const requiresRepresentativeVerification = [
+    ...currentlyDue,
+    ...pendingVerification,
+    ...eventuallyDue,
+  ].some((item) => item.includes('representative'))
+
+  return {
+    stripe_requirements_currently_due: currentlyDue,
+    stripe_requirements_pending_verification: pendingVerification,
+    stripe_requirements_eventually_due: eventuallyDue,
+    stripe_requirements_disabled_reason: disabledReason,
+    stripe_has_pending_representative_verification:
+      requiresRepresentativeVerification || disabledReason === 'requirements.pending_verification',
+  }
+}
+
 function cleanString(value: string | null | undefined): string | undefined {
-  const normalized = value?.trim()
+  const normalized = normalizeHumanText(value)
   return normalized ? normalized : undefined
+}
+
+function toStripePhone(rawPhone: string | null | undefined): string | undefined {
+  const normalized = normalizePhone(rawPhone)
+  return normalized || undefined
 }
 
 function toStripeDob(rawDate: string | null | undefined): Stripe.AccountCreateParams.Individual.Dob | undefined {
@@ -65,8 +109,11 @@ function toStripeAddress(
 
   if (cleanString(line1)) address.line1 = cleanString(line1)
   if (cleanString(city)) address.city = cleanString(city)
-  if (cleanString(postalCode)) address.postal_code = cleanString(postalCode)
-  if (stripeCountry) address.country = toStripeCountryCode(stripeCountry)
+
+  const normalizedPostalCode = normalizePostalCode(postalCode, country)
+  if (normalizedPostalCode) address.postal_code = normalizedPostalCode
+
+  if (stripeCountry) address.country = toStripeCountryCode(normalizeCountry(stripeCountry))
 
   return Object.keys(address).length > 0 ? address : undefined
 }
@@ -98,7 +145,7 @@ function buildAccountPayload(annonceur: Annonceur): Stripe.AccountCreateParams {
       first_name: cleanString(annonceur.prenom),
       last_name: cleanString(annonceur.nom),
       email: cleanString(annonceur.email),
-      phone: cleanString(annonceur.telephone),
+      phone: toStripePhone(annonceur.telephone),
       dob: toStripeDob(annonceur.date_naissance),
       address: toStripeAddress(
         annonceur.adresse_rue,
@@ -110,7 +157,7 @@ function buildAccountPayload(annonceur: Annonceur): Stripe.AccountCreateParams {
   } else {
     payload.company = {
       name: cleanString(annonceur.nom_entreprise) || cleanString(annonceur.nom_formation),
-      tax_id: cleanString(annonceur.numero_legal),
+      tax_id: normalizeBusinessId(annonceur.numero_legal) || undefined,
       address: toStripeAddress(
         annonceur.siege_rue,
         annonceur.siege_ville,
@@ -122,13 +169,42 @@ function buildAccountPayload(annonceur: Annonceur): Stripe.AccountCreateParams {
       first_name: cleanString(annonceur.representant_prenom),
       last_name: cleanString(annonceur.representant_nom),
       email: cleanString(annonceur.email),
-      phone: cleanString(annonceur.telephone),
+      phone: toStripePhone(annonceur.telephone),
       dob: toStripeDob(annonceur.representant_date_naissance),
       address: toStripeAddress(
         annonceur.representant_adresse_rue,
         annonceur.representant_adresse_ville,
         annonceur.representant_adresse_code_postal,
         annonceur.representant_adresse_pays
+      ),
+    }
+  }
+
+  return payload
+}
+
+function buildAccountUpdatePayload(annonceur: Annonceur): Stripe.AccountUpdateParams {
+  const businessType = annonceur.type_annonceur === 'personne_physique' ? 'individual' : 'company'
+
+  const payload: Stripe.AccountUpdateParams = {
+    metadata: {
+      annonceur_id: annonceur.id,
+      platform: 'scenio',
+    },
+    business_profile: {
+      name: cleanString(annonceur.nom_formation),
+    },
+  }
+
+  if (businessType === 'company') {
+    payload.company = {
+      name: cleanString(annonceur.nom_entreprise) || cleanString(annonceur.nom_formation),
+      tax_id: normalizeBusinessId(annonceur.numero_legal) || undefined,
+      address: toStripeAddress(
+        annonceur.siege_rue,
+        annonceur.siege_ville,
+        annonceur.siege_code_postal,
+        annonceur.siege_pays || annonceur.pays_entreprise
       ),
     }
   }
@@ -148,9 +224,5 @@ export async function syncExpressAccountForAnnonceur(
   accountId: string,
   annonceur: Annonceur
 ): Promise<Stripe.Account> {
-  const payload = buildAccountPayload(annonceur)
-  delete payload.type
-  delete payload.country
-
-  return stripe.accounts.update(accountId, payload as Stripe.AccountUpdateParams)
+  return stripe.accounts.update(accountId, buildAccountUpdatePayload(annonceur))
 }

@@ -184,6 +184,12 @@ describe('AdvertiserSignupForm', () => {
       expect(insert).toHaveBeenCalled()
     })
 
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telephone: '+33612345678',
+      })
+    )
+
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/stripe/connect/account', { method: 'POST' })
     })

@@ -35,9 +35,13 @@ import {
   isValidPhone,
   isValidPostalCode,
   normalizeBic,
-  normalizeDigits,
+  normalizeBusinessId,
+  normalizeCountry,
   normalizeEmail,
+  normalizeHumanText,
+  normalizePhone,
   normalizeIban,
+  normalizePostalCode,
   normalizeText,
 } from "@/app/lib/signup-validation"
 import { getDemoAdvertiserData } from "@/app/lib/dev-signup-fixtures"
@@ -379,6 +383,7 @@ export function AdvertiserSignupForm({
       try {
         const supabase = createBrowserSupabaseClient()
         const normalizedEmail = normalizeEmail(formData.email)
+        const normalizedPhone = normalizePhone(formData.telephone)
 
         const profileAlreadyExists = await checkExistingAdvertiserProfile(normalizedEmail)
         if (profileAlreadyExists) {
@@ -413,9 +418,9 @@ export function AdvertiserSignupForm({
           auth_user_id: authData.user.id,
           email: normalizedEmail,
           type_annonceur: formData.type_annonceur!,
-          telephone: normalizeText(formData.telephone) || null,
+          telephone: normalizedPhone || null,
           iban: normalizeIban(formData.iban),
-          nom_titulaire_compte: normalizeText(formData.nom_titulaire_compte),
+          nom_titulaire_compte: normalizeHumanText(formData.nom_titulaire_compte),
           bic_swift: normalizeBic(formData.bic_swift),
           nom_formation: '',
           nom: null,
@@ -448,32 +453,35 @@ export function AdvertiserSignupForm({
 
         if (formData.type_annonceur === 'personne_physique') {
           // Ajouter les champs personne physique
-          profileData.nom = normalizeText(formData.nom) || null
-          profileData.prenom = normalizeText(formData.prenom) || null
+          profileData.nom = normalizeHumanText(formData.nom) || null
+          profileData.prenom = normalizeHumanText(formData.prenom) || null
           profileData.date_naissance = formData.date_naissance || null
-          profileData.adresse_rue = normalizeText(formData.adresse_rue) || null
-          profileData.adresse_ville = normalizeText(formData.adresse_ville) || null
-          profileData.adresse_code_postal = normalizeText(formData.adresse_code_postal) || null
-          profileData.adresse_pays = formData.adresse_pays || 'France'
-          profileData.nom_formation = `${normalizeText(formData.prenom)} ${normalizeText(formData.nom)}`.trim()
+          profileData.adresse_rue = normalizeHumanText(formData.adresse_rue) || null
+          profileData.adresse_ville = normalizeHumanText(formData.adresse_ville) || null
+          profileData.adresse_code_postal = normalizePostalCode(formData.adresse_code_postal, formData.adresse_pays || 'France') || null
+          profileData.adresse_pays = normalizeCountry(formData.adresse_pays || 'France') || 'France'
+          profileData.nom_formation = `${normalizeHumanText(formData.prenom)} ${normalizeHumanText(formData.nom)}`.trim()
         } else if (formData.type_annonceur === 'entreprise') {
           // Ajouter les champs entreprise
-          profileData.nom_formation = normalizeText(formData.nom_formation)
-          profileData.nom_entreprise = normalizeText(formData.nom_entreprise) || null
+          profileData.nom_formation = normalizeHumanText(formData.nom_formation)
+          profileData.nom_entreprise = normalizeHumanText(formData.nom_entreprise) || null
           profileData.type_juridique = formData.type_juridique || null
-          profileData.pays_entreprise = formData.pays_entreprise || 'France'
-          profileData.numero_legal = normalizeDigits(formData.numero_legal) || null
-          profileData.siege_rue = normalizeText(formData.siege_rue) || null
-          profileData.siege_ville = normalizeText(formData.siege_ville) || null
-          profileData.siege_code_postal = normalizeText(formData.siege_code_postal) || null
-          profileData.siege_pays = formData.siege_pays || 'France'
-          profileData.representant_nom = normalizeText(formData.representant_nom) || null
-          profileData.representant_prenom = normalizeText(formData.representant_prenom) || null
+          profileData.pays_entreprise = normalizeCountry(formData.pays_entreprise || 'France') || 'France'
+          profileData.numero_legal = normalizeBusinessId(formData.numero_legal) || null
+          profileData.siege_rue = normalizeHumanText(formData.siege_rue) || null
+          profileData.siege_ville = normalizeHumanText(formData.siege_ville) || null
+          profileData.siege_code_postal = normalizePostalCode(formData.siege_code_postal, formData.siege_pays || formData.pays_entreprise || 'France') || null
+          profileData.siege_pays = normalizeCountry(formData.siege_pays || 'France') || 'France'
+          profileData.representant_nom = normalizeHumanText(formData.representant_nom) || null
+          profileData.representant_prenom = normalizeHumanText(formData.representant_prenom) || null
           profileData.representant_date_naissance = formData.representant_date_naissance || null
-          profileData.representant_adresse_rue = normalizeText(formData.representant_adresse_rue) || null
-          profileData.representant_adresse_ville = normalizeText(formData.representant_adresse_ville) || null
-          profileData.representant_adresse_code_postal = normalizeText(formData.representant_adresse_code_postal) || null
-          profileData.representant_adresse_pays = formData.representant_adresse_pays || 'France'
+          profileData.representant_adresse_rue = normalizeHumanText(formData.representant_adresse_rue) || null
+          profileData.representant_adresse_ville = normalizeHumanText(formData.representant_adresse_ville) || null
+          profileData.representant_adresse_code_postal = normalizePostalCode(
+            formData.representant_adresse_code_postal,
+            formData.representant_adresse_pays || formData.siege_pays || formData.pays_entreprise || 'France'
+          ) || null
+          profileData.representant_adresse_pays = normalizeCountry(formData.representant_adresse_pays || 'France') || 'France'
         }
 
         const { error: profileError } = await supabase
@@ -800,12 +808,16 @@ export function AdvertiserSignupForm({
                 placeholder="+33 6 12 34 56 78"
                 value={formData.telephone || ''}
                 onChange={(e) => updateFormData({ telephone: e.target.value })}
-                onBlur={() => markTouched("telephone")}
+                onBlur={() => {
+                  markTouched("telephone")
+                  updateFormData({ telephone: normalizePhone(formData.telephone) })
+                }}
                 aria-invalid={showFieldError("telephone")}
                 className={getFieldClassName("telephone")}
                 required
               />
               {showFieldError("telephone") && <FieldError>{fieldErrors.telephone}</FieldError>}
+              <FieldDescription>Format attendu: `+33612345678` ou `06 12 34 56 78`</FieldDescription>
             </Field>
 
 
@@ -916,12 +928,16 @@ export function AdvertiserSignupForm({
                     placeholder="+33 1 23 45 67 89"
                     value={formData.telephone || ''}
                     onChange={(e) => updateFormData({ telephone: e.target.value })}
-                    onBlur={() => markTouched("telephone")}
+                    onBlur={() => {
+                      markTouched("telephone")
+                      updateFormData({ telephone: normalizePhone(formData.telephone) })
+                    }}
                     aria-invalid={showFieldError("telephone")}
                     className={getFieldClassName("telephone")}
                     required
                   />
                   {showFieldError("telephone") && <FieldError>{fieldErrors.telephone}</FieldError>}
+                  <FieldDescription>Format attendu: `+33123456789` ou `01 23 45 67 89`</FieldDescription>
                 </Field>
               </div>
             </div>

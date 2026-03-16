@@ -7,6 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import {
+  isValidBic,
+  isValidEmail,
+  isValidIban,
+  normalizeBic,
+  normalizeEmail,
+  normalizeHumanText,
+  normalizeIban,
+} from "@/app/lib/signup-validation"
 import type { Annonceur } from "@/app/types"
 
 interface StripeConnectStatus {
@@ -16,6 +25,11 @@ interface StripeConnectStatus {
   stripe_charges_enabled: boolean
   stripe_payouts_enabled: boolean
   stripe_details_submitted: boolean
+  stripe_requirements_currently_due: string[]
+  stripe_requirements_pending_verification: string[]
+  stripe_requirements_eventually_due: string[]
+  stripe_requirements_disabled_reason: string | null
+  stripe_has_pending_representative_verification: boolean
 }
 
 export default function ParametresPage() {
@@ -66,10 +80,10 @@ export default function ParametresPage() {
         setAnnonceur(annonceurData)
         setFormData({
           nom_formation: annonceurData.nom_formation,
-          email: annonceurData.email,
+          email: normalizeEmail(annonceurData.email),
           iban: annonceurData.iban || "",
           nom_titulaire_compte: annonceurData.nom_titulaire_compte || "",
-          bic_swift: annonceurData.bic_swift || "",
+          bic_swift: normalizeBic(annonceurData.bic_swift || ""),
         })
       }
     } catch (error) {
@@ -178,12 +192,16 @@ export default function ParametresPage() {
   const handleInputChange = (field: string, value: string) => {
     // Formatage automatique de l'IBAN
     if (field === "iban") {
-      const cleaned = value.replace(/\s/g, '').toUpperCase()
+      const cleaned = normalizeIban(value)
       const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned
       setFormData(prev => ({ ...prev, [field]: formatted }))
     } else if (field === "bic_swift") {
       // Formatage automatique du BIC/SWIFT (majuscules)
-      setFormData(prev => ({ ...prev, [field]: value.toUpperCase() }))
+      setFormData(prev => ({ ...prev, [field]: normalizeBic(value) }))
+    } else if (field === "email") {
+      setFormData(prev => ({ ...prev, [field]: normalizeEmail(value) }))
+    } else if (field === "nom_formation" || field === "nom_titulaire_compte") {
+      setFormData(prev => ({ ...prev, [field]: value }))
     } else {
       setFormData(prev => ({ ...prev, [field]: value }))
     }
@@ -192,43 +210,35 @@ export default function ParametresPage() {
   }
 
   const validateForm = (): boolean => {
-    if (!formData.nom_formation.trim()) {
+    if (!normalizeHumanText(formData.nom_formation)) {
       setError("Le nom de l'organisme est obligatoire")
       return false
     }
-    if (!formData.email.trim()) {
+    if (!normalizeEmail(formData.email)) {
       setError("L'email est obligatoire")
       return false
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
+    if (!isValidEmail(formData.email)) {
       setError("L'email n'est pas valide")
       return false
     }
-    if (!formData.iban.trim()) {
+    if (!normalizeIban(formData.iban)) {
       setError("L'IBAN est obligatoire")
       return false
     }
-    const ibanRegex = /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/
-    if (!ibanRegex.test(formData.iban.replace(/\s/g, ''))) {
+    if (!isValidIban(formData.iban)) {
       setError("Le format de l'IBAN n'est pas valide")
       return false
     }
-    const ibanClean = formData.iban.replace(/\s/g, '')
-    if (ibanClean.length < 15 || ibanClean.length > 34) {
-      setError("L'IBAN doit contenir entre 15 et 34 caractères")
-      return false
-    }
-    if (!formData.nom_titulaire_compte.trim()) {
+    if (!normalizeHumanText(formData.nom_titulaire_compte)) {
       setError("Le nom du titulaire du compte est obligatoire")
       return false
     }
-    if (!formData.bic_swift.trim()) {
+    if (!normalizeBic(formData.bic_swift)) {
       setError("Le code BIC/SWIFT est obligatoire")
       return false
     }
-    const bicRegex = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/
-    if (!bicRegex.test(formData.bic_swift)) {
+    if (!isValidBic(formData.bic_swift)) {
       setError("Le format du code BIC/SWIFT n'est pas valide (8 ou 11 caractères)")
       return false
     }
@@ -249,11 +259,11 @@ export default function ParametresPage() {
       const supabase = createBrowserSupabaseClient()
 
       const updatePayload = {
-        nom_formation: formData.nom_formation,
-        email: formData.email,
-        iban: formData.iban.replace(/\s/g, ''),
-        nom_titulaire_compte: formData.nom_titulaire_compte,
-        bic_swift: formData.bic_swift,
+        nom_formation: normalizeHumanText(formData.nom_formation),
+        email: normalizeEmail(formData.email),
+        iban: normalizeIban(formData.iban),
+        nom_titulaire_compte: normalizeHumanText(formData.nom_titulaire_compte),
+        bic_swift: normalizeBic(formData.bic_swift),
       }
 
       const { error: updateError } = await supabase
@@ -303,6 +313,66 @@ export default function ParametresPage() {
     stripeStatus?.stripe_charges_enabled &&
     stripeStatus?.stripe_payouts_enabled
   )
+
+  const pendingStripeItems = [
+    ...(stripeStatus?.stripe_requirements_currently_due ?? []),
+    ...(stripeStatus?.stripe_requirements_pending_verification ?? []),
+  ]
+
+  const formatStripeRequirement = (value: string) => {
+    const normalized = value.replace(/\[\d+\]/g, '')
+
+    const exactLabels: Record<string, string> = {
+      'individual.first_name': 'Prénom du titulaire du compte',
+      'individual.last_name': 'Nom du titulaire du compte',
+      'individual.phone': 'Numéro de téléphone du titulaire du compte',
+      'individual.email': 'Adresse e-mail du titulaire du compte',
+      'individual.address.line1': 'Adresse du titulaire du compte',
+      'individual.address.city': 'Ville du titulaire du compte',
+      'individual.address.postal_code': 'Code postal du titulaire du compte',
+      'individual.address.country': 'Pays du titulaire du compte',
+      'individual.dob.day': 'Jour de naissance du titulaire du compte',
+      'individual.dob.month': 'Mois de naissance du titulaire du compte',
+      'individual.dob.year': 'Année de naissance du titulaire du compte',
+      'representative.first_name': 'Prénom du représentant légal',
+      'representative.last_name': 'Nom du représentant légal',
+      'representative.phone': 'Numéro de téléphone du représentant légal',
+      'representative.email': 'Adresse e-mail du représentant légal',
+      'representative.address.line1': 'Adresse du représentant légal',
+      'representative.address.city': 'Ville du représentant légal',
+      'representative.address.postal_code': 'Code postal du représentant légal',
+      'representative.address.country': 'Pays du représentant légal',
+      'representative.dob.day': 'Jour de naissance du représentant légal',
+      'representative.dob.month': 'Mois de naissance du représentant légal',
+      'representative.dob.year': 'Année de naissance du représentant légal',
+      'company.name': "Nom légal de l'entreprise",
+      'company.tax_id': "Numéro d'identification de l'entreprise",
+      'company.address.line1': "Adresse du siège social",
+      'company.address.city': "Ville du siège social",
+      'company.address.postal_code': "Code postal du siège social",
+      'company.address.country': "Pays du siège social",
+      'business_profile.name': "Nom affiché de l'organisme",
+      'external_account': 'Compte bancaire',
+    }
+
+    if (exactLabels[normalized]) {
+      return exactLabels[normalized]
+    }
+
+    if (normalized.startsWith('representative.verification')) {
+      return 'Vérifier le représentant de compte'
+    }
+
+    if (normalized.startsWith('individual.verification')) {
+      return "Vérifier l'identité du titulaire du compte"
+    }
+
+    if (normalized.startsWith('person.verification')) {
+      return 'Vérifier la personne rattachée au compte'
+    }
+
+    return 'Informations complémentaires à fournir dans Stripe'
+  }
 
 
   return (
@@ -553,8 +623,23 @@ export default function ParametresPage() {
                       Votre compte Stripe est prêt à recevoir les paiements.
                     </div>
                   ) : (
-                    <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
-                      Finalisez votre onboarding Stripe pour recevoir votre part sur les réservations.
+                    <div className="space-y-3">
+                      <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
+                        {stripeStatus?.stripe_has_pending_representative_verification
+                          ? "Stripe attend encore la vérification du représentant de compte avant d'activer les paiements."
+                          : "Le compte Stripe est créé, mais il manque encore une validation ou une vérification avant l'activation des paiements."}
+                      </div>
+
+                      {pendingStripeItems.length > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+                          <p className="font-medium mb-2">Actions restantes côté Stripe</p>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {Array.from(new Set(pendingStripeItems)).map((item) => (
+                              <li key={item}>{formatStripeRequirement(item)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

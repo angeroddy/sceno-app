@@ -1,17 +1,55 @@
-"use client"
-
 type CountryCode = "FR" | "BE" | "CH" | "CA" | "OTHER"
 
 export function normalizeText(value: string | null | undefined): string {
   return (value ?? "").trim()
 }
 
+export function normalizeHumanText(value: string | null | undefined): string {
+  return normalizeText(value).replace(/\s+/g, " ")
+}
+
 export function normalizeDigits(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "")
 }
 
+export function normalizeBusinessId(value: string | null | undefined): string {
+  return normalizeDigits(value)
+}
+
 export function normalizePhone(value: string | null | undefined): string {
-  return (value ?? "").replace(/[^\d+()\s.-]/g, "").trim()
+  const raw = normalizeText(value)
+  if (!raw) return ""
+
+  const sanitized = raw.replace(/[^\d+]/g, "")
+  if (!sanitized) return ""
+
+  if (sanitized.startsWith("+")) {
+    const digits = sanitized.slice(1).replace(/\D/g, "")
+    return digits ? `+${digits}` : ""
+  }
+
+  if (sanitized.startsWith("00")) {
+    const digits = sanitized.slice(2).replace(/\D/g, "")
+    return digits ? `+${digits}` : ""
+  }
+
+  const digits = normalizeDigits(sanitized)
+  if (!digits) return ""
+
+  // Normalise les numéros français saisis localement vers un format compatible Stripe.
+  if (digits.startsWith("33") && digits.length === 11) {
+    return `+${digits}`
+  }
+
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return `+33${digits.slice(1)}`
+  }
+
+  if (digits.length === 9 && !digits.startsWith("0")) {
+    return `+33${digits}`
+  }
+
+  return `+${digits}`
 }
 
 export function normalizeEmail(value: string | null | undefined): string {
@@ -24,6 +62,17 @@ export function normalizeIban(value: string | null | undefined): string {
 
 export function normalizeBic(value: string | null | undefined): string {
   return normalizeText(value).replace(/\s/g, "").toUpperCase()
+}
+
+export function normalizeCountry(value: string | null | undefined): string {
+  const normalized = normalizeHumanText(value).toLowerCase()
+
+  if (!normalized || normalized === "fr" || normalized === "france") return "France"
+  if (normalized === "be" || normalized === "belgique" || normalized === "belgium") return "Belgique"
+  if (normalized === "ch" || normalized === "suisse" || normalized === "switzerland") return "Suisse"
+  if (normalized === "ca" || normalized === "canada") return "Canada"
+
+  return normalizeHumanText(value)
 }
 
 export function isValidEmail(value: string | null | undefined): boolean {
@@ -71,7 +120,7 @@ export function getPasswordStrength(value: string | null | undefined): {
 }
 
 export function isValidFrenchBusinessId(value: string | null | undefined): boolean {
-  const digits = normalizeDigits(value)
+  const digits = normalizeBusinessId(value)
   return digits.length === 9 || digits.length === 14
 }
 
@@ -121,7 +170,7 @@ export function isValidPostalCode(value: string | null | undefined, country: str
   const postalCode = normalizeText(value)
   if (!postalCode) return false
 
-  const compact = postalCode.replace(/\s+/g, "")
+  const compact = postalCode.replace(/\s+/g, "").toUpperCase()
   switch (getCountryCode(country)) {
     case "FR":
       return /^\d{5}$/.test(compact)
@@ -136,10 +185,44 @@ export function isValidPostalCode(value: string | null | undefined, country: str
   }
 }
 
+export function normalizePostalCode(value: string | null | undefined, country: string | null | undefined): string {
+  const postalCode = normalizeText(value)
+  if (!postalCode) return ""
+
+  const compact = postalCode.replace(/\s+/g, "").toUpperCase()
+  switch (getCountryCode(country)) {
+    case "FR":
+    case "BE":
+    case "CH":
+      return compact
+    case "CA":
+      if (compact.length === 6) {
+        return `${compact.slice(0, 3)} ${compact.slice(3)}`
+      }
+      return compact
+    default:
+      return normalizeHumanText(value).toUpperCase()
+  }
+}
+
 export function isValidPhone(value: string | null | undefined): boolean {
   const normalized = normalizePhone(value)
-  const digits = normalized.replace(/\D/g, "")
-  return digits.length >= 8 && digits.length <= 15
+  if (!normalized) return false
+
+  const digits = normalized.slice(1)
+  if (!/^\+\d{8,15}$/.test(normalized)) {
+    return false
+  }
+
+  if (digits.startsWith("0")) {
+    return false
+  }
+
+  if (digits.startsWith("33")) {
+    return /^33[1-9]\d{8}$/.test(digits)
+  }
+
+  return true
 }
 
 export function getAgeFromDate(value: string | null | undefined): number | null {

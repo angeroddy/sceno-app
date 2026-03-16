@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { getStripe } from '@/app/lib/stripe'
-import { extractStripeAccountStatus } from '@/app/lib/stripe-connect'
+import {
+  extractStripeAccountRequirementsSummary,
+  extractStripeAccountStatus,
+} from '@/app/lib/stripe-connect'
 import type { Annonceur } from '@/app/types'
 
 export const runtime = 'nodejs'
@@ -37,6 +40,11 @@ export async function GET(request: NextRequest) {
         stripe_charges_enabled: false,
         stripe_payouts_enabled: false,
         stripe_details_submitted: false,
+        stripe_requirements_currently_due: [],
+        stripe_requirements_pending_verification: [],
+        stripe_requirements_eventually_due: [],
+        stripe_requirements_disabled_reason: null,
+        stripe_has_pending_representative_verification: false,
       })
     }
 
@@ -49,12 +57,18 @@ export async function GET(request: NextRequest) {
         stripe_charges_enabled: annonceur.stripe_charges_enabled,
         stripe_payouts_enabled: annonceur.stripe_payouts_enabled,
         stripe_details_submitted: annonceur.stripe_details_submitted,
+        stripe_requirements_currently_due: [],
+        stripe_requirements_pending_verification: [],
+        stripe_requirements_eventually_due: [],
+        stripe_requirements_disabled_reason: null,
+        stripe_has_pending_representative_verification: false,
       })
     }
 
     const stripe = getStripe()
     const stripeAccount = await stripe.accounts.retrieve(annonceur.stripe_account_id)
     const stripeStatus = extractStripeAccountStatus(stripeAccount)
+    const stripeRequirements = extractStripeAccountRequirementsSummary(stripeAccount)
 
     await supabase
       .from('annonceurs')
@@ -65,6 +79,7 @@ export async function GET(request: NextRequest) {
       connected: true,
       stripe_account_id: annonceur.stripe_account_id,
       ...stripeStatus,
+      ...stripeRequirements,
     })
   } catch (error) {
     console.error('Erreur recuperation statut Stripe Connect:', error)

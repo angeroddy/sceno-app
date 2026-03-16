@@ -6,6 +6,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { getStripe } from '@/app/lib/stripe'
 import {
   createExpressAccountForAnnonceur,
+  extractStripeAccountRequirementsSummary,
   extractStripeAccountStatus,
   syncExpressAccountForAnnonceur,
 } from '@/app/lib/stripe-connect'
@@ -20,6 +21,7 @@ jest.mock('@/app/lib/stripe', () => ({
 
 jest.mock('@/app/lib/stripe-connect', () => ({
   createExpressAccountForAnnonceur: jest.fn(),
+  extractStripeAccountRequirementsSummary: jest.fn(),
   extractStripeAccountStatus: jest.fn(),
   syncExpressAccountForAnnonceur: jest.fn(),
 }))
@@ -43,6 +45,13 @@ describe('API Stripe Connect', () => {
       stripe_charges_enabled: true,
       stripe_payouts_enabled: true,
       stripe_details_submitted: true,
+    })
+    ;(extractStripeAccountRequirementsSummary as jest.Mock).mockReturnValue({
+      stripe_requirements_currently_due: [],
+      stripe_requirements_pending_verification: [],
+      stripe_requirements_eventually_due: [],
+      stripe_requirements_disabled_reason: null,
+      stripe_has_pending_representative_verification: false,
     })
     ;(syncExpressAccountForAnnonceur as jest.Mock).mockResolvedValue({ id: 'acct_1' })
   })
@@ -107,6 +116,11 @@ describe('API Stripe Connect', () => {
       stripe_charges_enabled: false,
       stripe_payouts_enabled: false,
       stripe_details_submitted: false,
+      stripe_requirements_currently_due: [],
+      stripe_requirements_pending_verification: [],
+      stripe_requirements_eventually_due: [],
+      stripe_requirements_disabled_reason: null,
+      stripe_has_pending_representative_verification: false,
     })
     expect(stripeMock.accounts.retrieve).not.toHaveBeenCalled()
   })
@@ -148,6 +162,11 @@ describe('API Stripe Connect', () => {
       stripe_charges_enabled: false,
       stripe_payouts_enabled: false,
       stripe_details_submitted: false,
+      stripe_requirements_currently_due: [],
+      stripe_requirements_pending_verification: [],
+      stripe_requirements_eventually_due: [],
+      stripe_requirements_disabled_reason: null,
+      stripe_has_pending_representative_verification: false,
     })
   })
 
