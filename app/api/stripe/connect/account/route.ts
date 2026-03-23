@@ -1,27 +1,14 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { getReadableStripeError, getStripeErrorParam, getStripeErrorStatus } from '@/app/lib/stripe-error-message'
 import { getStripe } from '@/app/lib/stripe'
 import {
-  createExpressAccountForAnnonceur,
-  extractStripeAccountStatus,
-  syncExpressAccountForAnnonceur,
+  StripeConnectSyncError,
+  syncStripeConnectForAnnonceur,
 } from '@/app/lib/stripe-connect'
 import type { Annonceur } from '@/app/types'
 
 export const runtime = 'nodejs'
-
-function getReadableStripeError(error: unknown): string {
-  if (error instanceof Stripe.errors.StripeError) {
-    return error.message
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return 'Erreur serveur interne'
-}
 
 export async function POST() {
   try {
@@ -47,43 +34,27 @@ export async function POST() {
 
     const annonceur = annonceurData as Annonceur
     const stripe = getStripe()
-
-    let accountId = annonceur.stripe_account_id
-    let stripeAccount
-
-    if (accountId) {
-      await syncExpressAccountForAnnonceur(stripe, accountId, annonceur)
-      stripeAccount = await stripe.accounts.retrieve(accountId)
-    } else {
-      stripeAccount = await createExpressAccountForAnnonceur(stripe, annonceur)
-      accountId = stripeAccount.id
-    }
-
-    const stripeStatus = extractStripeAccountStatus(stripeAccount)
-
-    const { error: updateError } = await supabase
-      .from('annonceurs')
-      .update({
-        stripe_account_id: accountId,
-        ...stripeStatus,
-      } as unknown as never)
-      .eq('id', annonceur.id)
-
-    if (updateError) {
-      console.error('Erreur update annonceur stripe account:', updateError)
-      return NextResponse.json({ error: 'Impossible de sauvegarder le compte Stripe' }, { status: 500 })
-    }
+    const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+      allowCreate: true,
+      persist: true,
+    })
 
     return NextResponse.json({
-      connected: true,
-      stripe_account_id: accountId,
-      ...stripeStatus,
+      connected: snapshot.connected,
+      stripe_account_id: snapshot.stripe_account_id,
+      stripe_onboarding_complete: snapshot.stripe_onboarding_complete,
+      stripe_charges_enabled: snapshot.stripe_charges_enabled,
+      stripe_payouts_enabled: snapshot.stripe_payouts_enabled,
+      stripe_details_submitted: snapshot.stripe_details_submitted,
     })
   } catch (error) {
     console.error('Erreur creation/sync compte Stripe Connect:', error)
+    if (error instanceof StripeConnectSyncError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
     return NextResponse.json(
-      { error: getReadableStripeError(error) },
-      { status: 500 }
+      { error: getReadableStripeError(error), param: getStripeErrorParam(error) },
+      { status: getStripeErrorStatus(error) }
     )
   }
 }

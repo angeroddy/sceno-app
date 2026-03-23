@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { POST } from '@/app/api/stripe/route'
 import { getStripe } from '@/app/lib/stripe'
-import { extractStripeAccountStatus } from '@/app/lib/stripe-connect'
+import {
+  buildStripeConnectSnapshot,
+  persistStripeConnectSnapshot,
+} from '@/app/lib/stripe-connect'
 import { sendMail } from '@/app/lib/mailer'
 
 jest.mock('@supabase/supabase-js', () => ({
@@ -13,7 +16,8 @@ jest.mock('@/app/lib/stripe', () => ({
 }))
 
 jest.mock('@/app/lib/stripe-connect', () => ({
-  extractStripeAccountStatus: jest.fn(),
+  buildStripeConnectSnapshot: jest.fn(),
+  persistStripeConnectSnapshot: jest.fn(),
 }))
 
 jest.mock('@/app/lib/mailer', () => ({
@@ -170,15 +174,23 @@ describe('POST /api/stripe', () => {
   })
 
   it('met à jour le statut Stripe Connect sur account.updated', async () => {
-    const annonceurEq = jest.fn().mockResolvedValue({ error: null })
     const stripeEventsEq = jest.fn().mockResolvedValue({ error: null })
 
-    ;(extractStripeAccountStatus as jest.Mock).mockReturnValue({
+    ;(buildStripeConnectSnapshot as jest.Mock).mockReturnValue({
+      connected: true,
+      stripe_account_id: 'acct_123',
       stripe_onboarding_complete: true,
       stripe_charges_enabled: true,
       stripe_payouts_enabled: true,
       stripe_details_submitted: true,
+      stripe_requirements_currently_due: [],
+      stripe_requirements_pending_verification: [],
+      stripe_requirements_eventually_due: [],
+      stripe_requirements_disabled_reason: null,
+      stripe_has_pending_representative_verification: false,
+      stripe_dashboard_ready: true,
     })
+    ;(persistStripeConnectSnapshot as jest.Mock).mockResolvedValue(undefined)
 
     const supabase = {
       from: jest.fn((table: string) => {
@@ -193,8 +205,13 @@ describe('POST /api/stripe', () => {
 
         if (table === 'annonceurs') {
           return {
-            update: jest.fn(() => ({
-              eq: annonceurEq,
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { id: 'ann-1' },
+                  error: null,
+                }),
+              })),
             })),
           }
         }
@@ -218,6 +235,150 @@ describe('POST /api/stripe', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ received: true })
-    expect(extractStripeAccountStatus).toHaveBeenCalledWith({ id: 'acct_123' })
+    expect(buildStripeConnectSnapshot).toHaveBeenCalledWith('acct_123', { id: 'acct_123' })
+    expect(persistStripeConnectSnapshot).toHaveBeenCalledWith(
+      expect.any(Object),
+      'ann-1',
+      expect.objectContaining({ stripe_account_id: 'acct_123' })
+    )
+  })
+
+  it('retourne 400 si aucun annonceur local ne correspond au compte Stripe du webhook', async () => {
+    const stripeEventsEq = jest.fn().mockResolvedValue({ error: null })
+
+    ;(buildStripeConnectSnapshot as jest.Mock).mockReturnValue({
+      connected: true,
+      stripe_account_id: 'acct_404',
+      stripe_onboarding_complete: true,
+      stripe_charges_enabled: true,
+      stripe_payouts_enabled: true,
+      stripe_details_submitted: true,
+      stripe_requirements_currently_due: [],
+      stripe_requirements_pending_verification: [],
+      stripe_requirements_eventually_due: [],
+      stripe_requirements_disabled_reason: null,
+      stripe_has_pending_representative_verification: false,
+      stripe_dashboard_ready: true,
+    })
+
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'stripe_events') {
+          return {
+            insert: jest.fn().mockResolvedValue({ error: null }),
+            update: jest.fn(() => ({
+              eq: stripeEventsEq,
+            })),
+          }
+        }
+
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: null,
+                  error: null,
+                }),
+              })),
+            })),
+          }
+        }
+
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    }
+
+    ;(createClient as jest.Mock).mockReturnValue(supabase)
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_account_missing',
+      type: 'account.updated',
+      data: {
+        object: {
+          id: 'acct_404',
+        },
+      },
+    })
+
+    const response = await POST(createWebhookRequest('sig_123'))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Webhook invalide ou traitement echoue',
+    })
+    expect(persistStripeConnectSnapshot).not.toHaveBeenCalled()
+  })
+
+  it('retourne 400 si la persistance du statut Stripe échoue pendant account.updated', async () => {
+    const stripeEventsEq = jest.fn().mockResolvedValue({ error: null })
+
+    ;(buildStripeConnectSnapshot as jest.Mock).mockReturnValue({
+      connected: true,
+      stripe_account_id: 'acct_500',
+      stripe_onboarding_complete: true,
+      stripe_charges_enabled: true,
+      stripe_payouts_enabled: true,
+      stripe_details_submitted: true,
+      stripe_requirements_currently_due: [],
+      stripe_requirements_pending_verification: [],
+      stripe_requirements_eventually_due: [],
+      stripe_requirements_disabled_reason: null,
+      stripe_has_pending_representative_verification: false,
+      stripe_dashboard_ready: true,
+    })
+    ;(persistStripeConnectSnapshot as jest.Mock).mockRejectedValue(
+      new Error('Impossible de sauvegarder le statut Stripe')
+    )
+
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'stripe_events') {
+          return {
+            insert: jest.fn().mockResolvedValue({ error: null }),
+            update: jest.fn(() => ({
+              eq: stripeEventsEq,
+            })),
+          }
+        }
+
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { id: 'ann-500' },
+                  error: null,
+                }),
+              })),
+            })),
+          }
+        }
+
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    }
+
+    ;(createClient as jest.Mock).mockReturnValue(supabase)
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_account_persist',
+      type: 'account.updated',
+      data: {
+        object: {
+          id: 'acct_500',
+        },
+      },
+    })
+
+    const response = await POST(createWebhookRequest('sig_123'))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Webhook invalide ou traitement echoue',
+    })
+    expect(persistStripeConnectSnapshot).toHaveBeenCalledWith(
+      expect.any(Object),
+      'ann-500',
+      expect.objectContaining({ stripe_account_id: 'acct_500' })
+    )
   })
 })

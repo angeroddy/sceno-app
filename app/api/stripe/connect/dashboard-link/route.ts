@@ -1,22 +1,14 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { getReadableStripeError } from '@/app/lib/stripe-error-message'
 import { getStripe } from '@/app/lib/stripe'
+import {
+  StripeConnectSyncError,
+  syncStripeConnectForAnnonceur,
+} from '@/app/lib/stripe-connect'
 import type { Annonceur } from '@/app/types'
 
 export const runtime = 'nodejs'
-
-function getReadableStripeError(error: unknown): string {
-  if (error instanceof Stripe.errors.StripeError) {
-    return error.message
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return 'Erreur serveur interne'
-}
 
 export async function POST() {
   try {
@@ -41,12 +33,17 @@ export async function POST() {
     }
 
     const annonceur = annonceurData as Annonceur
+    const stripe = getStripe()
+    const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+      allowCreate: false,
+      persist: true,
+    })
 
     if (
-      !annonceur.stripe_account_id ||
-      !annonceur.stripe_onboarding_complete ||
-      !annonceur.stripe_charges_enabled ||
-      !annonceur.stripe_payouts_enabled
+      !snapshot.stripe_account_id ||
+      !snapshot.stripe_onboarding_complete ||
+      !snapshot.stripe_charges_enabled ||
+      !snapshot.stripe_payouts_enabled
     ) {
       return NextResponse.json(
         { error: "Le compte Stripe n'est pas encore pret pour acceder au dashboard" },
@@ -54,12 +51,14 @@ export async function POST() {
       )
     }
 
-    const stripe = getStripe()
-    const loginLink = await stripe.accounts.createLoginLink(annonceur.stripe_account_id)
+    const loginLink = await stripe.accounts.createLoginLink(snapshot.stripe_account_id)
 
     return NextResponse.json({ url: loginLink.url })
   } catch (error) {
     console.error('Erreur creation login link Stripe:', error)
+    if (error instanceof StripeConnectSyncError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
     return NextResponse.json(
       { error: getReadableStripeError(error) },
       { status: 500 }

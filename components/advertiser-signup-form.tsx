@@ -70,6 +70,7 @@ type AdvertiserField =
   | "siege_ville"
   | "representant_nom"
   | "representant_prenom"
+  | "representant_telephone"
   | "representant_date_naissance"
   | "representant_adresse_rue"
   | "representant_adresse_code_postal"
@@ -173,13 +174,18 @@ export function AdvertiserSignupForm({
       }
 
       if (!normalizeText(data.telephone)) {
-        errors.telephone = "Le numéro de téléphone est obligatoire"
+        errors.telephone = "Le numéro de téléphone de l'organisme est obligatoire"
       } else if (!isValidPhone(data.telephone)) {
-        errors.telephone = "Le numéro de téléphone n'est pas valide"
+        errors.telephone = "Le numéro de téléphone de l'organisme n'est pas valide"
       }
 
       if (!normalizeText(data.representant_nom)) errors.representant_nom = "Le nom du représentant légal est obligatoire"
       if (!normalizeText(data.representant_prenom)) errors.representant_prenom = "Le prénom du représentant légal est obligatoire"
+      if (!normalizeText(data.representant_telephone)) {
+        errors.representant_telephone = "Le numéro de téléphone du représentant légal est obligatoire"
+      } else if (!isValidPhone(data.representant_telephone)) {
+        errors.representant_telephone = "Le numéro de téléphone du représentant légal n'est pas valide"
+      }
 
       if (!data.representant_date_naissance) {
         errors.representant_date_naissance = "La date de naissance du représentant légal est obligatoire"
@@ -253,6 +259,7 @@ export function AdvertiserSignupForm({
         "telephone",
         "representant_nom",
         "representant_prenom",
+        "representant_telephone",
         "representant_date_naissance",
         "representant_adresse_rue",
         "representant_adresse_code_postal",
@@ -442,6 +449,7 @@ export function AdvertiserSignupForm({
           siege_pays: null,
           representant_nom: null,
           representant_prenom: null,
+          representant_telephone: null,
           representant_date_naissance: null,
           representant_adresse_rue: null,
           representant_adresse_ville: null,
@@ -474,6 +482,7 @@ export function AdvertiserSignupForm({
           profileData.siege_pays = normalizeCountry(formData.siege_pays || 'France') || 'France'
           profileData.representant_nom = normalizeHumanText(formData.representant_nom) || null
           profileData.representant_prenom = normalizeHumanText(formData.representant_prenom) || null
+          profileData.representant_telephone = normalizePhone(formData.representant_telephone) || null
           profileData.representant_date_naissance = formData.representant_date_naissance || null
           profileData.representant_adresse_rue = normalizeHumanText(formData.representant_adresse_rue) || null
           profileData.representant_adresse_ville = normalizeHumanText(formData.representant_adresse_ville) || null
@@ -501,13 +510,6 @@ export function AdvertiserSignupForm({
         }
 
         // 3. Succès !
-        // 2bis. Tenter d'initialiser Stripe Connect (non bloquant si session non active).
-        try {
-          await fetch('/api/stripe/connect/account', { method: 'POST' })
-        } catch (stripeInitError) {
-          console.warn('Initialisation Stripe Connect ignorée:', stripeInitError)
-        }
-
         setIsSuccess(true)
         setIsLoading(false)
 
@@ -805,7 +807,7 @@ export function AdvertiserSignupForm({
               <Input
                 id="telephone"
                 type="tel"
-                placeholder="+33 6 12 34 56 78"
+                placeholder="+33 6 XX XX XX XX"
                 value={formData.telephone || ''}
                 onChange={(e) => updateFormData({ telephone: e.target.value })}
                 onBlur={() => {
@@ -817,7 +819,7 @@ export function AdvertiserSignupForm({
                 required
               />
               {showFieldError("telephone") && <FieldError>{fieldErrors.telephone}</FieldError>}
-              <FieldDescription>Format attendu: `+33612345678` ou `06 12 34 56 78`</FieldDescription>
+              <FieldDescription>Utilisez un numéro réel au format international ou national. Evitez les numéros d&apos;exemple.</FieldDescription>
             </Field>
 
 
@@ -921,11 +923,11 @@ export function AdvertiserSignupForm({
                 </div>
 
                 <Field>
-                  <FieldLabel htmlFor="telephone">Numéro de téléphone <span className="text-red-500">*</span></FieldLabel>
+                  <FieldLabel htmlFor="telephone">Téléphone de l&apos;organisme <span className="text-red-500">*</span></FieldLabel>
                   <Input
                     id="telephone"
                     type="tel"
-                    placeholder="+33 1 23 45 67 89"
+                    placeholder="+33 1 XX XX XX XX"
                     value={formData.telephone || ''}
                     onChange={(e) => updateFormData({ telephone: e.target.value })}
                     onBlur={() => {
@@ -937,7 +939,7 @@ export function AdvertiserSignupForm({
                     required
                   />
                   {showFieldError("telephone") && <FieldError>{fieldErrors.telephone}</FieldError>}
-                  <FieldDescription>Format attendu: `+33123456789` ou `01 23 45 67 89`</FieldDescription>
+                  <FieldDescription>Utilisé comme téléphone de la structure dans Stripe</FieldDescription>
                 </Field>
               </div>
             </div>
@@ -1037,6 +1039,26 @@ export function AdvertiserSignupForm({
                     {showFieldError("representant_prenom") && <FieldError>{fieldErrors.representant_prenom}</FieldError>}
                   </Field>
                 </div>
+
+                <Field>
+                  <FieldLabel htmlFor="representant_telephone">Téléphone du représentant légal <span className="text-red-500">*</span></FieldLabel>
+                  <Input
+                    id="representant_telephone"
+                    type="tel"
+                    placeholder="+33 6 XX XX XX XX"
+                    value={formData.representant_telephone || ''}
+                    onChange={(e) => updateFormData({ representant_telephone: e.target.value })}
+                    onBlur={() => {
+                      markTouched("representant_telephone")
+                      updateFormData({ representant_telephone: normalizePhone(formData.representant_telephone) })
+                    }}
+                    aria-invalid={showFieldError("representant_telephone")}
+                    className={getFieldClassName("representant_telephone")}
+                    required
+                  />
+                  {showFieldError("representant_telephone") && <FieldError>{fieldErrors.representant_telephone}</FieldError>}
+                  <FieldDescription>Numéro personnel utilisé pour la vérification Stripe du représentant</FieldDescription>
+                </Field>
 
                 <Field>
                   <FieldLabel htmlFor="representant_date_naissance">Date de naissance <span className="text-red-500">*</span></FieldLabel>

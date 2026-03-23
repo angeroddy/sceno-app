@@ -1,27 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { getReadableStripeError, getStripeErrorParam, getStripeErrorStatus } from '@/app/lib/stripe-error-message'
 import { getStripe } from '@/app/lib/stripe'
 import {
-  createExpressAccountForAnnonceur,
-  extractStripeAccountStatus,
-  syncExpressAccountForAnnonceur,
+  markStripeOnboardingStarted,
+  StripeConnectSyncError,
+  syncStripeConnectForAnnonceur,
 } from '@/app/lib/stripe-connect'
 import type { Annonceur } from '@/app/types'
 
 export const runtime = 'nodejs'
-
-function getReadableStripeError(error: unknown): string {
-  if (error instanceof Stripe.errors.StripeError) {
-    return error.message
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return 'Erreur serveur interne'
-}
 
 function getBaseUrl(request: NextRequest): string {
   if (process.env.NEXT_PUBLIC_APP_URL) {
@@ -54,26 +42,10 @@ export async function POST(request: NextRequest) {
 
     const annonceur = annonceurData as Annonceur
     const stripe = getStripe()
-
-    let stripeAccountId = annonceur.stripe_account_id
-    let stripeAccount
-
-    if (stripeAccountId) {
-      await syncExpressAccountForAnnonceur(stripe, stripeAccountId, annonceur)
-      stripeAccount = await stripe.accounts.retrieve(stripeAccountId)
-    } else {
-      stripeAccount = await createExpressAccountForAnnonceur(stripe, annonceur)
-      stripeAccountId = stripeAccount.id
-    }
-
-    const stripeStatus = extractStripeAccountStatus(stripeAccount)
-    await supabase
-      .from('annonceurs')
-      .update({
-        stripe_account_id: stripeAccountId,
-        ...stripeStatus,
-      } as unknown as never)
-      .eq('id', annonceur.id)
+    const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+      allowCreate: true,
+      persist: true,
+    })
 
     let returnPath = '/annonceur/parametres?stripe=return'
     let refreshPath = '/annonceur/parametres?stripe=refresh'
@@ -87,21 +59,25 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = getBaseUrl(request)
     const accountLink = await stripe.accountLinks.create({
-      account: stripeAccountId!,
+      account: snapshot.stripe_account_id!,
       type: 'account_onboarding',
       return_url: `${baseUrl}${returnPath}`,
       refresh_url: `${baseUrl}${refreshPath}`,
     })
+    await markStripeOnboardingStarted(stripe, snapshot.stripe_account_id!, annonceur)
 
     return NextResponse.json({
       url: accountLink.url,
-      stripe_account_id: stripeAccountId,
+      stripe_account_id: snapshot.stripe_account_id,
     })
   } catch (error) {
     console.error('Erreur creation lien onboarding Stripe:', error)
+    if (error instanceof StripeConnectSyncError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
     return NextResponse.json(
-      { error: getReadableStripeError(error) },
-      { status: 500 }
+      { error: getReadableStripeError(error), param: getStripeErrorParam(error) },
+      { status: getStripeErrorStatus(error) }
     )
   }
 }

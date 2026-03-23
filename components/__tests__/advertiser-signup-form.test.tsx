@@ -105,6 +105,11 @@ describe('AdvertiserSignupForm', () => {
     return screen.getByLabelText(regex)
   }
 
+  const getRepeatedLabels = (label: string) => {
+    const regex = new RegExp(`^${label}\\s*\\*?$`)
+    return screen.getAllByLabelText(regex)
+  }
+
   it("empêche la création du compte tant que l'étape 3 est incomplète", async () => {
     render(<AdvertiserSignupForm />)
     const user = userEvent.setup()
@@ -118,7 +123,7 @@ describe('AdvertiserSignupForm', () => {
     await user.type(screen.getByLabelText(/^Adresse/i), '10 rue de Paris')
     await user.type(screen.getByLabelText(/Code postal/i), '75001')
     await user.type(screen.getByLabelText(/^Ville/i), 'Paris')
-    await user.type(screen.getByLabelText(/Numéro de téléphone/i), '+33612345678')
+    await user.type(screen.getByLabelText(/Numéro de téléphone/i), '+33627184539')
 
     await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
@@ -155,7 +160,7 @@ describe('AdvertiserSignupForm', () => {
     await user.type(screen.getByLabelText(/^Adresse/i), '10 rue de Paris')
     await user.type(screen.getByLabelText(/Code postal/i), '75001')
     await user.type(screen.getByLabelText(/^Ville/i), 'Paris')
-    await user.type(screen.getByLabelText(/Numéro de téléphone/i), '+33612345678')
+    await user.type(screen.getByLabelText(/Numéro de téléphone/i), '+33627184539')
 
     await user.click(screen.getByRole('button', { name: /Suivant/i }))
 
@@ -184,18 +189,112 @@ describe('AdvertiserSignupForm', () => {
       expect(insert).toHaveBeenCalled()
     })
 
-    expect(insert).toHaveBeenCalledWith(
+      expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        telephone: '+33612345678',
+        telephone: '+33627184539',
       })
     )
 
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/stripe/connect/account', { method: 'POST' })
-    })
+    expect(global.fetch).not.toHaveBeenCalled()
 
     await waitFor(() => {
       expect(screen.getByText(/Inscription réussie/i)).toBeInTheDocument()
     })
   })
+
+  it("empêche de passer à l'étape 3 en entreprise si le téléphone du représentant légal manque", async () => {
+    render(<AdvertiserSignupForm />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /Entreprise/i }))
+    await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+    await user.type(screen.getByLabelText(/Nom de l'organisme/i), 'Sceno Formation')
+    await user.type(screen.getByLabelText(/Nom légal de l'entreprise/i), 'Sceno Formation SARL')
+    await user.selectOptions(screen.getByLabelText(/Statut juridique/i), 'sarl')
+    await user.type(screen.getByLabelText(/SIREN \/ SIRET/i), '123456789')
+    await user.type(screen.getByLabelText(/Téléphone de l'organisme/i), '+33123456789')
+    await user.type(getRepeatedLabels('Adresse')[0], '10 rue des Arts')
+    await user.type(getRepeatedLabels('Code postal')[0], '75002')
+    await user.type(getRepeatedLabels('Ville')[0], 'Paris')
+    await user.type(getRepeatedLabels('Nom')[0], 'Martin')
+    await user.type(getRepeatedLabels('Prénom')[0], 'Sophie')
+    await user.type(screen.getByLabelText(/Date de naissance/i), '1985-04-12')
+    await user.type(getRepeatedLabels('Adresse')[1], '12 rue du Theatre')
+    await user.type(getRepeatedLabels('Code postal')[1], '75003')
+    await user.type(getRepeatedLabels('Ville')[1], 'Paris')
+
+    await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+    expect(screen.getByText(/Informations sur votre entreprise/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Compte et informations bancaires/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/numéro de téléphone du représentant légal est obligatoire/i)).toBeInTheDocument()
+  })
+
+  it('soumet et crée un annonceur entreprise avec le téléphone du représentant légal', async () => {
+    const mockUser = { id: 'user-2', email: 'contact@sceno.fr' }
+
+    mockSupabase.auth.signUp.mockResolvedValue({
+      data: { user: mockUser },
+      error: null,
+    })
+
+    const insert = jest.fn().mockResolvedValue({ error: null })
+    mockSupabase.from.mockImplementation(createAdvertiserFromMock(insert))
+
+    render(<AdvertiserSignupForm />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /Entreprise/i }))
+    await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+    await user.type(screen.getByLabelText(/Nom de l'organisme/i), 'Sceno Formation')
+    await user.type(screen.getByLabelText(/Nom légal de l'entreprise/i), 'Sceno Formation SARL')
+    await user.selectOptions(screen.getByLabelText(/Statut juridique/i), 'sarl')
+    await user.type(screen.getByLabelText(/SIREN \/ SIRET/i), '123 456 789')
+    await user.type(screen.getByLabelText(/Téléphone de l'organisme/i), '01 23 45 67 89')
+    await user.type(getRepeatedLabels('Adresse')[0], '10 rue des Arts')
+    await user.type(getRepeatedLabels('Code postal')[0], '75002')
+    await user.type(getRepeatedLabels('Ville')[0], 'Paris')
+    await user.type(getRepeatedLabels('Nom')[0], 'Martin')
+    await user.type(getRepeatedLabels('Prénom')[0], 'Sophie')
+    await user.type(screen.getByLabelText(/Téléphone du représentant légal/i), '06 98 76 54 32')
+    await user.type(screen.getByLabelText(/Date de naissance/i), '1985-04-12')
+    await user.type(getRepeatedLabels('Adresse')[1], '12 rue du Theatre')
+    await user.type(getRepeatedLabels('Code postal')[1], '75003')
+    await user.type(getRepeatedLabels('Ville')[1], 'Paris')
+
+    await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Compte et informations bancaires/i)).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByLabelText(/Adresse e-mail/i), 'contact@SCENO.fr')
+    await user.type(screen.getByLabelText(/Mot de passe/i), 'Password123')
+    await user.type(screen.getByLabelText(/Nom du titulaire du compte/i), 'Sceno Formation SARL')
+    await user.type(screen.getByLabelText(/IBAN/i), 'FR7630006000011234567890189')
+    await user.type(screen.getByLabelText(/BIC/i), 'BNPAFRPP')
+
+    await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))
+
+    await waitFor(() => {
+      expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
+        email: 'contact@sceno.fr',
+        password: 'Password123',
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      })
+    })
+
+    await waitFor(() => {
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'contact@sceno.fr',
+          telephone: '+33123456789',
+          numero_legal: '123456789',
+          representant_telephone: '+33698765432',
+        })
+      )
+    })
+  }, 10000)
 })

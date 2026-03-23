@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type Stripe from 'stripe'
 import { getStripe } from '@/app/lib/stripe'
-import { extractStripeAccountStatus } from '@/app/lib/stripe-connect'
+import {
+  buildStripeConnectSnapshot,
+  persistStripeConnectSnapshot,
+} from '@/app/lib/stripe-connect'
 import { sendMail } from '@/app/lib/mailer'
 
 export const runtime = 'nodejs'
@@ -319,11 +322,28 @@ async function handleAccountUpdated(
   supabase: SupabaseAdmin,
   account: Stripe.Account
 ) {
-  const stripeStatus = extractStripeAccountStatus(account)
-  await supabase
+  const snapshot = buildStripeConnectSnapshot(account.id, account)
+
+  const { data: annonceurData, error } = await supabase
     .from('annonceurs')
-    .update(stripeStatus as unknown as never)
+    .select('id')
     .eq('stripe_account_id', account.id)
+    .maybeSingle()
+  const annonceur = annonceurData as { id: string } | null
+
+  if (error) {
+    throw new Error(`Impossible de retrouver l'annonceur du compte Stripe: ${error.message}`)
+  }
+
+  if (!annonceur?.id) {
+    throw new Error(`Aucun annonceur local pour le compte Stripe ${account.id}`)
+  }
+
+  await persistStripeConnectSnapshot(
+    supabase as unknown as Parameters<typeof persistStripeConnectSnapshot>[0],
+    annonceur.id,
+    snapshot
+  )
 }
 
 export async function POST(request: NextRequest) {

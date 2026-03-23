@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { getReadableStripeError } from '@/app/lib/stripe-error-message'
 import { getStripe } from '@/app/lib/stripe'
 import {
-  extractStripeAccountRequirementsSummary,
-  extractStripeAccountStatus,
+  buildStoredStripeConnectSnapshot,
+  getDisconnectedStripeConnectSnapshot,
+  StripeConnectSyncError,
+  syncStripeConnectForAnnonceur,
 } from '@/app/lib/stripe-connect'
 import type { Annonceur } from '@/app/types'
 
@@ -33,56 +36,29 @@ export async function GET(request: NextRequest) {
 
     const annonceur = annonceurData as Annonceur
     if (!annonceur.stripe_account_id) {
-      return NextResponse.json({
-        connected: false,
-        stripe_account_id: null,
-        stripe_onboarding_complete: false,
-        stripe_charges_enabled: false,
-        stripe_payouts_enabled: false,
-        stripe_details_submitted: false,
-        stripe_requirements_currently_due: [],
-        stripe_requirements_pending_verification: [],
-        stripe_requirements_eventually_due: [],
-        stripe_requirements_disabled_reason: null,
-        stripe_has_pending_representative_verification: false,
-      })
+      return NextResponse.json(getDisconnectedStripeConnectSnapshot())
     }
 
     const refresh = request.nextUrl.searchParams.get('refresh') !== 'false'
     if (!refresh) {
-      return NextResponse.json({
-        connected: true,
-        stripe_account_id: annonceur.stripe_account_id,
-        stripe_onboarding_complete: annonceur.stripe_onboarding_complete,
-        stripe_charges_enabled: annonceur.stripe_charges_enabled,
-        stripe_payouts_enabled: annonceur.stripe_payouts_enabled,
-        stripe_details_submitted: annonceur.stripe_details_submitted,
-        stripe_requirements_currently_due: [],
-        stripe_requirements_pending_verification: [],
-        stripe_requirements_eventually_due: [],
-        stripe_requirements_disabled_reason: null,
-        stripe_has_pending_representative_verification: false,
-      })
+      return NextResponse.json(buildStoredStripeConnectSnapshot(annonceur))
     }
 
     const stripe = getStripe()
-    const stripeAccount = await stripe.accounts.retrieve(annonceur.stripe_account_id)
-    const stripeStatus = extractStripeAccountStatus(stripeAccount)
-    const stripeRequirements = extractStripeAccountRequirementsSummary(stripeAccount)
-
-    await supabase
-      .from('annonceurs')
-      .update(stripeStatus as unknown as never)
-      .eq('id', annonceur.id)
-
-    return NextResponse.json({
-      connected: true,
-      stripe_account_id: annonceur.stripe_account_id,
-      ...stripeStatus,
-      ...stripeRequirements,
+    const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+      allowCreate: false,
+      persist: true,
     })
+
+    return NextResponse.json(snapshot)
   } catch (error) {
     console.error('Erreur recuperation statut Stripe Connect:', error)
-    return NextResponse.json({ error: 'Erreur serveur interne' }, { status: 500 })
+    if (error instanceof StripeConnectSyncError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
+    return NextResponse.json(
+      { error: getReadableStripeError(error) },
+      { status: 500 }
+    )
   }
 }

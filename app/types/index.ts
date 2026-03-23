@@ -113,6 +113,7 @@ export interface Annonceur {
   // Représentant légal (entreprise)
   representant_nom: string | null
   representant_prenom: string | null
+  representant_telephone: string | null
   representant_date_naissance: string | null
   representant_adresse_rue: string | null
   representant_adresse_ville: string | null
@@ -280,6 +281,7 @@ export interface InscriptionAnnonceurForm {
   // Représentant légal (entreprise)
   representant_nom?: string
   representant_prenom?: string
+  representant_telephone?: string
   representant_date_naissance?: string
   representant_adresse_rue?: string
   representant_adresse_ville?: string
@@ -330,6 +332,7 @@ export interface InscriptionEntrepriseForm {
   telephone: string
   representant_nom: string
   representant_prenom: string
+  representant_telephone: string
   representant_date_naissance: string
   representant_adresse_rue: string
   representant_adresse_ville: string

@@ -8,15 +8,29 @@ import { Label } from "@/components/ui/label"
 import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import {
+  TYPE_ANNONCEUR_LABELS,
+  TYPE_JURIDIQUE_LABELS,
+  type Annonceur,
+  type TypeJuridique,
+} from "@/app/types"
+import {
+  getAgeFromDate,
   isValidBic,
   isValidEmail,
+  isValidFrenchBusinessId,
   isValidIban,
+  isValidPhone,
+  isValidPostalCode,
   normalizeBic,
+  normalizeBusinessId,
+  normalizeCountry,
   normalizeEmail,
   normalizeHumanText,
   normalizeIban,
+  normalizePhone,
+  normalizePostalCode,
+  normalizeText,
 } from "@/app/lib/signup-validation"
-import type { Annonceur } from "@/app/types"
 
 interface StripeConnectStatus {
   connected: boolean
@@ -32,6 +46,116 @@ interface StripeConnectStatus {
   stripe_has_pending_representative_verification: boolean
 }
 
+type StripeApiErrorResponse = {
+  error?: string
+  param?: string | null
+}
+
+type AnnonceurSettingsForm = {
+  type_annonceur: Annonceur["type_annonceur"]
+  nom_formation: string
+  email: string
+  iban: string
+  nom_titulaire_compte: string
+  bic_swift: string
+  telephone: string
+  nom: string
+  prenom: string
+  date_naissance: string
+  adresse_rue: string
+  adresse_ville: string
+  adresse_code_postal: string
+  adresse_pays: string
+  nom_entreprise: string
+  type_juridique: TypeJuridique | ""
+  pays_entreprise: string
+  numero_legal: string
+  siege_rue: string
+  siege_ville: string
+  siege_code_postal: string
+  siege_pays: string
+  representant_nom: string
+  representant_prenom: string
+  representant_telephone: string
+  representant_date_naissance: string
+  representant_adresse_rue: string
+  representant_adresse_ville: string
+  representant_adresse_code_postal: string
+  representant_adresse_pays: string
+}
+
+const EMPTY_FORM_DATA: AnnonceurSettingsForm = {
+  type_annonceur: null,
+  nom_formation: "",
+  email: "",
+  iban: "",
+  nom_titulaire_compte: "",
+  bic_swift: "",
+  telephone: "",
+  nom: "",
+  prenom: "",
+  date_naissance: "",
+  adresse_rue: "",
+  adresse_ville: "",
+  adresse_code_postal: "",
+  adresse_pays: "France",
+  nom_entreprise: "",
+  type_juridique: "",
+  pays_entreprise: "France",
+  numero_legal: "",
+  siege_rue: "",
+  siege_ville: "",
+  siege_code_postal: "",
+  siege_pays: "France",
+  representant_nom: "",
+  representant_prenom: "",
+  representant_telephone: "",
+  representant_date_naissance: "",
+  representant_adresse_rue: "",
+  representant_adresse_ville: "",
+  representant_adresse_code_postal: "",
+  representant_adresse_pays: "France",
+}
+
+function toFormData(annonceur: Annonceur): AnnonceurSettingsForm {
+  return {
+    type_annonceur: annonceur.type_annonceur,
+    nom_formation: annonceur.nom_formation || "",
+    email: normalizeEmail(annonceur.email),
+    iban: annonceur.iban || "",
+    nom_titulaire_compte: annonceur.nom_titulaire_compte || "",
+    bic_swift: normalizeBic(annonceur.bic_swift || ""),
+    telephone: annonceur.telephone || "",
+    nom: annonceur.nom || "",
+    prenom: annonceur.prenom || "",
+    date_naissance: annonceur.date_naissance || "",
+    adresse_rue: annonceur.adresse_rue || "",
+    adresse_ville: annonceur.adresse_ville || "",
+    adresse_code_postal: annonceur.adresse_code_postal || "",
+    adresse_pays: annonceur.adresse_pays || "France",
+    nom_entreprise: annonceur.nom_entreprise || "",
+    type_juridique: annonceur.type_juridique || "",
+    pays_entreprise: annonceur.pays_entreprise || "France",
+    numero_legal: annonceur.numero_legal || "",
+    siege_rue: annonceur.siege_rue || "",
+    siege_ville: annonceur.siege_ville || "",
+    siege_code_postal: annonceur.siege_code_postal || "",
+    siege_pays: annonceur.siege_pays || "France",
+    representant_nom: annonceur.representant_nom || "",
+    representant_prenom: annonceur.representant_prenom || "",
+    representant_telephone: annonceur.representant_telephone || "",
+    representant_date_naissance: annonceur.representant_date_naissance || "",
+    representant_adresse_rue: annonceur.representant_adresse_rue || "",
+    representant_adresse_ville: annonceur.representant_adresse_ville || "",
+    representant_adresse_code_postal: annonceur.representant_adresse_code_postal || "",
+    representant_adresse_pays: annonceur.representant_adresse_pays || "France",
+  }
+}
+
+function getTodayIsoDate(): string {
+  return new Date().toISOString().split("T")[0]
+}
+
 export default function ParametresPage() {
   const [annonceur, setAnnonceur] = useState<Annonceur | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,14 +167,12 @@ export default function ParametresPage() {
   const [stripeLoading, setStripeLoading] = useState(true)
   const [stripeActionLoading, setStripeActionLoading] = useState(false)
   const [stripeError, setStripeError] = useState("")
+  const [formData, setFormData] = useState<AnnonceurSettingsForm>(EMPTY_FORM_DATA)
 
-  const [formData, setFormData] = useState({
-    nom_formation: "",
-    email: "",
-    iban: "",
-    nom_titulaire_compte: "",
-    bic_swift: "",
-  })
+  const lockedAccountType = annonceur?.type_annonceur ?? formData.type_annonceur
+  const lockedEmail = normalizeEmail(annonceur?.email || formData.email)
+  const isEntreprise = lockedAccountType === "entreprise"
+  const maxBirthDate = getTodayIsoDate()
 
   useEffect(() => {
     const initialize = async () => {
@@ -66,28 +188,24 @@ export default function ParametresPage() {
   const fetchAnnonceurData = async () => {
     try {
       const supabase = createBrowserSupabaseClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const { data: annonceurData } = await supabase
-        .from('annonceurs')
-        .select('*')
-        .eq('auth_user_id', user.id)
+        .from("annonceurs")
+        .select("*")
+        .eq("auth_user_id", user.id)
         .single<Annonceur>()
 
       if (annonceurData) {
         setAnnonceur(annonceurData)
-        setFormData({
-          nom_formation: annonceurData.nom_formation,
-          email: normalizeEmail(annonceurData.email),
-          iban: annonceurData.iban || "",
-          nom_titulaire_compte: annonceurData.nom_titulaire_compte || "",
-          bic_swift: normalizeBic(annonceurData.bic_swift || ""),
-        })
+        setFormData(toFormData(annonceurData))
       }
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error)
+    } catch (fetchError) {
+      console.error("Erreur lors du chargement des données:", fetchError)
     } finally {
       setLoading(false)
     }
@@ -98,17 +216,17 @@ export default function ParametresPage() {
       setStripeLoading(true)
       setStripeError("")
 
-      const response = await fetch(`/api/stripe/connect/status?refresh=${refresh ? 'true' : 'false'}`)
+      const response = await fetch(`/api/stripe/connect/status?refresh=${refresh ? "true" : "false"}`)
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Impossible de charger le statut Stripe')
+        throw new Error(data?.error || "Impossible de charger le statut Stripe")
       }
 
       setStripeStatus(data as StripeConnectStatus)
-    } catch (err) {
-      console.error('Erreur statut Stripe Connect:', err)
-      setStripeError(err instanceof Error ? err.message : 'Erreur lors du chargement Stripe')
+    } catch (fetchError) {
+      console.error("Erreur statut Stripe Connect:", fetchError)
+      setStripeError(fetchError instanceof Error ? fetchError.message : "Erreur lors du chargement Stripe")
     } finally {
       setStripeLoading(false)
     }
@@ -119,20 +237,24 @@ export default function ParametresPage() {
       setStripeActionLoading(true)
       setStripeError("")
 
-      const response = await fetch('/api/stripe/connect/account', {
-        method: 'POST',
+      const response = await fetch("/api/stripe/connect/account", {
+        method: "POST",
       })
-      const data = await response.json()
+      const data = await response.json() as StripeConnectStatus | StripeApiErrorResponse
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Impossible de créer le compte Stripe')
+        const message =
+          (data as StripeApiErrorResponse)?.param === "representative.phone"
+            ? "Stripe refuse le téléphone du représentant légal. Vérifiez le champ « Téléphone du représentant »."
+            : (data as StripeApiErrorResponse)?.error || "Impossible de créer le compte Stripe"
+        setStripeError(message)
+        return
       }
 
       setStripeStatus(data as StripeConnectStatus)
       await fetchStripeStatus(true)
-    } catch (err) {
-      console.error('Erreur create/sync Stripe:', err)
-      setStripeError(err instanceof Error ? err.message : 'Erreur Stripe Connect')
+    } catch (actionError) {
+      setStripeError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
     } finally {
       setStripeActionLoading(false)
     }
@@ -143,24 +265,28 @@ export default function ParametresPage() {
       setStripeActionLoading(true)
       setStripeError("")
 
-      const response = await fetch('/api/stripe/connect/onboarding-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/stripe/connect/onboarding-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          returnPath: '/annonceur/parametres?stripe=return',
-          refreshPath: '/annonceur/parametres?stripe=refresh',
+          returnPath: "/annonceur/parametres?stripe=return",
+          refreshPath: "/annonceur/parametres?stripe=refresh",
         }),
       })
-      const data = await response.json()
+      const data = await response.json() as { url?: string } & StripeApiErrorResponse
 
       if (!response.ok || !data?.url) {
-        throw new Error(data?.error || 'Impossible de générer le lien Stripe')
+        const message =
+          data?.param === "representative.phone"
+            ? "Stripe refuse le téléphone du représentant légal. Vérifiez le champ « Téléphone du représentant »."
+            : data?.error || "Impossible de générer le lien Stripe"
+        setStripeError(message)
+        return
       }
 
       window.location.href = data.url as string
-    } catch (err) {
-      console.error('Erreur onboarding Stripe:', err)
-      setStripeError(err instanceof Error ? err.message : 'Erreur Stripe Connect')
+    } catch (actionError) {
+      setStripeError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
     } finally {
       setStripeActionLoading(false)
     }
@@ -171,54 +297,79 @@ export default function ParametresPage() {
       setStripeActionLoading(true)
       setStripeError("")
 
-      const response = await fetch('/api/stripe/connect/dashboard-link', {
-        method: 'POST',
+      const response = await fetch("/api/stripe/connect/dashboard-link", {
+        method: "POST",
       })
       const data = await response.json()
 
       if (!response.ok || !data?.url) {
-        throw new Error(data?.error || 'Impossible d’ouvrir le dashboard Stripe')
+        throw new Error(data?.error || "Impossible d’ouvrir le dashboard Stripe")
       }
 
       window.location.href = data.url as string
-    } catch (err) {
-      console.error('Erreur ouverture dashboard Stripe:', err)
-      setStripeError(err instanceof Error ? err.message : 'Erreur Stripe Connect')
+    } catch (actionError) {
+      console.error("Erreur ouverture dashboard Stripe:", actionError)
+      setStripeError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
     } finally {
       setStripeActionLoading(false)
     }
   }
 
-  const handleInputChange = (field: string, value: string) => {
-    // Formatage automatique de l'IBAN
-    if (field === "iban") {
-      const cleaned = normalizeIban(value)
-      const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned
-      setFormData(prev => ({ ...prev, [field]: formatted }))
-    } else if (field === "bic_swift") {
-      // Formatage automatique du BIC/SWIFT (majuscules)
-      setFormData(prev => ({ ...prev, [field]: normalizeBic(value) }))
-    } else if (field === "email") {
-      setFormData(prev => ({ ...prev, [field]: normalizeEmail(value) }))
-    } else if (field === "nom_formation" || field === "nom_titulaire_compte") {
-      setFormData(prev => ({ ...prev, [field]: value }))
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }))
-    }
+  const handleInputChange = (
+    field: keyof AnnonceurSettingsForm,
+    value: string | Annonceur["type_annonceur"]
+  ) => {
+    setFormData((prev) => {
+      if (field === "email" || field === "type_annonceur") {
+        return prev
+      }
+
+      if (field === "iban" && typeof value === "string") {
+        const cleaned = normalizeIban(value)
+        const formatted = cleaned.match(/.{1,4}/g)?.join(" ") || cleaned
+        return { ...prev, [field]: formatted }
+      }
+
+      if (field === "bic_swift" && typeof value === "string") {
+        return { ...prev, [field]: normalizeBic(value) }
+      }
+
+      return { ...prev, [field]: value }
+    })
+
     setError("")
     setSuccess(false)
   }
 
+  const normalizePhoneField = (field: "telephone" | "representant_telephone") => {
+    handleInputChange(field, normalizePhone(formData[field]))
+  }
+
+  const normalizeCountryField = (
+    field:
+      | "adresse_pays"
+      | "pays_entreprise"
+      | "siege_pays"
+      | "representant_adresse_pays"
+  ) => {
+    handleInputChange(field, normalizeCountry(formData[field]))
+  }
+
   const validateForm = (): boolean => {
-    if (!normalizeHumanText(formData.nom_formation)) {
-      setError("Le nom de l'organisme est obligatoire")
+    if (!lockedAccountType) {
+      setError("Le type de compte est introuvable pour ce profil")
       return false
     }
-    if (!normalizeEmail(formData.email)) {
+
+    if (!normalizeHumanText(formData.nom_formation)) {
+      setError("Le nom affiché de l'organisme est obligatoire")
+      return false
+    }
+    if (!lockedEmail) {
       setError("L'email est obligatoire")
       return false
     }
-    if (!isValidEmail(formData.email)) {
+    if (!isValidEmail(lockedEmail)) {
       setError("L'email n'est pas valide")
       return false
     }
@@ -242,14 +393,139 @@ export default function ParametresPage() {
       setError("Le format du code BIC/SWIFT n'est pas valide (8 ou 11 caractères)")
       return false
     }
+
+    if (!normalizeText(formData.telephone)) {
+      setError(
+        isEntreprise
+          ? "Le téléphone de l'organisme est obligatoire"
+          : "Le numéro de téléphone est obligatoire"
+      )
+      return false
+    }
+    if (!isValidPhone(formData.telephone)) {
+      setError(
+        isEntreprise
+          ? "Le téléphone de l'organisme n'est pas valide"
+          : "Le numéro de téléphone n'est pas valide"
+      )
+      return false
+    }
+
+    if (lockedAccountType === "personne_physique") {
+      if (!normalizeText(formData.nom) || !normalizeText(formData.prenom)) {
+        setError("Le nom et le prénom sont obligatoires")
+        return false
+      }
+      if (!formData.date_naissance) {
+        setError("La date de naissance est obligatoire")
+        return false
+      }
+      const age = getAgeFromDate(formData.date_naissance)
+      if (age === null || age < 18) {
+        setError("Le titulaire du compte doit avoir au moins 18 ans")
+        return false
+      }
+      if (!normalizeText(formData.adresse_rue) || !normalizeText(formData.adresse_ville)) {
+        setError("L'adresse complète du titulaire est obligatoire")
+        return false
+      }
+      if (!normalizeText(formData.adresse_code_postal)) {
+        setError("Le code postal du titulaire est obligatoire")
+        return false
+      }
+      if (!isValidPostalCode(formData.adresse_code_postal, formData.adresse_pays || "France")) {
+        setError("Le code postal du titulaire n'est pas valide")
+        return false
+      }
+      return true
+    }
+
+    if (!normalizeText(formData.nom_entreprise)) {
+      setError("Le nom légal de l'entreprise est obligatoire")
+      return false
+    }
+    if (!formData.type_juridique) {
+      setError("Le statut juridique est obligatoire")
+      return false
+    }
+    if (!normalizeText(formData.numero_legal)) {
+      setError("Le numéro légal de l'entreprise est obligatoire")
+      return false
+    }
+    if (
+      normalizeCountry(formData.pays_entreprise || "France") === "France" &&
+      !isValidFrenchBusinessId(formData.numero_legal)
+    ) {
+      setError("Le numéro SIREN doit contenir 9 chiffres, le SIRET 14")
+      return false
+    }
+    if (!normalizeText(formData.siege_rue) || !normalizeText(formData.siege_ville)) {
+      setError("L'adresse complète du siège social est obligatoire")
+      return false
+    }
+    if (!normalizeText(formData.siege_code_postal)) {
+      setError("Le code postal du siège social est obligatoire")
+      return false
+    }
+    if (!isValidPostalCode(formData.siege_code_postal, formData.siege_pays || formData.pays_entreprise || "France")) {
+      setError("Le code postal du siège social n'est pas valide")
+      return false
+    }
+    if (!normalizeText(formData.representant_nom) || !normalizeText(formData.representant_prenom)) {
+      setError("Le nom et le prénom du représentant légal sont obligatoires")
+      return false
+    }
+    if (!normalizeText(formData.representant_telephone)) {
+      setError("Le téléphone du représentant légal est obligatoire")
+      return false
+    }
+    if (!isValidPhone(formData.representant_telephone)) {
+      setError("Le téléphone du représentant légal n'est pas valide")
+      return false
+    }
+    if (!formData.representant_date_naissance) {
+      setError("La date de naissance du représentant légal est obligatoire")
+      return false
+    }
+    const representativeAge = getAgeFromDate(formData.representant_date_naissance)
+    if (representativeAge === null || representativeAge < 18) {
+      setError("Le représentant légal doit avoir au moins 18 ans")
+      return false
+    }
+    if (
+      !normalizeText(formData.representant_adresse_rue) ||
+      !normalizeText(formData.representant_adresse_ville)
+    ) {
+      setError("L'adresse complète du représentant légal est obligatoire")
+      return false
+    }
+    if (!normalizeText(formData.representant_adresse_code_postal)) {
+      setError("Le code postal du représentant légal est obligatoire")
+      return false
+    }
+    if (
+      !isValidPostalCode(
+        formData.representant_adresse_code_postal,
+        formData.representant_adresse_pays || formData.siege_pays || formData.pays_entreprise || "France"
+      )
+    ) {
+      setError("Le code postal du représentant légal n'est pas valide")
+      return false
+    }
+
     return true
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
 
-    if (!validateForm()) return
-    if (!annonceur) return
+    if (!validateForm() || !annonceur) return
+
+    const accountType = annonceur.type_annonceur
+    if (!accountType) {
+      setError("Le type de compte est introuvable pour ce profil")
+      return
+    }
 
     setSaving(true)
     setError("")
@@ -257,33 +533,107 @@ export default function ParametresPage() {
 
     try {
       const supabase = createBrowserSupabaseClient()
-
-      const updatePayload = {
+      const updatePayload: Partial<Annonceur> = {
         nom_formation: normalizeHumanText(formData.nom_formation),
-        email: normalizeEmail(formData.email),
         iban: normalizeIban(formData.iban),
         nom_titulaire_compte: normalizeHumanText(formData.nom_titulaire_compte),
         bic_swift: normalizeBic(formData.bic_swift),
+        telephone: normalizePhone(formData.telephone) || null,
+      }
+
+      if (accountType === "personne_physique") {
+        updatePayload.nom = normalizeHumanText(formData.nom) || null
+        updatePayload.prenom = normalizeHumanText(formData.prenom) || null
+        updatePayload.date_naissance = formData.date_naissance || null
+        updatePayload.adresse_rue = normalizeHumanText(formData.adresse_rue) || null
+        updatePayload.adresse_ville = normalizeHumanText(formData.adresse_ville) || null
+        updatePayload.adresse_code_postal =
+          normalizePostalCode(formData.adresse_code_postal, formData.adresse_pays || "France") || null
+        updatePayload.adresse_pays = normalizeCountry(formData.adresse_pays || "France") || "France"
+
+        updatePayload.nom_entreprise = null
+        updatePayload.type_juridique = null
+        updatePayload.pays_entreprise = null
+        updatePayload.numero_legal = null
+        updatePayload.siege_rue = null
+        updatePayload.siege_ville = null
+        updatePayload.siege_code_postal = null
+        updatePayload.siege_pays = null
+        updatePayload.representant_nom = null
+        updatePayload.representant_prenom = null
+        updatePayload.representant_telephone = null
+        updatePayload.representant_date_naissance = null
+        updatePayload.representant_adresse_rue = null
+        updatePayload.representant_adresse_ville = null
+        updatePayload.representant_adresse_code_postal = null
+        updatePayload.representant_adresse_pays = null
+      } else {
+        updatePayload.nom_entreprise = normalizeHumanText(formData.nom_entreprise) || null
+        updatePayload.type_juridique = formData.type_juridique || null
+        updatePayload.pays_entreprise = normalizeCountry(formData.pays_entreprise || "France") || "France"
+        updatePayload.numero_legal = normalizeBusinessId(formData.numero_legal) || null
+        updatePayload.siege_rue = normalizeHumanText(formData.siege_rue) || null
+        updatePayload.siege_ville = normalizeHumanText(formData.siege_ville) || null
+        updatePayload.siege_code_postal =
+          normalizePostalCode(formData.siege_code_postal, formData.siege_pays || formData.pays_entreprise || "France") || null
+        updatePayload.siege_pays = normalizeCountry(formData.siege_pays || "France") || "France"
+        updatePayload.representant_nom = normalizeHumanText(formData.representant_nom) || null
+        updatePayload.representant_prenom = normalizeHumanText(formData.representant_prenom) || null
+        updatePayload.representant_telephone = normalizePhone(formData.representant_telephone) || null
+        updatePayload.representant_date_naissance = formData.representant_date_naissance || null
+        updatePayload.representant_adresse_rue = normalizeHumanText(formData.representant_adresse_rue) || null
+        updatePayload.representant_adresse_ville = normalizeHumanText(formData.representant_adresse_ville) || null
+        updatePayload.representant_adresse_code_postal =
+          normalizePostalCode(
+            formData.representant_adresse_code_postal,
+            formData.representant_adresse_pays || formData.siege_pays || formData.pays_entreprise || "France"
+          ) || null
+        updatePayload.representant_adresse_pays =
+          normalizeCountry(formData.representant_adresse_pays || "France") || "France"
+
+        updatePayload.nom = null
+        updatePayload.prenom = null
+        updatePayload.date_naissance = null
+        updatePayload.adresse_rue = null
+        updatePayload.adresse_ville = null
+        updatePayload.adresse_code_postal = null
+        updatePayload.adresse_pays = null
       }
 
       const { error: updateError } = await supabase
-        .from('annonceurs')
+        .from("annonceurs")
         .update(updatePayload as unknown as never)
-        .eq('id', annonceur.id)
+        .eq("id", annonceur.id)
 
       if (updateError) {
-        console.error('Erreur lors de la mise à jour:', updateError)
+        console.error("Erreur lors de la mise à jour:", updateError)
         setError("Une erreur s'est produite lors de la mise à jour")
         return
+      }
+
+      if (stripeStatus?.connected) {
+        try {
+          const stripeResponse = await fetch("/api/stripe/connect/account", { method: "POST" })
+          const stripeData = await stripeResponse.json()
+
+          if (!stripeResponse.ok) {
+            throw new Error(stripeData?.error || "Impossible de synchroniser Stripe")
+          }
+        } catch (syncError) {
+          console.error("Erreur de synchronisation Stripe après sauvegarde:", syncError)
+          setStripeError(syncError instanceof Error ? syncError.message : "Erreur Stripe Connect")
+        }
       }
 
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
 
-      // Rafraîchir les données
-      await fetchAnnonceurData()
-    } catch (error) {
-      console.error('Erreur:', error)
+      await Promise.all([
+        fetchAnnonceurData(),
+        fetchStripeStatus(true),
+      ])
+    } catch (submitError) {
+      console.error("Erreur:", submitError)
       setError("Une erreur inattendue s'est produite")
     } finally {
       setSaving(false)
@@ -300,12 +650,12 @@ export default function ParametresPage() {
 
   const maskIban = (iban: string) => {
     if (!iban) return ""
-    const cleaned = iban.replace(/\s/g, '')
+    const cleaned = iban.replace(/\s/g, "")
     if (cleaned.length <= 8) return iban
     const firstFour = cleaned.substring(0, 4)
     const lastFour = cleaned.substring(cleaned.length - 4)
-    const masked = firstFour + '*'.repeat(cleaned.length - 8) + lastFour
-    return masked.match(/.{1,4}/g)?.join(' ') || masked
+    const masked = firstFour + "*".repeat(cleaned.length - 8) + lastFour
+    return masked.match(/.{1,4}/g)?.join(" ") || masked
   }
 
   const stripeDashboardReady = Boolean(
@@ -313,6 +663,7 @@ export default function ParametresPage() {
     stripeStatus?.stripe_charges_enabled &&
     stripeStatus?.stripe_payouts_enabled
   )
+  const stripeConnected = Boolean(stripeStatus?.connected)
 
   const pendingStripeItems = [
     ...(stripeStatus?.stripe_requirements_currently_due ?? []),
@@ -320,60 +671,72 @@ export default function ParametresPage() {
   ]
 
   const formatStripeRequirement = (value: string) => {
-    const normalized = value.replace(/\[\d+\]/g, '')
+    const normalized = value.replace(/\[\d+\]/g, "")
 
     const exactLabels: Record<string, string> = {
-      'individual.first_name': 'Prénom du titulaire du compte',
-      'individual.last_name': 'Nom du titulaire du compte',
-      'individual.phone': 'Numéro de téléphone du titulaire du compte',
-      'individual.email': 'Adresse e-mail du titulaire du compte',
-      'individual.address.line1': 'Adresse du titulaire du compte',
-      'individual.address.city': 'Ville du titulaire du compte',
-      'individual.address.postal_code': 'Code postal du titulaire du compte',
-      'individual.address.country': 'Pays du titulaire du compte',
-      'individual.dob.day': 'Jour de naissance du titulaire du compte',
-      'individual.dob.month': 'Mois de naissance du titulaire du compte',
-      'individual.dob.year': 'Année de naissance du titulaire du compte',
-      'representative.first_name': 'Prénom du représentant légal',
-      'representative.last_name': 'Nom du représentant légal',
-      'representative.phone': 'Numéro de téléphone du représentant légal',
-      'representative.email': 'Adresse e-mail du représentant légal',
-      'representative.address.line1': 'Adresse du représentant légal',
-      'representative.address.city': 'Ville du représentant légal',
-      'representative.address.postal_code': 'Code postal du représentant légal',
-      'representative.address.country': 'Pays du représentant légal',
-      'representative.dob.day': 'Jour de naissance du représentant légal',
-      'representative.dob.month': 'Mois de naissance du représentant légal',
-      'representative.dob.year': 'Année de naissance du représentant légal',
-      'company.name': "Nom légal de l'entreprise",
-      'company.tax_id': "Numéro d'identification de l'entreprise",
-      'company.address.line1': "Adresse du siège social",
-      'company.address.city': "Ville du siège social",
-      'company.address.postal_code': "Code postal du siège social",
-      'company.address.country': "Pays du siège social",
-      'business_profile.name': "Nom affiché de l'organisme",
-      'external_account': 'Compte bancaire',
+      "individual.first_name": "Prénom du titulaire du compte",
+      "individual.last_name": "Nom du titulaire du compte",
+      "individual.phone": "Numéro de téléphone du titulaire du compte",
+      "individual.email": "Adresse e-mail du titulaire du compte",
+      "individual.address.line1": "Adresse du titulaire du compte",
+      "individual.address.city": "Ville du titulaire du compte",
+      "individual.address.postal_code": "Code postal du titulaire du compte",
+      "individual.address.country": "Pays du titulaire du compte",
+      "individual.dob.day": "Jour de naissance du titulaire du compte",
+      "individual.dob.month": "Mois de naissance du titulaire du compte",
+      "individual.dob.year": "Année de naissance du titulaire du compte",
+      "representative.first_name": "Prénom du représentant légal",
+      "representative.last_name": "Nom du représentant légal",
+      "representative.phone": "Numéro de téléphone du représentant légal",
+      "representative.email": "Adresse e-mail du représentant légal",
+      "representative.address.line1": "Adresse du représentant légal",
+      "representative.address.city": "Ville du représentant légal",
+      "representative.address.postal_code": "Code postal du représentant légal",
+      "representative.address.country": "Pays du représentant légal",
+      "representative.dob.day": "Jour de naissance du représentant légal",
+      "representative.dob.month": "Mois de naissance du représentant légal",
+      "representative.dob.year": "Année de naissance du représentant légal",
+      "company.name": "Nom légal de l'entreprise",
+      "company.tax_id": "Numéro d'identification de l'entreprise",
+      "company.phone": "Téléphone de l'entreprise",
+      "company.address.line1": "Adresse du siège social",
+      "company.address.city": "Ville du siège social",
+      "company.address.postal_code": "Code postal du siège social",
+      "company.address.country": "Pays du siège social",
+      "business_profile.name": "Nom affiché de l'organisme",
+      "external_account": "Compte bancaire",
     }
 
     if (exactLabels[normalized]) {
       return exactLabels[normalized]
     }
 
-    if (normalized.startsWith('representative.verification')) {
-      return 'Vérifier le représentant de compte'
+    if (normalized.startsWith("representative.verification")) {
+      return "Vérifier le représentant de compte"
     }
 
-    if (normalized.startsWith('individual.verification')) {
+    if (normalized.startsWith("individual.verification")) {
       return "Vérifier l'identité du titulaire du compte"
     }
 
-    if (normalized.startsWith('person.verification')) {
-      return 'Vérifier la personne rattachée au compte'
+    if (normalized.startsWith("person.verification")) {
+      return "Vérifier la personne rattachée au compte"
     }
 
-    return 'Informations complémentaires à fournir dans Stripe'
+    return "Informations complémentaires à fournir dans Stripe"
   }
 
+  const summarizedPendingStripeItems = Array.from(
+    pendingStripeItems.reduce((accumulator, item) => {
+      const label = formatStripeRequirement(item)
+      accumulator.set(label, (accumulator.get(label) ?? 0) + 1)
+      return accumulator
+    }, new Map<string, number>())
+  ).map(([label, count]) =>
+    count > 1 && label === "Informations complémentaires à fournir dans Stripe"
+      ? `${label} (${count} éléments)`
+      : label
+  )
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
@@ -382,42 +745,57 @@ export default function ParametresPage() {
           Mes informations
         </h1>
         <p className="text-gray-600 text-base sm:text-lg">
-          Gérez les informations de votre organisme
+          Gérez les informations juridiques et bancaires utilisées pour Stripe Connect
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-6">
-          {/* Informations de l'organisme */}
           <Card>
             <CardHeader>
-              <CardTitle>Informations de l&apos;organisme</CardTitle>
+              <CardTitle>Profil juridique</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nom_formation">
-                  Nom de l&apos;organisme <span className="text-red-500">*</span>
-                </Label>
+                <Label>Type de compte</Label>
+                <Input
+                  value={
+                    lockedAccountType
+                      ? TYPE_ANNONCEUR_LABELS[lockedAccountType]
+                      : "Non renseigné"
+                  }
+                  readOnly
+                />
+                <p className="text-xs text-gray-500">
+                  Le type de compte ne peut pas être modifié depuis cette page.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nom_formation">Nom affiché de l&apos;organisme <span className="text-red-500">*</span></Label>
                 <Input
                   id="nom_formation"
                   type="text"
                   value={formData.nom_formation}
                   onChange={(e) => handleInputChange("nom_formation", e.target.value)}
-                  placeholder="École de théâtre Paris"
+                  placeholder="Nom affiché publiquement"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  Email <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="email">Email du compte <span className="text-red-500">*</span></Label>
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="contact@ecole-theatre.fr"
+                  value={lockedEmail}
+                  placeholder="contact@organisme.fr"
+                  readOnly
+                  aria-readonly="true"
+                  className="bg-gray-50 text-gray-600"
                 />
+                <p className="text-xs text-gray-500">
+                  L&apos;email du compte ne peut pas être modifié depuis cet espace.
+                </p>
               </div>
 
               {annonceur?.email_verifie ? (
@@ -444,8 +822,334 @@ export default function ParametresPage() {
             </CardContent>
           </Card>
 
+          {lockedAccountType === "personne_physique" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Identité du titulaire</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nom">Nom <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="nom"
+                      type="text"
+                      value={formData.nom}
+                      onChange={(e) => handleInputChange("nom", e.target.value)}
+                      placeholder="Dupont"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prenom">Prénom <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="prenom"
+                      type="text"
+                      value={formData.prenom}
+                      onChange={(e) => handleInputChange("prenom", e.target.value)}
+                      placeholder="Camille"
+                    />
+                  </div>
+                </div>
 
-          {/* Informations bancaires */}
+                <div className="space-y-2">
+                  <Label htmlFor="date_naissance">Date de naissance <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="date_naissance"
+                    type="date"
+                    value={formData.date_naissance}
+                    onChange={(e) => handleInputChange("date_naissance", e.target.value)}
+                    max={maxBirthDate}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="telephone">Numéro de téléphone <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="telephone"
+                    type="tel"
+                    value={formData.telephone}
+                    onChange={(e) => handleInputChange("telephone", e.target.value)}
+                    onBlur={() => normalizePhoneField("telephone")}
+                    placeholder="+33 6 XX XX XX XX"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="adresse_rue">Adresse <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="adresse_rue"
+                    type="text"
+                    value={formData.adresse_rue}
+                    onChange={(e) => handleInputChange("adresse_rue", e.target.value)}
+                    placeholder="12 rue de la Paix"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse_code_postal">Code postal <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="adresse_code_postal"
+                      type="text"
+                      value={formData.adresse_code_postal}
+                      onChange={(e) => handleInputChange("adresse_code_postal", e.target.value)}
+                      placeholder="75001"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse_ville">Ville <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="adresse_ville"
+                      type="text"
+                      value={formData.adresse_ville}
+                      onChange={(e) => handleInputChange("adresse_ville", e.target.value)}
+                      placeholder="Paris"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="adresse_pays">Pays <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="adresse_pays"
+                    type="text"
+                    value={formData.adresse_pays}
+                    onChange={(e) => handleInputChange("adresse_pays", e.target.value)}
+                    onBlur={() => normalizeCountryField("adresse_pays")}
+                    placeholder="France"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informations de l&apos;entreprise</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nom_entreprise">Nom légal de l&apos;entreprise <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="nom_entreprise"
+                      type="text"
+                      value={formData.nom_entreprise}
+                      onChange={(e) => handleInputChange("nom_entreprise", e.target.value)}
+                      placeholder="Nom légal de la société"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="type_juridique">Statut juridique <span className="text-red-500">*</span></Label>
+                      <select
+                        id="type_juridique"
+                        value={formData.type_juridique}
+                        onChange={(e) => handleInputChange("type_juridique", e.target.value as TypeJuridique)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Sélectionnez...</option>
+                        {Object.entries(TYPE_JURIDIQUE_LABELS).map(([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="numero_legal">Numéro légal / SIREN / SIRET <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="numero_legal"
+                        type="text"
+                        value={formData.numero_legal}
+                        onChange={(e) => handleInputChange("numero_legal", e.target.value)}
+                        placeholder="123456789"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pays_entreprise">Pays d&apos;immatriculation <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="pays_entreprise"
+                        type="text"
+                        value={formData.pays_entreprise}
+                        onChange={(e) => handleInputChange("pays_entreprise", e.target.value)}
+                        onBlur={() => normalizeCountryField("pays_entreprise")}
+                        placeholder="France"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telephone">Téléphone de l&apos;organisme <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="telephone"
+                        type="tel"
+                        value={formData.telephone}
+                        onChange={(e) => handleInputChange("telephone", e.target.value)}
+                        onBlur={() => normalizePhoneField("telephone")}
+                        placeholder="+33 1 XX XX XX XX"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Adresse du siège social</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="siege_rue">Adresse <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="siege_rue"
+                      type="text"
+                      value={formData.siege_rue}
+                      onChange={(e) => handleInputChange("siege_rue", e.target.value)}
+                      placeholder="45 avenue des Champs-Élysées"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="siege_code_postal">Code postal <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="siege_code_postal"
+                        type="text"
+                        value={formData.siege_code_postal}
+                        onChange={(e) => handleInputChange("siege_code_postal", e.target.value)}
+                        placeholder="75008"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="siege_ville">Ville <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="siege_ville"
+                        type="text"
+                        value={formData.siege_ville}
+                        onChange={(e) => handleInputChange("siege_ville", e.target.value)}
+                        placeholder="Paris"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="siege_pays">Pays du siège <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="siege_pays"
+                      type="text"
+                      value={formData.siege_pays}
+                      onChange={(e) => handleInputChange("siege_pays", e.target.value)}
+                      onBlur={() => normalizeCountryField("siege_pays")}
+                      placeholder="France"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Représentant légal</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="representant_nom">Nom <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="representant_nom"
+                        type="text"
+                        value={formData.representant_nom}
+                        onChange={(e) => handleInputChange("representant_nom", e.target.value)}
+                        placeholder="Martin"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="representant_prenom">Prénom <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="representant_prenom"
+                        type="text"
+                        value={formData.representant_prenom}
+                        onChange={(e) => handleInputChange("representant_prenom", e.target.value)}
+                        placeholder="Sophie"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="representant_telephone">Téléphone du représentant <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="representant_telephone"
+                        type="tel"
+                        value={formData.representant_telephone}
+                        onChange={(e) => handleInputChange("representant_telephone", e.target.value)}
+                        onBlur={() => normalizePhoneField("representant_telephone")}
+                        placeholder="+33 6 XX XX XX XX"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="representant_date_naissance">Date de naissance <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="representant_date_naissance"
+                        type="date"
+                        value={formData.representant_date_naissance}
+                        onChange={(e) => handleInputChange("representant_date_naissance", e.target.value)}
+                        max={maxBirthDate}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="representant_adresse_rue">Adresse <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="representant_adresse_rue"
+                      type="text"
+                      value={formData.representant_adresse_rue}
+                      onChange={(e) => handleInputChange("representant_adresse_rue", e.target.value)}
+                      placeholder="10 rue de la Paix"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="representant_adresse_code_postal">Code postal <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="representant_adresse_code_postal"
+                        type="text"
+                        value={formData.representant_adresse_code_postal}
+                        onChange={(e) => handleInputChange("representant_adresse_code_postal", e.target.value)}
+                        placeholder="75002"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="representant_adresse_ville">Ville <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="representant_adresse_ville"
+                        type="text"
+                        value={formData.representant_adresse_ville}
+                        onChange={(e) => handleInputChange("representant_adresse_ville", e.target.value)}
+                        placeholder="Paris"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="representant_adresse_pays">Pays <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="representant_adresse_pays"
+                      type="text"
+                      value={formData.representant_adresse_pays}
+                      onChange={(e) => handleInputChange("representant_adresse_pays", e.target.value)}
+                      onBlur={() => normalizeCountryField("representant_adresse_pays")}
+                      placeholder="France"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Informations bancaires</CardTitle>
@@ -463,56 +1167,34 @@ export default function ParametresPage() {
                   placeholder="Nom de la personne ou de l'entreprise"
                 />
                 <p className="text-xs text-gray-500">
-                  Le nom associé au compte bancaire (vous ou votre entreprise)
+                  Conservé côté plateforme, mais le compte bancaire final doit être confirmé dans Stripe.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="iban">
-                  IBAN <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="iban">IBAN <span className="text-red-500">*</span></Label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                      />
-                    </svg>
-                  </div>
                   <Input
                     id="iban"
                     type={showIban ? "text" : "password"}
                     value={showIban ? formData.iban : maskIban(formData.iban)}
                     onChange={(e) => handleInputChange("iban", e.target.value)}
-                    className="pl-12 pr-12 font-mono text-base tracking-wider bg-linear-to-r from-gray-50 to-white border-2 border-gray-200 focus:border-[#E63832] focus:ring-2 focus:ring-[#E63832]/20 transition-all"
+                    className="pl-4 pr-12 font-mono text-base tracking-wider"
                     placeholder="FR76 1234 5678 9012 3456 7890 123"
                     maxLength={34}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowIban(!showIban)}
+                    onClick={() => setShowIban((prev) => !prev)}
                     className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-gray-600"
                   >
                     {showIban ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Votre IBAN est sécurisé et sera utilisé uniquement pour vos paiements
-                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bic_swift">
-                  BIC / SWIFT <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="bic_swift">BIC / SWIFT <span className="text-red-500">*</span></Label>
                 <Input
                   id="bic_swift"
                   type="text"
@@ -522,14 +1204,10 @@ export default function ParametresPage() {
                   placeholder="BNPAFRPP"
                   maxLength={11}
                 />
-                <p className="text-xs text-gray-500">
-                  Code d&apos;identification de votre banque (8 ou 11 caractères)
-                </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Stripe Connect */}
           <Card>
             <CardHeader>
               <CardTitle>Paiements Stripe Connect</CardTitle>
@@ -601,7 +1279,7 @@ export default function ParametresPage() {
                               Synchronisation...
                             </>
                           ) : (
-                            'Créer / Synchroniser le compte Stripe'
+                            "Créer / Synchroniser le compte Stripe"
                           )}
                         </Button>
 
@@ -622,7 +1300,7 @@ export default function ParametresPage() {
                     <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
                       Votre compte Stripe est prêt à recevoir les paiements.
                     </div>
-                  ) : (
+                  ) : stripeConnected ? (
                     <div className="space-y-3">
                       <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
                         {stripeStatus?.stripe_has_pending_representative_verification
@@ -630,16 +1308,23 @@ export default function ParametresPage() {
                           : "Le compte Stripe est créé, mais il manque encore une validation ou une vérification avant l'activation des paiements."}
                       </div>
 
-                      {pendingStripeItems.length > 0 && (
+                      {summarizedPendingStripeItems.length > 0 && (
                         <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
                           <p className="font-medium mb-2">Actions restantes côté Stripe</p>
+                          <p className="mb-3 text-amber-700">
+                            Stripe demande encore quelques informations avant d&apos;activer complètement le compte.
+                          </p>
                           <ul className="list-disc pl-5 space-y-1">
-                            {Array.from(new Set(pendingStripeItems)).map((item) => (
-                              <li key={item}>{formatStripeRequirement(item)}</li>
+                            {summarizedPendingStripeItems.map((item) => (
+                              <li key={item}>{item}</li>
                             ))}
                           </ul>
                         </div>
                       )}
+                    </div>
+                  ) : (
+                    <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
+                      Aucun compte Stripe Connect n&apos;est encore créé. Vous pouvez le créer maintenant ou lancer directement l&apos;onboarding Stripe.
                     </div>
                   )}
                 </>
@@ -654,7 +1339,6 @@ export default function ParametresPage() {
             </CardContent>
           </Card>
 
-          {/* Messages */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               {error}
@@ -668,7 +1352,6 @@ export default function ParametresPage() {
             </div>
           )}
 
-          {/* Bouton de sauvegarde */}
           <div className="flex justify-end">
             <Button
               type="submit"
