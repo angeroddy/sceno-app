@@ -130,7 +130,6 @@ export function ComedianSignupForm({
     y: number
   } | null>(null)
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
-  const [autoZoomed, setAutoZoomed] = useState(false)
   const [photoSizeWarning, setPhotoSizeWarning] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -138,9 +137,35 @@ export function ComedianSignupForm({
   const [photoPendingSyncNotice, setPhotoPendingSyncNotice] = useState(false)
   const cropperContainerRef = useRef<HTMLDivElement | null>(null)
   const photoCropAspect = 1
-  const photoOutputType: "image/webp" = "image/webp"
+  const photoOutputType = "image/webp" as const
   const photoQuality = 0.9
   const photoMaxSize = 1200
+
+  const getAutoZoomForPhoto = (nextImageInfo: { width: number; height: number }) => {
+    const imageAspect = nextImageInfo.width / nextImageInfo.height
+    const nextZoom =
+      imageAspect > photoCropAspect
+        ? imageAspect / photoCropAspect
+        : photoCropAspect / imageAspect
+
+    return Math.min(Math.max(nextZoom, 1), 3)
+  }
+
+  const getPhotoSizeWarningMessage = (nextImageInfo: { width: number; height: number }) => {
+    const container = cropperContainerRef.current
+    if (!container) return ""
+
+    const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight
+    if (containerWidth === 0 || containerHeight === 0) return ""
+
+    const minWidth = Math.round(containerWidth * 2)
+    const minHeight = Math.round(containerHeight * 2)
+
+    return nextImageInfo.width < minWidth || nextImageInfo.height < minHeight
+      ? "Image un peu petite : le rendu peut paraître flou sur certains écrans."
+      : ""
+  }
 
   const handlePreferenceChange = (key: keyof OpportunityPreferences) => {
     setPreferences((prev) => ({
@@ -248,52 +273,29 @@ export function ComedianSignupForm({
   useEffect(() => {
     if (!isCroppingPhoto || !cropperContainerRef.current) return
     if (typeof ResizeObserver === "undefined") return
-    const observer = new ResizeObserver(() => setAutoZoomed(false))
+    const observer = new ResizeObserver(() => {
+      if (!imageInfo) return
+      setZoom(getAutoZoomForPhoto(imageInfo))
+      setPhotoSizeWarning(getPhotoSizeWarningMessage(imageInfo))
+    })
     observer.observe(cropperContainerRef.current)
     return () => observer.disconnect()
-  }, [isCroppingPhoto])
+  }, [imageInfo, isCroppingPhoto])
 
   useEffect(() => {
     if (!rawPhotoSrc) return
 
     const img = new window.Image()
     img.onload = () => {
-      setImageInfo({ width: img.width, height: img.height })
-      setAutoZoomed(false)
+      const nextImageInfo = { width: img.width, height: img.height }
+      setImageInfo(nextImageInfo)
+      setZoom(getAutoZoomForPhoto(nextImageInfo))
+      window.requestAnimationFrame(() => {
+        setPhotoSizeWarning(getPhotoSizeWarningMessage(nextImageInfo))
+      })
     }
     img.src = rawPhotoSrc
   }, [rawPhotoSrc])
-
-  useEffect(() => {
-    if (!imageInfo || autoZoomed) return
-
-    const imageAspect = imageInfo.width / imageInfo.height
-    let nextZoom = 1
-
-    if (imageAspect > photoCropAspect) {
-      nextZoom = imageAspect / photoCropAspect
-    } else {
-      nextZoom = photoCropAspect / imageAspect
-    }
-
-    setZoom(Math.min(Math.max(nextZoom, 1), 3))
-    setAutoZoomed(true)
-  }, [imageInfo, autoZoomed])
-
-  useEffect(() => {
-    if (!cropperContainerRef.current || !imageInfo || !isCroppingPhoto) return
-    const containerWidth = cropperContainerRef.current.clientWidth
-    const containerHeight = cropperContainerRef.current.clientHeight
-    if (containerWidth === 0 || containerHeight === 0) return
-
-    const minWidth = Math.round(containerWidth * 2)
-    const minHeight = Math.round(containerHeight * 2)
-    if (imageInfo.width < minWidth || imageInfo.height < minHeight) {
-      setPhotoSizeWarning("Image un peu petite : le rendu peut paraître flou sur certains écrans.")
-    } else {
-      setPhotoSizeWarning("")
-    }
-  }, [imageInfo, isCroppingPhoto])
 
   const resetPhotoCropper = () => {
     setRawPhotoSrc("")
@@ -304,14 +306,12 @@ export function ComedianSignupForm({
     setCroppedAreaPixels(null)
     setImageInfo(null)
     setPhotoSizeWarning("")
-    setAutoZoomed(false)
   }
 
   const resetPhotoAdjustments = () => {
     setCrop({ x: 0, y: 0 })
     setZoom(1)
     setRotation(0)
-    setAutoZoomed(false)
   }
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,7 +327,6 @@ export function ComedianSignupForm({
         setCroppedAreaPixels(null)
         setImageInfo(null)
         setPhotoSizeWarning("")
-        setAutoZoomed(false)
         setPhotoUploadWarning(false)
         setPhotoPendingSyncNotice(false)
       }

@@ -22,7 +22,12 @@ type ResetMode = "request" | "update"
 function ForgotPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [mode, setMode] = useState<ResetMode>("request")
+  const [mode, setMode] = useState<ResetMode>(() => {
+    const recoveryFromSearch =
+      searchParams.get("mode") === "reset" || searchParams.get("type") === "recovery"
+
+    return recoveryFromSearch ? "update" : "request"
+  })
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -36,10 +41,6 @@ function ForgotPasswordContent() {
     const recoveryFromHash =
       typeof window !== "undefined" &&
       (window.location.hash.includes("type=recovery") || window.location.hash.includes("access_token"))
-
-    if (recoveryFromSearch || recoveryFromHash) {
-      setMode("update")
-    }
 
     void supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && (recoveryFromSearch || recoveryFromHash)) {
