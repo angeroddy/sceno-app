@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,7 +29,8 @@ import {
   TrendingUp,
 } from "lucide-react"
 import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
-import { SafeRichText } from "@/components/safe-rich-text"
+import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/app/lib/renderable-image"
 
 export default function AnnonceurOpportuniteDetailsPage() {
   const params = useParams()
@@ -38,12 +39,16 @@ export default function AnnonceurOpportuniteDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mainImage, setMainImage] = useState<string | null>(null)
+  const [mainImageRetryKey, setMainImageRetryKey] = useState(() => Date.now())
+  const [mainImageRetryCount, setMainImageRetryCount] = useState(0)
+  const [mainImageLoadFailed, setMainImageLoadFailed] = useState(false)
   const [opportuniteId, setOpportuniteId] = useState<string | null>(null)
   const [stats, setStats] = useState({
     vues: 0,
     reservations: 0,
     revenu: 0,
   })
+  const mainImageRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const extractId = async () => {
@@ -72,6 +77,9 @@ export default function AnnonceurOpportuniteDetailsPage() {
       setOpportunite(data.opportunite)
       setStats(data.stats || { vues: 0, reservations: 0, revenu: 0 })
       setMainImage(data.opportunite.image_url)
+      setMainImageRetryCount(0)
+      setMainImageLoadFailed(false)
+      setMainImageRetryKey(Date.now())
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue")
     } finally {
@@ -84,6 +92,45 @@ export default function AnnonceurOpportuniteDetailsPage() {
       void fetchOpportuniteDetails()
     }
   }, [opportuniteId, fetchOpportuniteDetails])
+
+  useEffect(() => {
+    return () => {
+      if (mainImageRetryTimeoutRef.current) {
+        clearTimeout(mainImageRetryTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleMainImageError = () => {
+    if (!mainImage) {
+      setMainImageLoadFailed(true)
+      return
+    }
+
+    if (mainImage.startsWith("blob:") || mainImage.startsWith("data:")) {
+      setMainImageLoadFailed(true)
+      return
+    }
+
+    if (mainImageRetryCount >= IMAGE_RETRY_LIMIT) {
+      setMainImageLoadFailed(true)
+      return
+    }
+
+    if (mainImageRetryTimeoutRef.current) {
+      clearTimeout(mainImageRetryTimeoutRef.current)
+    }
+
+    setMainImageRetryCount((prev) => prev + 1)
+    mainImageRetryTimeoutRef.current = setTimeout(() => {
+      setMainImageRetryKey(Date.now())
+    }, 350)
+  }
+
+  const handleMainImageLoad = () => {
+    setMainImageLoadFailed(false)
+    setMainImageRetryCount(0)
+  }
 
   if (loading) {
     return (
@@ -136,6 +183,9 @@ export default function AnnonceurOpportuniteDetailsPage() {
   const pourcentageRemplissage = opportunite.nombre_places > 0
     ? (placesOccupees / opportunite.nombre_places) * 100
     : 0
+  const renderableMainImage = mainImage
+    ? buildRenderableImageSrc(mainImage, mainImageRetryKey)
+    : ""
 
   const getStatusBadge = (statut: string) => {
     switch (statut) {
@@ -149,6 +199,8 @@ export default function AnnonceurOpportuniteDetailsPage() {
         return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">Expirée</Badge>
       case "complete":
         return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Complète</Badge>
+      case "supprimee":
+        return <Badge className="bg-stone-200 text-stone-700 hover:bg-stone-200">Supprimée</Badge>
       default:
         return <Badge>{statut}</Badge>
     }
@@ -174,13 +226,16 @@ export default function AnnonceurOpportuniteDetailsPage() {
                   className="relative w-full bg-gray-200"
                   style={{ aspectRatio: "16 / 9", minHeight: "200px" }}
                 >
-                  {mainImage ? (
+                  {mainImage && !mainImageLoadFailed ? (
                     <Image
-                      src={mainImage}
+                      src={renderableMainImage}
                       alt={opportunite.titre}
                       fill
+                      unoptimized
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, 50vw"
+                      onLoad={handleMainImageLoad}
+                      onError={handleMainImageError}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
@@ -255,18 +310,33 @@ export default function AnnonceurOpportuniteDetailsPage() {
                           <div>
                             <p className="text-sm text-gray-600">Places</p>
                             <p className="font-semibold text-gray-900">
-                              {opportunite.nombre_places} places au total
+                              Nombre de places restantes : {opportunite.places_restantes}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
                           <div className="bg-white p-2 rounded-lg">
-                            <Building2 className="w-5 h-5 text-[#E63832]" />
+                            <Users className="w-5 h-5 text-[#E63832]" />
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600">Statut</p>
-                            <div className="pt-1">{getStatusBadge(opportunite.statut)}</div>
+                            <p className="text-sm text-gray-600">Profils acheteurs</p>
+                            <div className="pt-1">
+                              {stats.reservations > 0 ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-auto border-[#E6DAD0] bg-white px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-[#FFF8F3]"
+                                  onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/participants`)}
+                                >
+                                  Consulter les profils
+                                </Button>
+                              ) : (
+                                <div className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-400">
+                                  Aucune place achetée
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -276,7 +346,13 @@ export default function AnnonceurOpportuniteDetailsPage() {
                       <h3 className="text-2xl font-bold text-gray-900 mb-4">
                         À propos de cette opportunité
                       </h3>
-                      <SafeRichText html={opportunite.resume} className="prose max-w-none text-gray-700" />
+                      <OpportunityBodyContent
+                        title={opportunite.titre}
+                        resume={opportunite.resume}
+                        bodyImageUrl={opportunite.contenu_image_url}
+                        contentMode={opportunite.contenu_mode}
+                        className="prose max-w-none text-gray-700"
+                      />
                     </div>
                   </TabsContent>
 
@@ -382,6 +458,7 @@ export default function AnnonceurOpportuniteDetailsPage() {
                         Pré-vente
                       </Badge>
                     )}
+                    {getStatusBadge(opportunite.statut)}
                   </div>
                   <h1 className="break-words text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                     {opportunite.titre}
@@ -436,14 +513,20 @@ export default function AnnonceurOpportuniteDetailsPage() {
                 </div>
 
                 <div className="space-y-3 pt-4">
-                  <Button
-                    size="lg"
-                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90 py-5 text-base font-semibold text-white sm:py-6 sm:text-lg"
-                    onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/modifier`)}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Modifier l&apos;opportunité
-                  </Button>
+                  {opportunite.statut !== "supprimee" ? (
+                    <Button
+                      size="lg"
+                      className="w-full bg-[#E63832] hover:bg-[#E63832]/90 py-5 text-base font-semibold text-white sm:py-6 sm:text-lg"
+                      onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/modifier`)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Modifier l&apos;opportunité
+                    </Button>
+                  ) : (
+                    <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
+                      Cette opportunité a été supprimée. Elle reste visible ici à titre d&apos;historique.
+                    </div>
+                  )}
 
                   {opportunite.lien_infos && (
                     <Button size="lg" variant="outline" className="w-full" asChild>
@@ -469,6 +552,15 @@ export default function AnnonceurOpportuniteDetailsPage() {
                     <p className="font-semibold mb-1">Opportunité validée</p>
                     <p className="text-green-700">
                       Votre opportunité est visible par tous les comédiens.
+                    </p>
+                  </div>
+                )}
+
+                {opportunite.statut === "supprimee" && (
+                  <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 text-sm text-stone-900">
+                    <p className="font-semibold mb-1">Opportunité supprimée</p>
+                    <p className="text-stone-700">
+                      Elle n&apos;est plus consultable par les comédiens et apparaît comme supprimée dans votre liste.
                     </p>
                   </div>
                 )}

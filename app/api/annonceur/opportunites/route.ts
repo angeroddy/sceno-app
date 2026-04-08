@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 import type { Annonceur, Database } from '@/app/types'
 import { createOpportunitySchema } from '@/app/lib/opportunity-validation'
@@ -122,14 +123,14 @@ export async function POST(request: NextRequest) {
 
     if (!annonceur.identite_verifiee) {
       return NextResponse.json(
-        { error: 'Votre compte doit etre verifie avant de publier des opportunites' },
+        { error: 'Votre compte doit être vérifié avant de publier des opportunités' },
         { status: 403 }
       )
     }
 
     if (!annonceur.stripe_onboarding_complete) {
       return NextResponse.json(
-        { error: 'Finalisez le onboarding Stripe avant de creer une opportunite' },
+        { error: 'Finalisez la configuration Stripe avant de créer une opportunité' },
         { status: 403 }
       )
     }
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
       !annonceur.stripe_payouts_enabled
     ) {
       return NextResponse.json(
-        { error: 'Votre compte Stripe Connect doit etre entierement active avant de publier des opportunites' },
+        { error: 'Votre compte Stripe Connect doit être entièrement activé avant de publier des opportunités' },
         { status: 403 }
       )
     }
@@ -162,15 +163,38 @@ export async function POST(request: NextRequest) {
       statut: 'en_attente' as const,
     }
 
-    const opportunitesTable = supabase.from('opportunites') as unknown as OpportunitesTableInsert
+    let writeClient: Pick<Awaited<ReturnType<typeof createServerSupabaseClient>>, 'from'> = supabase
+
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        writeClient = createAdminSupabaseClient()
+      } catch (adminClientError) {
+        console.error('Impossible d\'initialiser le client admin Supabase pour la publication:', adminClientError)
+      }
+    }
+
+    const opportunitesTable = writeClient.from('opportunites') as unknown as OpportunitesTableInsert
     const { error: insertError } = await opportunitesTable.insert({
       ...insertPayload,
       annonceur_id: annonceur.id,
     })
 
     if (insertError) {
+      console.error('Erreur insertion opportunite:', {
+        message: insertError.message,
+        details: 'details' in insertError ? insertError.details : undefined,
+        hint: 'hint' in insertError ? insertError.hint : undefined,
+        code: 'code' in insertError ? insertError.code : undefined,
+        annonceurId: annonceur.id,
+      })
+
+      const normalizedMessage = insertError.message?.trim()
       return NextResponse.json(
-        { error: "Impossible de publier l'opportunite. Veuillez verifier vos informations et reessayer" },
+        {
+          error:
+            normalizedMessage ||
+            "Impossible de publier l'opportunité. Veuillez vérifier vos informations et réessayer.",
+        },
         { status: 400 }
       )
     }

@@ -71,6 +71,29 @@ describe('API /api/comedien/annonceurs-bloques', () => {
     expect(insert).toHaveBeenCalledWith({ comedien_id: 'comedien-1', annonceur_id: 'ann-1' })
   })
 
+  it('GET retourne 403 si le compte comédien est supprimé', async () => {
+    ;(createServerSupabaseClient as jest.Mock).mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: 'auth-1' } },
+          error: null,
+        }),
+      },
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: { id: 'comedien-1', compte_supprime: true } }),
+          })),
+        })),
+      })),
+    })
+
+    const response = await GET()
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ error: 'Compte supprimé' })
+  })
+
   it('DELETE retourne 400 si annonceur_id est absent', async () => {
     ;(createServerSupabaseClient as jest.Mock).mockResolvedValue({
       auth: {

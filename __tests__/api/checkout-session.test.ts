@@ -55,6 +55,29 @@ describe('POST /api/checkout/session', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Non authentifie' })
   })
 
+  it('retourne 403 si le compte comédien est supprimé', async () => {
+    ;(createServerSupabaseClient as jest.Mock).mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: 'auth-1' } },
+          error: null,
+        }),
+      },
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: { id: 'comedien-1', compte_supprime: true }, error: null }),
+          })),
+        })),
+      })),
+    })
+
+    const response = await POST(createRequest({ opportuniteId: 'opp-1' }))
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ error: 'Compte supprimé' })
+  })
+
   it('réutilise une session Stripe ouverte déjà en attente', async () => {
     stripeMock.checkout.sessions.retrieve.mockResolvedValue({
       status: 'open',
@@ -86,21 +109,19 @@ describe('POST /api/checkout/session', () => {
           return {
             select: jest.fn(() => ({
               eq: jest.fn(() => ({
-                eq: jest.fn(() => ({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      id: 'opp-1',
-                      annonceur_id: 'ann-1',
-                      titre: 'Formation',
-                      prix_reduit: 25,
-                      prix_base: 50,
-                      places_restantes: 2,
-                      date_evenement: '2099-06-15T10:00:00.000Z',
-                      statut: 'validee',
-                    },
-                    error: null,
-                  }),
-                })),
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    id: 'opp-1',
+                    annonceur_id: 'ann-1',
+                    titre: 'Formation',
+                    prix_reduit: 25,
+                    prix_base: 50,
+                    places_restantes: 2,
+                    date_evenement: '2099-06-15T10:00:00.000Z',
+                    statut: 'validee',
+                  },
+                  error: null,
+                }),
               })),
             })),
           }
@@ -224,20 +245,54 @@ describe('POST /api/checkout/session', () => {
           return {
             select: jest.fn(() => ({
               eq: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    id: 'opp-1',
+                    annonceur_id: 'ann-1',
+                    titre: 'Formation',
+                    prix_reduit: 25,
+                    prix_base: 50,
+                    places_restantes: 3,
+                    date_evenement: '2099-06-15T10:00:00.000Z',
+                    statut: 'validee',
+                  },
+                  error: null,
+                }),
+              })),
+            })),
+          }
+        }
+
+        if (table === 'annonceurs_bloques') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
                 eq: jest.fn(() => ({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      id: 'opp-1',
-                      annonceur_id: 'ann-1',
-                      titre: 'Formation',
-                      prix_reduit: 25,
-                      prix_base: 50,
-                      places_restantes: 3,
-                      date_evenement: '2099-06-15T10:00:00.000Z',
-                      statut: 'validee',
-                    },
-                    error: null,
-                  }),
+                  maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+                })),
+              })),
+            })),
+          }
+        }
+
+        if (table === 'annonceurs_bloques') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+                })),
+              })),
+            })),
+          }
+        }
+
+        if (table === 'annonceurs_bloques') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  maybeSingle: jest.fn().mockResolvedValue({ data: null }),
                 })),
               })),
             })),
@@ -291,21 +346,19 @@ describe('POST /api/checkout/session', () => {
           return {
             select: jest.fn(() => ({
               eq: jest.fn(() => ({
-                eq: jest.fn(() => ({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      id: 'opp-1',
-                      annonceur_id: 'ann-1',
-                      titre: 'Formation',
-                      prix_reduit: 25,
-                      prix_base: 50,
-                      places_restantes: 3,
-                      date_evenement: '2099-06-15T10:00:00.000Z',
-                      statut: 'validee',
-                    },
-                    error: null,
-                  }),
-                })),
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    id: 'opp-1',
+                    annonceur_id: 'ann-1',
+                    titre: 'Formation',
+                    prix_reduit: 25,
+                    prix_base: 50,
+                    places_restantes: 3,
+                    date_evenement: '2099-06-15T10:00:00.000Z',
+                    statut: 'validee',
+                  },
+                  error: null,
+                }),
               })),
             })),
           }
@@ -317,6 +370,71 @@ describe('POST /api/checkout/session', () => {
               eq: jest.fn(() => ({
                 eq: jest.fn(() => ({
                   maybeSingle: jest.fn().mockResolvedValue({ data: { annonceur_id: 'ann-1' } }),
+                })),
+              })),
+            })),
+          }
+        }
+
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    }
+
+    ;(createServerSupabaseClient as jest.Mock).mockResolvedValue(supabase)
+
+    const response = await POST(createRequest({ opportuniteId: 'opp-1' }))
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: 'Opportunite indisponible' })
+  })
+
+  it('retourne 404 si l’opportunité est supprimée', async () => {
+    const supabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: 'auth-1' } },
+          error: null,
+        }),
+      },
+      from: jest.fn((table: string) => {
+        if (table === 'comediens') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({ data: { id: 'comedien-1' }, error: null }),
+              })),
+            })),
+          }
+        }
+
+        if (table === 'opportunites') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    id: 'opp-1',
+                    annonceur_id: 'ann-1',
+                    titre: 'Formation',
+                    prix_reduit: 25,
+                    prix_base: 50,
+                    places_restantes: 3,
+                    date_evenement: '2099-06-15T10:00:00.000Z',
+                    statut: 'supprimee',
+                  },
+                  error: null,
+                }),
+              })),
+            })),
+          }
+        }
+
+        if (table === 'annonceurs_bloques') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  maybeSingle: jest.fn().mockResolvedValue({ data: null }),
                 })),
               })),
             })),
@@ -369,21 +487,19 @@ describe('POST /api/checkout/session', () => {
           return {
             select: jest.fn(() => ({
               eq: jest.fn(() => ({
-                eq: jest.fn(() => ({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      id: 'opp-1',
-                      annonceur_id: 'ann-1',
-                      titre: 'Masterclass',
-                      prix_reduit: 25,
-                      prix_base: 50,
-                      places_restantes: 4,
-                      date_evenement: '2099-06-15T10:00:00.000Z',
-                      statut: 'validee',
-                    },
-                    error: null,
-                  }),
-                })),
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    id: 'opp-1',
+                    annonceur_id: 'ann-1',
+                    titre: 'Masterclass',
+                    prix_reduit: 25,
+                    prix_base: 50,
+                    places_restantes: 4,
+                    date_evenement: '2099-06-15T10:00:00.000Z',
+                    statut: 'validee',
+                  },
+                  error: null,
+                }),
               })),
             })),
           }

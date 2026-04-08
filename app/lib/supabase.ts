@@ -2,6 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '../types'
 import type { User } from '@supabase/supabase-js'
+import {
+  resolveUserTypeForAuthUser,
+  syncEmailVerificationForAuthUser,
+  type AuthProfileSupabase,
+  type UserType,
+} from './auth-profile'
 
 // ============================================
 // CLIENT SUPABASE - CÔTÉ SERVEUR
@@ -64,9 +70,46 @@ export async function getComedienProfile() {
     .eq('auth_user_id', user.id)
     .single()
   
-  if (error) return null
+  const comedienData = data as Database['public']['Tables']['comediens']['Row'] | null
+
+  if (error || comedienData?.compte_supprime) return null
   
-  return data
+  return comedienData
+}
+
+export async function getActiveComedienProfile(authUserId?: string) {
+  const supabase = await createServerSupabaseClient()
+  const resolvedUserId = authUserId ?? (await getUser())?.id
+
+  if (!resolvedUserId) {
+    return {
+      supabase,
+      comedien: null,
+      isDeleted: false,
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('comediens')
+    .select('*')
+    .eq('auth_user_id', resolvedUserId)
+    .single()
+
+  const comedienData = data as Database['public']['Tables']['comediens']['Row'] | null
+
+  if (error || !comedienData) {
+    return {
+      supabase,
+      comedien: null,
+      isDeleted: false,
+    }
+  }
+
+  return {
+    supabase,
+    comedien: comedienData.compte_supprime ? null : comedienData,
+    isDeleted: Boolean(comedienData.compte_supprime),
+  }
 }
 
 // ============================================
@@ -111,39 +154,6 @@ export async function getAdminProfile() {
   return data
 }
 
-// ============================================
-// HELPER : DÉTERMINER LE TYPE D'UTILISATEUR
-// ============================================
-
-export type UserType = 'comedian' | 'advertiser' | 'admin' | null
-
-type RoleAwareSupabase = {
-  from: (table: 'admins' | 'annonceurs' | 'comediens') => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        maybeSingle: () => Promise<{ data: { id: string } | null }>
-      }
-    }
-  }
-}
-
-export async function resolveUserTypeForAuthUser(
-  supabase: RoleAwareSupabase,
-  userId: string
-): Promise<UserType> {
-  const [adminResult, annonceurResult, comedienResult] = await Promise.all([
-    supabase.from('admins').select('id').eq('auth_user_id', userId).maybeSingle(),
-    supabase.from('annonceurs').select('id').eq('auth_user_id', userId).maybeSingle(),
-    supabase.from('comediens').select('id').eq('auth_user_id', userId).maybeSingle(),
-  ])
-
-  if (adminResult.data) return 'admin'
-  if (annonceurResult.data) return 'advertiser'
-  if (comedienResult.data) return 'comedian'
-
-  return null
-}
-
 export async function getAuthenticatedUserContext() {
   const supabase = await createServerSupabaseClient()
   const {
@@ -159,7 +169,10 @@ export async function getAuthenticatedUserContext() {
     }
   }
 
-  const userType = await resolveUserTypeForAuthUser(supabase as unknown as RoleAwareSupabase, user.id)
+  const userType = await syncEmailVerificationForAuthUser(
+    supabase as unknown as AuthProfileSupabase,
+    user
+  )
 
   return {
     supabase,
@@ -172,3 +185,6 @@ export async function getUserType(): Promise<UserType> {
   const { user, userType } = await getAuthenticatedUserContext()
   return user ? userType : null
 }
+
+export { resolveUserTypeForAuthUser }
+export type { UserType }

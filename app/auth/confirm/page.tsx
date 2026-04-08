@@ -30,7 +30,7 @@ function ConfirmContent() {
         // La confirmation a réussi (géré par /auth/callback)
         console.log('[AUTH CONFIRM] ✅ Confirmation réussie')
         setStatus('success')
-        setMessage('Votre email a été confirmé avec succès !')
+        setMessage('Votre e-mail a été confirmé avec succès !')
 
         // Déterminer la redirection selon le type d'utilisateur
         let path = '/dashboard' // Par défaut pour les comédiens
@@ -74,9 +74,9 @@ function ConfirmContent() {
           {status === 'error' && 'Erreur de confirmation'}
         </CardTitle>
         <CardDescription>
-          {status === 'loading' && 'Veuillez patienter pendant que nous vérifions votre email'}
-          {status === 'success' && 'Votre compte a été activé avec succès'}
-          {status === 'error' && 'Nous n\'avons pas pu confirmer votre email'}
+          {status === 'loading' && 'Veuillez patienter pendant que nous vérifions votre e-mail.'}
+          {status === 'success' && 'Votre compte a été activé avec succès.'}
+          {status === 'error' && 'Nous n\'avons pas pu confirmer votre e-mail.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -97,7 +97,7 @@ function ConfirmContent() {
         {status === 'success' && (
           <div className="bg-green-50 border border-green-200 rounded-md p-4">
             <p className="text-sm text-green-800 text-center">
-              Redirection vers votre tableau de bord dans quelques secondes...
+              Redirection vers votre espace dans quelques secondes...
             </p>
           </div>
         )}
@@ -149,7 +149,7 @@ function ConfirmFallback() {
           <Image src={logoApp} alt="Scenio Logo" height={80} width={80} />
         </div>
         <CardTitle className="text-2xl">Confirmation en cours...</CardTitle>
-        <CardDescription>Veuillez patienter pendant que nous vérifions votre email</CardDescription>
+        <CardDescription>Veuillez patienter pendant que nous vérifions votre e-mail.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-center">

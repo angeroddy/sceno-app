@@ -25,6 +25,7 @@ describe('LoginForm', () => {
   const mockSupabase = {
     auth: {
       signInWithPassword: jest.fn(),
+      signOut: jest.fn(),
     },
     from: jest.fn(),
   }
@@ -209,6 +210,60 @@ describe('LoginForm', () => {
         expect(screen.getByText(/Veuillez confirmer votre adresse e-mail/i)).toBeInTheDocument()
       })
 
+      expect(mockRouter.push).not.toHaveBeenCalled()
+    })
+
+    it("déconnecte immédiatement un compte marqué comme supprimé", async () => {
+      const mockUser = {
+        id: 'deleted-user-id',
+        email: 'deleted@example.com',
+      }
+
+      mockSupabase.auth.signInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      })
+      mockSupabase.auth.signOut.mockResolvedValue({ error: null })
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'admins' || table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { id: 'comedien-1', compte_supprime: true },
+                }),
+              }),
+            }),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn(),
+            }),
+          }
+        }
+        return {}
+      })
+
+      render(<LoginForm />)
+      const user = userEvent.setup()
+
+      await user.type(screen.getByLabelText(/Adresse e-mail/i), 'deleted@example.com')
+      await user.type(screen.getByLabelText(/Mot de passe/i), 'password123')
+      await user.click(screen.getByRole('button', { name: /Se connecter/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText(/Ce compte a été supprimé/i)).toBeInTheDocument()
+      })
+
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled()
       expect(mockRouter.push).not.toHaveBeenCalled()
     })
 

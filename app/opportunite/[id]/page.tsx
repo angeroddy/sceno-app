@@ -29,7 +29,7 @@ import {
   OPPORTUNITY_TYPE_LABELS,
   OpportunityType,
 } from '@/app/types'
-import { SafeRichText } from '@/components/safe-rich-text'
+import { OpportunityBodyContent } from '@/components/opportunity-body-content'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -134,12 +134,12 @@ export default async function OpportunitePage({
   const hasDiscount = opportunite.prix_reduit < opportunite.prix_base
   const primaryHref = userType ? dashboardHref : '/inscription'
   const primaryLabel = userType === 'comedian'
-    ? 'Voir et reserver dans mon espace'
+    ? 'Voir et réserver dans mon espace'
     : userType
-      ? 'Retourner a mon espace'
+      ? 'Retourner à mon espace'
       : isSoldOut
-        ? "Creer un compte pour voir d'autres opportunites"
-        : 'Creer un compte pour reserver'
+        ? "Créer un compte pour voir d'autres opportunités"
+        : 'Créer un compte pour réserver'
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://scenio.fr'
 
@@ -252,7 +252,7 @@ export default async function OpportunitePage({
                     {OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}
                   </Badge>
                   <Badge className={isSoldOut ? 'bg-blue-600 text-white hover:bg-blue-600' : 'bg-green-600 text-white hover:bg-green-600'}>
-                    {isSoldOut ? 'Complet' : 'Reservable'}
+                    {isSoldOut ? 'Complet' : 'Réservable'}
                   </Badge>
                 </div>
               </div>
@@ -277,7 +277,7 @@ export default async function OpportunitePage({
                       {opportunite.titre}
                     </h1>
                     <p className="mt-3 text-base leading-7 text-gray-600">
-                      Proposee par {opportunite.annonceur?.nom_formation || 'un organisme partenaire'}.
+                      Proposée par {opportunite.annonceur?.nom_formation || 'un organisme partenaire'}.
                     </p>
                   </div>
                 </div>
@@ -345,8 +345,11 @@ export default async function OpportunitePage({
 
                 <div className="space-y-4">
                   <h2 className="text-2xl font-semibold text-gray-950">Description</h2>
-                  <SafeRichText
-                    html={opportunite.resume}
+                  <OpportunityBodyContent
+                    title={opportunite.titre}
+                    resume={opportunite.resume}
+                    bodyImageUrl={opportunite.contenu_image_url}
+                    contentMode={opportunite.contenu_mode}
                     className="prose prose-neutral max-w-none text-gray-700"
                   />
                 </div>
@@ -379,7 +382,7 @@ export default async function OpportunitePage({
                       <div className="rounded-xl bg-[#F5F0EB] p-2">
                         <Ticket className="h-5 w-5 text-[#E63832]" />
                       </div>
-                      <h2 className="text-lg font-semibold text-gray-950">Contact opportunite</h2>
+                      <h2 className="text-lg font-semibold text-gray-950">Contact opportunité</h2>
                     </div>
                     <div className="space-y-3 text-sm text-gray-700">
                       <div className="flex items-center gap-2">
@@ -408,7 +411,7 @@ export default async function OpportunitePage({
               <CardContent className="space-y-6 p-6">
                 <div>
                   <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#E63832]">
-                    Reservation
+                    Réservation
                   </p>
                   <div className="mt-3 flex items-end gap-3">
                     <span className="text-4xl font-bold text-gray-950">
@@ -424,8 +427,8 @@ export default async function OpportunitePage({
 
                 <div className={`rounded-2xl p-4 text-sm ${isSoldOut ? 'bg-blue-50 text-blue-900' : 'bg-green-50 text-green-900'}`}>
                   {isSoldOut
-                    ? 'Cette opportunite est actuellement complete. Vous pouvez tout de meme creer un compte pour recevoir les prochaines offres.'
-                    : `${opportunite.places_restantes} place(s) restante(s) a reserver via votre espace Scenio.`}
+                    ? 'Cette opportunité est actuellement complète. Vous pouvez tout de même créer un compte pour recevoir les prochaines offres.'
+                    : `${opportunite.places_restantes} place(s) restante(s) à réserver via votre espace Scenio.`}
                 </div>
 
                 <div className="space-y-3">
@@ -457,15 +460,15 @@ export default async function OpportunitePage({
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span>Modele</span>
+                    <span>Modèle</span>
                     <span className="font-medium text-gray-950">
                       {OPPORTUNITY_MODEL_LABELS[opportunite.modele]}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span>Disponibilite</span>
+                    <span>Disponibilité</span>
                     <span className="font-medium text-gray-950">
-                      {isSoldOut ? 'Complete' : `${opportunite.places_restantes} place(s)`}
+                      {isSoldOut ? 'Complète' : `${opportunite.places_restantes} place(s)`}
                     </span>
                   </div>
                 </div>

@@ -15,6 +15,8 @@ import {
   Tag,
   Users,
   Clock,
+  Phone,
+  ExternalLink,
   Loader2,
   AlertCircle,
   Ban,
@@ -22,12 +24,15 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { deriveOpportunityStatus } from "@/app/lib/opportunity-status"
 import {
   OpportuniteWithAnnonceur,
   OPPORTUNITY_TYPE_LABELS,
   OPPORTUNITY_MODEL_LABELS,
+  OPPORTUNITY_STATUS_LABELS,
   OpportunityType,
-  OpportunityModel
+  OpportunityModel,
+  OpportunityStatus,
 } from "@/app/types"
 
 interface DisplayOpportunity {
@@ -50,6 +55,7 @@ interface DisplayOpportunity {
   category: string
   lienInfos: string
   contactEmail: string
+  status: OpportunityStatus
 }
 
 interface PurchasedTicket {
@@ -67,6 +73,7 @@ interface PurchasedTicket {
   price: string
   purchasedAt: string
   contactEmail: string
+  contactPhone: string
   status: "confirmee" | "remboursee"
 }
 
@@ -109,7 +116,7 @@ export default function DashboardPage() {
 
       const response = await fetch("/api/comedien/opportunites?page=1&limit=50")
       if (!response.ok) {
-        throw new Error("Erreur lors de la recuperation des opportunites")
+        throw new Error("Erreur lors de la récupération des opportunités.")
       }
 
       const data = await response.json()
@@ -122,6 +129,11 @@ export default function DashboardPage() {
 
       const transformedOpportunities: DisplayOpportunity[] = data.opportunites.map((opp: OpportuniteWithAnnonceur) => {
         const dateObj = new Date(opp.date_evenement)
+        const status = deriveOpportunityStatus({
+          statut: opp.statut,
+          date_evenement: opp.date_evenement,
+          places_restantes: opp.places_restantes,
+        })
 
         return {
           id: opp.id,
@@ -129,7 +141,7 @@ export default function DashboardPage() {
           type: OPPORTUNITY_TYPE_LABELS[opp.type as OpportunityType],
           model: opp.modele as OpportunityModel,
           title: opp.titre,
-          organizer: opp.annonceur?.nom_formation || "Non specifie",
+          organizer: opp.annonceur?.nom_formation || "Non spécifié",
           location: "France",
           date: dateObj.toLocaleDateString("fr-FR", {
             weekday: "long",
@@ -150,7 +162,8 @@ export default function DashboardPage() {
           image: opp.image_url,
           category: OPPORTUNITY_TYPE_LABELS[opp.type as OpportunityType],
           lienInfos: opp.lien_infos,
-          contactEmail: opp.contact_email
+          contactEmail: opp.contact_email,
+          status,
         }
       })
 
@@ -172,7 +185,7 @@ export default function DashboardPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data?.error || "Erreur lors de la recuperation de vos places")
+        throw new Error(data?.error || "Erreur lors de la récupération de vos places.")
       }
 
       const transformedTickets: PurchasedTicket[] = (data.achats || []).map((achat: {
@@ -186,6 +199,7 @@ export default function DashboardPage() {
           image_url: string | null
           date_evenement: string
           contact_email: string
+          contact_telephone: string | null
           annonceur?: { nom_formation?: string }
         } | null
       }) => {
@@ -199,7 +213,7 @@ export default function DashboardPage() {
           id: achat.id,
           opportunityId: achat.opportunite?.id || "",
           receiptReference: formatReceiptReference(achat.id),
-          title: achat.opportunite?.titre || "Opportunite",
+          title: achat.opportunite?.titre || "Opportunité",
           organizer,
           image: achat.opportunite?.image_url || null,
           date: eventDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }),
@@ -210,13 +224,14 @@ export default function DashboardPage() {
           price: `${achat.prix_paye.toFixed(2)}€`,
           purchasedAt: `${purchaseDate.toLocaleDateString("fr-FR")} ${purchaseDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`,
           contactEmail: achat.opportunite?.contact_email || "",
+          contactPhone: achat.opportunite?.contact_telephone || "",
           status: achat.statut
         }
       })
 
       setPurchasedTickets(transformedTickets)
     } catch (err) {
-      console.error("Erreur places achetees:", err)
+      console.error("Erreur places achetées:", err)
       setTicketsError(err instanceof Error ? err.message : "Impossible de charger vos places")
     } finally {
       setTicketsLoading(false)
@@ -385,10 +400,10 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Espace Comedien
+            Espace Comédien
           </h1>
           <p className="text-gray-600 text-lg">
-            Decouvrez et gerez vos opportunites
+            Découvrez et gérez vos opportunités.
           </p>
         </div>
 
@@ -412,7 +427,7 @@ export default function DashboardPage() {
           <TabsList className="grid w-full grid-cols-2 mb-8 bg-[#E6DAD0]/50">
             <TabsTrigger value="opportunities" className="flex items-center gap-2 cursor-pointer">
               <Calendar className="w-4 h-4" />
-              <span>Opportunites</span>
+              <span>Opportunités</span>
             </TabsTrigger>
             <TabsTrigger value="tickets" className="flex items-center gap-2 cursor-pointer">
               <Ticket className="w-4 h-4" />
@@ -424,7 +439,7 @@ export default function DashboardPage() {
             {loading && (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-12 h-12 animate-spin text-[#E63832] mb-4" />
-                <p className="text-gray-600">Chargement des opportunites...</p>
+                <p className="text-gray-600">Chargement des opportunités...</p>
               </div>
             )}
 
@@ -448,7 +463,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
                     <p className="text-sm text-orange-800">
-                      Configurez vos preferences pour personnaliser vos opportunites.
+                      Configurez vos préférences pour personnaliser vos opportunités.
                     </p>
                   </div>
                   <Link href="/dashboard/preferences">
@@ -469,6 +484,26 @@ export default function DashboardPage() {
                       className="overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer"
                       onClick={() => { window.location.href = `/dashboard/opportunites/${opportunity.id}` }}
                     >
+                      {(() => {
+                        const isExpired = opportunity.status === "expiree"
+                        const isComplete = opportunity.status === "complete"
+                        const isRemoved = opportunity.status === "supprimee"
+                        const hasStatusOverlay = isExpired || isComplete || isRemoved
+                        const bookingDisabled = isExpired || isComplete || isRemoved
+                        const bookingLabel = isRemoved
+                          ? "Non consultable"
+                          : isExpired
+                            ? "Expirée"
+                            : isComplete
+                              ? "Complet"
+                              : confirmedOpportunityIds.has(opportunity.id)
+                                ? "Déjà réservé"
+                                : bookingOpportunityId === opportunity.id
+                                  ? "Paiement..."
+                                  : "Réserver"
+
+                        return (
+                          <>
                       <div className="relative">
                         <div className="absolute top-4 left-4 z-10 bg-white rounded-lg p-2 shadow-md">
                           <div className="text-center">
@@ -483,19 +518,44 @@ export default function DashboardPage() {
                               src={opportunity.image}
                               alt={opportunity.title}
                               fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                              className={
+                                `object-cover transition-transform duration-300 cursor-pointer ${
+                                  hasStatusOverlay
+                                    ? "scale-105 blur-[2px] brightness-[0.55]"
+                                    : "group-hover:scale-105"
+                                }`
+                              }
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                               onError={() => handleImageError(opportunity.id)}
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
+                            <div
+                              className={`w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB] ${
+                                hasStatusOverlay ? "brightness-[0.8]" : ""
+                              }`}
+                            >
                               <Calendar className="w-16 h-16 text-gray-400" />
                             </div>
                           )}
 
+                          {hasStatusOverlay && (
+                            <>
+                              <div className="absolute inset-0 bg-slate-950/35" />
+                              <div className="absolute inset-0 z-10 flex items-center justify-center px-6">
+                                <span className="text-center text-4xl font-black tracking-[0.35em] text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)] md:text-5xl">
+                                  {isComplete ? "COMPLET" : isRemoved ? "SUPPRIMÉE" : "EXPIRÉE"}
+                                </span>
+                              </div>
+                            </>
+                          )}
+
                           <div className="absolute bottom-4 left-4 z-10">
                             <span className="text-white text-sm font-medium bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
-                              {opportunity.placesLeft} place{opportunity.placesLeft > 1 ? "s" : ""} restante{opportunity.placesLeft > 1 ? "s" : ""}
+                              {isRemoved
+                                ? "Annonce supprimée"
+                                : isComplete
+                                ? "Complet"
+                                : `${opportunity.placesLeft} place${opportunity.placesLeft > 1 ? "s" : ""} restante${opportunity.placesLeft > 1 ? "s" : ""}`}
                             </span>
                           </div>
 
@@ -506,7 +566,6 @@ export default function DashboardPage() {
                               </span>
                             </div>
                           )}
-
                         </div>
                       </div>
 
@@ -524,6 +583,23 @@ export default function DashboardPage() {
                           >
                             {OPPORTUNITY_MODEL_LABELS[opportunity.model]}
                           </Badge>
+                          {opportunity.status !== "validee" && (
+                            <Badge
+                              className={
+                                opportunity.status === "expiree" || opportunity.status === "supprimee"
+                                  ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
+                                  : opportunity.status === "complete"
+                                    ? "bg-slate-800 text-white hover:bg-slate-800"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-100"
+                              }
+                            >
+                              {opportunity.status === "complete"
+                                ? "Complet"
+                                : opportunity.status === "supprimee"
+                                  ? "Annonce supprimée"
+                                  : OPPORTUNITY_STATUS_LABELS[opportunity.status]}
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="flex items-start justify-between gap-3">
@@ -604,26 +680,25 @@ export default function DashboardPage() {
                         <div className="flex gap-2 pt-2">
                           <Link href={`/dashboard/opportunites/${opportunity.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
                             <Button variant="outline" className="w-full">
-                              Voir details
+                              Voir détails
                             </Button>
                           </Link>
                           <Button
                             className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90"
-                            disabled={bookingOpportunityId === opportunity.id || confirmedOpportunityIds.has(opportunity.id)}
+                            disabled={bookingDisabled || bookingOpportunityId === opportunity.id || confirmedOpportunityIds.has(opportunity.id)}
                             onClick={(e) => {
                               e.stopPropagation()
-                              if (confirmedOpportunityIds.has(opportunity.id)) return
+                              if (bookingDisabled || confirmedOpportunityIds.has(opportunity.id)) return
                               void handleCheckout(opportunity.id)
                             }}
                           >
-                            {confirmedOpportunityIds.has(opportunity.id)
-                              ? "Deja reserve"
-                              : bookingOpportunityId === opportunity.id
-                                ? "Paiement..."
-                                : "Reserver"}
+                            {bookingLabel}
                           </Button>
                         </div>
                       </CardContent>
+                          </>
+                        )
+                      })()}
                     </Card>
                   ))}
                 </div>
@@ -632,10 +707,10 @@ export default function DashboardPage() {
                   <div className="text-center py-12">
                     <Calendar className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-500 text-lg font-medium mb-2">
-                      Aucune opportunite disponible pour le moment
+                      Aucune opportunité disponible pour le moment !
                     </p>
                     <p className="text-gray-400 text-sm">
-                      Les opportunites correspondant a vos preferences apparaitront ici une fois validees.
+                      Les opportunités correspondant à vos préférences apparaîtront ici.
                     </p>
                   </div>
                 )}
@@ -681,7 +756,7 @@ export default function DashboardPage() {
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-100"
                                     }
                                   >
-                                    {ticket.status === "confirmee" ? "Confirmee" : "Remboursee"}
+                                    {ticket.status === "confirmee" ? "Confirmée" : "Remboursée"}
                                   </Badge>
                                 </div>
                                 <h3 className="font-bold text-lg">{ticket.title}</h3>
@@ -705,25 +780,43 @@ export default function DashboardPage() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Tag className="w-4 h-4" />
-                                <span>Recu du {ticket.purchasedAt}</span>
+                                <span>Reçu du {ticket.purchasedAt}</span>
                               </div>
                             </div>
 
                             {ticket.contactEmail && (
                               <div className="text-sm text-gray-600">
-                                Contact:{" "}
+                                E-mail:{" "}
                                 <a href={`mailto:${ticket.contactEmail}`} className="text-[#E63832] hover:underline">
                                   {ticket.contactEmail}
                                 </a>
                               </div>
                             )}
 
-                            <div>
+                            {ticket.contactPhone && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Phone className="h-4 w-4 shrink-0" />
+                                <a href={`tel:${ticket.contactPhone}`} className="text-[#E63832] hover:underline">
+                                  {ticket.contactPhone}
+                                </a>
+                              </div>
+                            )}
+
+                            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                              {ticket.opportunityId && (
+                                <Link href={`/dashboard/opportunites/${ticket.opportunityId}`} className="inline-flex">
+                                  <Button type="button" variant="outline" className="w-full sm:w-auto">
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    Voir l&apos;annonce
+                                  </Button>
+                                </Link>
+                              )}
+
                               <a
                                 href={`/api/comedien/achats/${ticket.id}/receipt`}
-                                className="inline-flex items-center rounded-md bg-[#E63832] px-4 py-2 text-sm font-medium text-white hover:bg-[#E63832]/90"
+                                className="inline-flex items-center justify-center rounded-md bg-[#E63832] px-4 py-2 text-sm font-medium text-white hover:bg-[#E63832]/90"
                               >
-                                Telecharger le recu PDF
+                                Télécharger le reçu PDF
                               </a>
                             </div>
                           </div>
@@ -735,13 +828,13 @@ export default function DashboardPage() {
                       <div className="text-center py-12">
                         <Ticket className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                         <p className="text-gray-500 text-lg">
-                          Vous n&apos;avez pas encore achete de places
+                          Vous n&apos;avez pas encore acheté de places
                         </p>
                         <Button
                           className="mt-4 bg-[#E63832] hover:bg-[#E63832]/90"
                           onClick={() => setActiveTab("opportunities")}
                         >
-                          Decouvrir les opportunites
+                          Découvrir les opportunités
                         </Button>
                       </div>
                     )}

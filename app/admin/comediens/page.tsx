@@ -17,6 +17,8 @@ interface ComedienRow {
   lien_demo: string | null
   preferences_opportunites: string[]
   email_verifie: boolean
+  compte_supprime: boolean
+  compte_supprime_at: string | null
   created_at: string
 }
 
@@ -189,6 +191,13 @@ export default function AdminComediensPage() {
                         >
                           {comedien.nom} {comedien.prenom}
                         </Link>
+                        {comedien.compte_supprime && (
+                          <div className="mt-1">
+                            <Badge variant="outline" className="border-orange-300 text-orange-700">
+                              Compte supprimé
+                            </Badge>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-gray-600">{formatGender(comedien.genre)}</td>
                       <td className="px-6 py-4 text-gray-600">{comedien.email}</td>
@@ -245,12 +254,21 @@ export default function AdminComediensPage() {
                   )}
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <Link
-                        href={`/admin/comediens/${encodeURIComponent(comedien.id)}`}
-                        className="font-bold text-gray-900 hover:text-[#E63832] underline-offset-2 hover:underline"
-                      >
-                        {comedien.nom} {comedien.prenom}
-                      </Link>
+                      <div className="space-y-1">
+                        <Link
+                          href={`/admin/comediens/${encodeURIComponent(comedien.id)}`}
+                          className="font-bold text-gray-900 hover:text-[#E63832] underline-offset-2 hover:underline"
+                        >
+                          {comedien.nom} {comedien.prenom}
+                        </Link>
+                        {comedien.compte_supprime && (
+                          <div>
+                            <Badge variant="outline" className="border-orange-300 text-orange-700">
+                              Compte supprimé
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
                       {comedien.email_verifie ? (
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Email vérifié</Badge>
                       ) : (

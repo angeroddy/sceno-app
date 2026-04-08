@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { getStripe } from '@/app/lib/stripe'
+import { deriveOpportunityStatus, isOpportunityReservableByComedian, isOpportunityVisibleToComedian } from '@/app/lib/opportunity-status'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 import type { Achat, Annonceur, Comedien, Opportunite } from '@/app/types'
 
@@ -44,20 +45,24 @@ export async function POST(request: NextRequest) {
 
     const { data: comedienData, error: comedienError } = await supabase
       .from('comediens')
-      .select('id')
+      .select('id, compte_supprime')
       .eq('auth_user_id', user.id)
       .single()
 
-    if (comedienError || !comedienData) {
+    const comedienRecord = comedienData as (Pick<Comedien, 'id'> & { compte_supprime?: boolean }) | null
+
+    if (comedienError || !comedienRecord) {
       return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
     }
-    const comedien = comedienData as Pick<Comedien, 'id'>
+    if (comedienRecord.compte_supprime) {
+      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
+    }
+    const comedien = comedienRecord as Pick<Comedien, 'id'>
 
     const { data: opportuniteData, error: opportuniteError } = await supabase
       .from('opportunites')
       .select('id, annonceur_id, titre, prix_reduit, prix_base, places_restantes, date_evenement, statut')
       .eq('id', opportuniteId)
-      .eq('statut', 'validee')
       .single()
 
     if (opportuniteError || !opportuniteData) {
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const opportunite = opportuniteData as Pick<
       Opportunite,
-      'id' | 'annonceur_id' | 'titre' | 'prix_reduit' | 'prix_base' | 'places_restantes' | 'date_evenement'
+      'id' | 'annonceur_id' | 'titre' | 'prix_reduit' | 'prix_base' | 'places_restantes' | 'date_evenement' | 'statut'
     >
 
     const { data: blockedAnnonceur } = await supabase
@@ -80,16 +85,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Opportunite indisponible' }, { status: 404 })
     }
 
+    if (!isOpportunityVisibleToComedian(opportunite.statut)) {
+      return NextResponse.json({ error: 'Opportunite indisponible' }, { status: 404 })
+    }
+
     const reconciledOpportunity = await reconcileOpportunityPlaces(supabase as never, opportunite.id)
     if (reconciledOpportunity) {
       opportunite.places_restantes = reconciledOpportunity.places_restantes
     }
 
+    const derivedStatus = deriveOpportunityStatus({
+      statut: opportunite.statut,
+      date_evenement: opportunite.date_evenement,
+      places_restantes: opportunite.places_restantes,
+    })
+
+    if (!isOpportunityReservableByComedian(derivedStatus)) {
+      if (derivedStatus === 'supprimee') {
+        return NextResponse.json({ error: 'Opportunité indisponible' }, { status: 404 })
+      }
+      if (derivedStatus === 'complete') {
+        return NextResponse.json({ error: 'Cette opportunité est complète' }, { status: 409 })
+      }
+      if (derivedStatus === 'expiree') {
+        return NextResponse.json({ error: 'Cette opportunité est expirée' }, { status: 409 })
+      }
+    }
+
     if (opportunite.places_restantes <= 0) {
-      return NextResponse.json({ error: 'Cette opportunite est complete' }, { status: 409 })
+      return NextResponse.json({ error: 'Cette opportunité est complète' }, { status: 409 })
     }
     if (new Date(opportunite.date_evenement) <= new Date()) {
-      return NextResponse.json({ error: 'Cette opportunite est expiree' }, { status: 409 })
+      return NextResponse.json({ error: 'Cette opportunité est expirée' }, { status: 409 })
     }
 
     const { data: annonceurData, error: annonceurError } = await supabase
@@ -129,7 +156,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (confirmedPurchase) {
-      return NextResponse.json({ error: 'Vous avez deja reserve cette opportunite' }, { status: 409 })
+      return NextResponse.json({ error: 'Vous avez déjà réservé cette opportunité' }, { status: 409 })
     }
 
     const { data: pendingPurchases } = await supabase

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { deriveOpportunityStatus, isOpportunityVisibleToComedian } from '@/app/lib/opportunity-status'
 import { Comedien } from '@/app/types'
 
 export async function GET(request: NextRequest) {
@@ -20,14 +21,19 @@ export async function GET(request: NextRequest) {
     // Recuperer le profil du comedien avec ses preferences
     const { data: comedienDataRaw, error: comedienError } = await supabase
       .from('comediens')
-      .select('id, preferences_opportunites')
+      .select('id, preferences_opportunites, compte_supprime')
       .eq('auth_user_id', user.id)
       .single()
 
-    const comedienData = comedienDataRaw as Pick<Comedien, 'id' | 'preferences_opportunites'> | null
+    const comedienData = comedienDataRaw as (Pick<Comedien, 'id' | 'preferences_opportunites'> & {
+      compte_supprime?: boolean
+    }) | null
 
     if (comedienError || !comedienData) {
       return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
+    }
+    if (comedienData.compte_supprime) {
+      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
     }
 
     // Recuperer les annonceurs bloques par le comedien
@@ -56,9 +62,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('opportunites')
       .select('*, annonceur:annonceurs(nom_formation, email)', { count: 'exact' })
-      .eq('statut', 'validee')
-      .gt('places_restantes', 0)
-      .gt('date_evenement', new Date().toISOString())
+      .in('statut', ['validee', 'expiree', 'complete', 'supprimee'])
 
     // Filtrer par preferences du comedien si elles sont configurees
     if (comedienData.preferences_opportunites && comedienData.preferences_opportunites.length > 0) {
@@ -84,6 +88,8 @@ export async function GET(request: NextRequest) {
       (opportunites || []).map(async (opportunite) => {
         const currentOpportunity = opportunite as Record<string, unknown> & {
           id: string
+          statut: string
+          date_evenement: string
           places_restantes?: number
         }
         const reconciledOpportunity = await reconcileOpportunityPlaces(
@@ -91,20 +97,24 @@ export async function GET(request: NextRequest) {
           currentOpportunity.id
         )
 
-        if (!reconciledOpportunity) {
-          return currentOpportunity
-        }
+        const nextPlacesRestantes = reconciledOpportunity?.places_restantes ?? currentOpportunity.places_restantes ?? 0
+        const derivedStatus = deriveOpportunityStatus({
+          statut: currentOpportunity.statut as never,
+          date_evenement: currentOpportunity.date_evenement,
+          places_restantes: nextPlacesRestantes,
+        })
 
         return {
           ...currentOpportunity,
-          places_restantes: reconciledOpportunity.places_restantes,
+          places_restantes: nextPlacesRestantes,
+          statut: derivedStatus,
         }
       })
     )
 
     return NextResponse.json({
       opportunites: opportunitesReconciled.filter(
-        (opportunite: { places_restantes?: number }) => (opportunite.places_restantes || 0) > 0
+        (opportunite: { statut?: string }) => isOpportunityVisibleToComedian((opportunite.statut || 'validee') as never)
       ),
       total: count || 0,
       page,

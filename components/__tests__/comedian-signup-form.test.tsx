@@ -25,6 +25,11 @@ jest.mock('@/components/ui/checkbox', () => ({
   ),
 }))
 
+jest.mock('react-easy-crop', () => ({
+  __esModule: true,
+  default: () => <div data-testid="photo-cropper" />,
+}))
+
 // Mock de next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
@@ -191,6 +196,16 @@ describe('ComedianSignupForm', () => {
       })
     })
 
+    it("n'affiche pas d'erreur au simple changement de focus", async () => {
+      const user = userEvent.setup()
+
+      const lastNameInput = screen.getByLabelText(/^Nom/i)
+      await user.click(lastNameInput)
+      await user.tab()
+
+      expect(screen.queryByText(/Le nom est obligatoire/i)).not.toBeInTheDocument()
+    })
+
     it('devrait afficher une erreur si le nom est vide', async () => {
       const user = userEvent.setup()
 
@@ -234,6 +249,36 @@ describe('ComedianSignupForm', () => {
       await waitFor(() => {
         expect(screen.getByText(/Dernière étape/i)).toBeInTheDocument()
       })
+    })
+
+    it("ouvre le recadreur quand une photo est sélectionnée", async () => {
+      const OriginalFileReader = global.FileReader
+
+      class MockFileReader {
+        result = 'data:image/png;base64,avatar'
+        onloadend: null | (() => void) = null
+
+        readAsDataURL() {
+          this.onloadend?.()
+        }
+      }
+
+      ;(global as any).FileReader = MockFileReader
+
+      try {
+        const file = new File(['avatar'], 'avatar.png', { type: 'image/png' })
+        const photoInput = screen.getByLabelText(/Photo portrait/i)
+
+        fireEvent.change(photoInput, { target: { files: [file] } })
+
+        await waitFor(() => {
+          expect(screen.getByText(/Recadrer la photo/i)).toBeInTheDocument()
+        })
+
+        expect(screen.getByTestId('photo-cropper')).toBeInTheDocument()
+      } finally {
+        ;(global as any).FileReader = OriginalFileReader
+      }
     })
   })
 
@@ -327,7 +372,7 @@ describe('ComedianSignupForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getAllByText(/Vous devez accepter les conditions générales/i).length).toBeGreaterThan(0)
+        expect(screen.getByTestId('accept-terms-card')).toHaveClass('border-red-500')
       })
     })
   })
@@ -438,6 +483,54 @@ describe('ComedianSignupForm', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Un compte existe déjà avec cet email/i)).toBeInTheDocument()
+      })
+    })
+
+    it("devrait bloquer l'inscription comédien si l'e-mail existe déjà sur un compte annonceur", async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'comediens') {
+          return {
+            select: jest.fn().mockReturnValue(createProfileSelectChain()),
+            insert: jest.fn(),
+          }
+        }
+
+        if (table === 'annonceurs') {
+          return {
+            select: jest.fn().mockReturnValue(createProfileSelectChain({ id: 'annonceur-1' })),
+            insert: jest.fn(),
+          }
+        }
+
+        return {
+          select: jest.fn().mockReturnValue(createProfileSelectChain()),
+          insert: jest.fn(),
+        }
+      })
+
+      render(<ComedianSignupForm />)
+      const user = userEvent.setup()
+
+      await user.click(screen.getByLabelText(/Stages \/ Ateliers/i))
+      await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+      await waitFor(() => screen.getByLabelText(/^Nom/i))
+      await user.type(screen.getByLabelText(/^Nom/i), 'Dupont')
+      await user.type(screen.getByLabelText(/^Prénom/i), 'Jean')
+      await user.type(screen.getByLabelText(/Date de naissance/i), '1990-01-15')
+      await user.selectOptions(screen.getByLabelText(/Genre/i), 'masculin')
+      await user.click(screen.getByRole('button', { name: /Suivant/i }))
+
+      await waitFor(() => screen.getByLabelText(/Adresse e-mail/i))
+      await user.type(screen.getByLabelText(/Adresse e-mail/i), 'annonceur@example.com')
+      await user.type(screen.getByLabelText(/^Mot de passe/i), 'Password123')
+      await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password123')
+      await user.click(screen.getByLabelText(/J'accepte les conditions/i))
+      await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))
+
+      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+      await waitFor(() => {
+        expect(screen.getByText(/Un compte annonceur existe déjà avec cet email/i)).toBeInTheDocument()
       })
     })
 

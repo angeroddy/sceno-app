@@ -11,15 +11,18 @@ export async function GET() {
 
     const { data: comedien } = await supabase
       .from("comediens")
-      .select("id")
+      .select("id, compte_supprime")
       .eq("auth_user_id", user.id)
       .single()
 
-    if (!comedien) {
+    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
+
+    if (!comedienTyped) {
       return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
     }
-
-    const comedienTyped = comedien as { id: string }
+    if (comedienTyped.compte_supprime) {
+      return NextResponse.json({ error: "Compte supprimé" }, { status: 403 })
+    }
 
     const { data: rows, error } = await supabase
       .from("annonceurs_bloques")
@@ -53,15 +56,18 @@ export async function POST(request: Request) {
 
     const { data: comedien } = await supabase
       .from("comediens")
-      .select("id")
+      .select("id, compte_supprime")
       .eq("auth_user_id", user.id)
       .single()
 
-    if (!comedien) {
+    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
+
+    if (!comedienTyped) {
       return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
     }
-
-    const comedienTyped = comedien as { id: string }
+    if (comedienTyped.compte_supprime) {
+      return NextResponse.json({ error: "Compte supprimé" }, { status: 403 })
+    }
 
     const { error: insertError } = await supabase
       .from("annonceurs_bloques")
@@ -94,15 +100,18 @@ export async function DELETE(request: Request) {
 
     const { data: comedien } = await supabase
       .from("comediens")
-      .select("id")
+      .select("id, compte_supprime")
       .eq("auth_user_id", user.id)
       .single()
 
-    if (!comedien) {
+    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
+
+    if (!comedienTyped) {
       return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
     }
-
-    const comedienTyped = comedien as { id: string }
+    if (comedienTyped.compte_supprime) {
+      return NextResponse.json({ error: "Compte supprimé" }, { status: 403 })
+    }
 
     const { error: deleteError } = await supabase
       .from("annonceurs_bloques")

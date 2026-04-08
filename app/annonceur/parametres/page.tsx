@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import {
-  TYPE_ANNONCEUR_LABELS,
   TYPE_JURIDIQUE_LABELS,
   type Annonceur,
   type TypeJuridique,
@@ -52,20 +51,12 @@ type StripeApiErrorResponse = {
 }
 
 type AnnonceurSettingsForm = {
-  type_annonceur: Annonceur["type_annonceur"]
   nom_formation: string
   email: string
   iban: string
   nom_titulaire_compte: string
   bic_swift: string
   telephone: string
-  nom: string
-  prenom: string
-  date_naissance: string
-  adresse_rue: string
-  adresse_ville: string
-  adresse_code_postal: string
-  adresse_pays: string
   nom_entreprise: string
   type_juridique: TypeJuridique | ""
   pays_entreprise: string
@@ -85,20 +76,12 @@ type AnnonceurSettingsForm = {
 }
 
 const EMPTY_FORM_DATA: AnnonceurSettingsForm = {
-  type_annonceur: null,
   nom_formation: "",
   email: "",
   iban: "",
   nom_titulaire_compte: "",
   bic_swift: "",
   telephone: "",
-  nom: "",
-  prenom: "",
-  date_naissance: "",
-  adresse_rue: "",
-  adresse_ville: "",
-  adresse_code_postal: "",
-  adresse_pays: "France",
   nom_entreprise: "",
   type_juridique: "",
   pays_entreprise: "France",
@@ -119,20 +102,12 @@ const EMPTY_FORM_DATA: AnnonceurSettingsForm = {
 
 function toFormData(annonceur: Annonceur): AnnonceurSettingsForm {
   return {
-    type_annonceur: annonceur.type_annonceur,
     nom_formation: annonceur.nom_formation || "",
     email: normalizeEmail(annonceur.email),
     iban: annonceur.iban || "",
     nom_titulaire_compte: annonceur.nom_titulaire_compte || "",
     bic_swift: normalizeBic(annonceur.bic_swift || ""),
     telephone: annonceur.telephone || "",
-    nom: annonceur.nom || "",
-    prenom: annonceur.prenom || "",
-    date_naissance: annonceur.date_naissance || "",
-    adresse_rue: annonceur.adresse_rue || "",
-    adresse_ville: annonceur.adresse_ville || "",
-    adresse_code_postal: annonceur.adresse_code_postal || "",
-    adresse_pays: annonceur.adresse_pays || "France",
     nom_entreprise: annonceur.nom_entreprise || "",
     type_juridique: annonceur.type_juridique || "",
     pays_entreprise: annonceur.pays_entreprise || "France",
@@ -156,6 +131,20 @@ function getTodayIsoDate(): string {
   return new Date().toISOString().split("T")[0]
 }
 
+function scrollToHashSection() {
+  if (typeof window === "undefined") return
+
+  const hash = window.location.hash.replace("#", "")
+  if (!hash) return
+
+  const target = document.getElementById(hash)
+  if (!target) return
+
+  window.requestAnimationFrame(() => {
+    target.scrollIntoView({ behavior: "smooth", block: "start" })
+  })
+}
+
 export default function ParametresPage() {
   const [annonceur, setAnnonceur] = useState<Annonceur | null>(null)
   const [loading, setLoading] = useState(true)
@@ -169,9 +158,7 @@ export default function ParametresPage() {
   const [stripeError, setStripeError] = useState("")
   const [formData, setFormData] = useState<AnnonceurSettingsForm>(EMPTY_FORM_DATA)
 
-  const lockedAccountType = annonceur?.type_annonceur ?? formData.type_annonceur
   const lockedEmail = normalizeEmail(annonceur?.email || formData.email)
-  const isEntreprise = lockedAccountType === "entreprise"
   const maxBirthDate = getTodayIsoDate()
 
   useEffect(() => {
@@ -184,6 +171,23 @@ export default function ParametresPage() {
 
     void initialize()
   }, [])
+
+  useEffect(() => {
+    scrollToHashSection()
+
+    const handleHashChange = () => {
+      scrollToHashSection()
+    }
+
+    window.addEventListener("hashchange", handleHashChange)
+    return () => window.removeEventListener("hashchange", handleHashChange)
+  }, [])
+
+  useEffect(() => {
+    if (!loading) {
+      scrollToHashSection()
+    }
+  }, [loading, stripeLoading])
 
   const fetchAnnonceurData = async () => {
     try {
@@ -317,10 +321,10 @@ export default function ParametresPage() {
 
   const handleInputChange = (
     field: keyof AnnonceurSettingsForm,
-    value: string | Annonceur["type_annonceur"]
+    value: string
   ) => {
     setFormData((prev) => {
-      if (field === "email" || field === "type_annonceur") {
+      if (field === "email") {
         return prev
       }
 
@@ -347,7 +351,6 @@ export default function ParametresPage() {
 
   const normalizeCountryField = (
     field:
-      | "adresse_pays"
       | "pays_entreprise"
       | "siege_pays"
       | "representant_adresse_pays"
@@ -356,11 +359,6 @@ export default function ParametresPage() {
   }
 
   const validateForm = (): boolean => {
-    if (!lockedAccountType) {
-      setError("Le type de compte est introuvable pour ce profil")
-      return false
-    }
-
     if (!normalizeHumanText(formData.nom_formation)) {
       setError("Le nom affiché de l'organisme est obligatoire")
       return false
@@ -395,49 +393,12 @@ export default function ParametresPage() {
     }
 
     if (!normalizeText(formData.telephone)) {
-      setError(
-        isEntreprise
-          ? "Le téléphone de l'organisme est obligatoire"
-          : "Le numéro de téléphone est obligatoire"
-      )
+      setError("Le téléphone de l'organisme est obligatoire")
       return false
     }
     if (!isValidPhone(formData.telephone)) {
-      setError(
-        isEntreprise
-          ? "Le téléphone de l'organisme n'est pas valide"
-          : "Le numéro de téléphone n'est pas valide"
-      )
+      setError("Le téléphone de l'organisme n'est pas valide")
       return false
-    }
-
-    if (lockedAccountType === "personne_physique") {
-      if (!normalizeText(formData.nom) || !normalizeText(formData.prenom)) {
-        setError("Le nom et le prénom sont obligatoires")
-        return false
-      }
-      if (!formData.date_naissance) {
-        setError("La date de naissance est obligatoire")
-        return false
-      }
-      const age = getAgeFromDate(formData.date_naissance)
-      if (age === null || age < 18) {
-        setError("Le titulaire du compte doit avoir au moins 18 ans")
-        return false
-      }
-      if (!normalizeText(formData.adresse_rue) || !normalizeText(formData.adresse_ville)) {
-        setError("L'adresse complète du titulaire est obligatoire")
-        return false
-      }
-      if (!normalizeText(formData.adresse_code_postal)) {
-        setError("Le code postal du titulaire est obligatoire")
-        return false
-      }
-      if (!isValidPostalCode(formData.adresse_code_postal, formData.adresse_pays || "France")) {
-        setError("Le code postal du titulaire n'est pas valide")
-        return false
-      }
-      return true
     }
 
     if (!normalizeText(formData.nom_entreprise)) {
@@ -521,12 +482,6 @@ export default function ParametresPage() {
 
     if (!validateForm() || !annonceur) return
 
-    const accountType = annonceur.type_annonceur
-    if (!accountType) {
-      setError("Le type de compte est introuvable pour ce profil")
-      return
-    }
-
     setSaving(true)
     setError("")
     setSuccess(false)
@@ -539,65 +494,35 @@ export default function ParametresPage() {
         nom_titulaire_compte: normalizeHumanText(formData.nom_titulaire_compte),
         bic_swift: normalizeBic(formData.bic_swift),
         telephone: normalizePhone(formData.telephone) || null,
-      }
-
-      if (accountType === "personne_physique") {
-        updatePayload.nom = normalizeHumanText(formData.nom) || null
-        updatePayload.prenom = normalizeHumanText(formData.prenom) || null
-        updatePayload.date_naissance = formData.date_naissance || null
-        updatePayload.adresse_rue = normalizeHumanText(formData.adresse_rue) || null
-        updatePayload.adresse_ville = normalizeHumanText(formData.adresse_ville) || null
-        updatePayload.adresse_code_postal =
-          normalizePostalCode(formData.adresse_code_postal, formData.adresse_pays || "France") || null
-        updatePayload.adresse_pays = normalizeCountry(formData.adresse_pays || "France") || "France"
-
-        updatePayload.nom_entreprise = null
-        updatePayload.type_juridique = null
-        updatePayload.pays_entreprise = null
-        updatePayload.numero_legal = null
-        updatePayload.siege_rue = null
-        updatePayload.siege_ville = null
-        updatePayload.siege_code_postal = null
-        updatePayload.siege_pays = null
-        updatePayload.representant_nom = null
-        updatePayload.representant_prenom = null
-        updatePayload.representant_telephone = null
-        updatePayload.representant_date_naissance = null
-        updatePayload.representant_adresse_rue = null
-        updatePayload.representant_adresse_ville = null
-        updatePayload.representant_adresse_code_postal = null
-        updatePayload.representant_adresse_pays = null
-      } else {
-        updatePayload.nom_entreprise = normalizeHumanText(formData.nom_entreprise) || null
-        updatePayload.type_juridique = formData.type_juridique || null
-        updatePayload.pays_entreprise = normalizeCountry(formData.pays_entreprise || "France") || "France"
-        updatePayload.numero_legal = normalizeBusinessId(formData.numero_legal) || null
-        updatePayload.siege_rue = normalizeHumanText(formData.siege_rue) || null
-        updatePayload.siege_ville = normalizeHumanText(formData.siege_ville) || null
-        updatePayload.siege_code_postal =
-          normalizePostalCode(formData.siege_code_postal, formData.siege_pays || formData.pays_entreprise || "France") || null
-        updatePayload.siege_pays = normalizeCountry(formData.siege_pays || "France") || "France"
-        updatePayload.representant_nom = normalizeHumanText(formData.representant_nom) || null
-        updatePayload.representant_prenom = normalizeHumanText(formData.representant_prenom) || null
-        updatePayload.representant_telephone = normalizePhone(formData.representant_telephone) || null
-        updatePayload.representant_date_naissance = formData.representant_date_naissance || null
-        updatePayload.representant_adresse_rue = normalizeHumanText(formData.representant_adresse_rue) || null
-        updatePayload.representant_adresse_ville = normalizeHumanText(formData.representant_adresse_ville) || null
-        updatePayload.representant_adresse_code_postal =
+        nom: null,
+        prenom: null,
+        date_naissance: null,
+        adresse_rue: null,
+        adresse_ville: null,
+        adresse_code_postal: null,
+        adresse_pays: null,
+        nom_entreprise: normalizeHumanText(formData.nom_entreprise) || null,
+        type_juridique: formData.type_juridique || null,
+        pays_entreprise: normalizeCountry(formData.pays_entreprise || "France") || "France",
+        numero_legal: normalizeBusinessId(formData.numero_legal) || null,
+        siege_rue: normalizeHumanText(formData.siege_rue) || null,
+        siege_ville: normalizeHumanText(formData.siege_ville) || null,
+        siege_code_postal:
+          normalizePostalCode(formData.siege_code_postal, formData.siege_pays || formData.pays_entreprise || "France") || null,
+        siege_pays: normalizeCountry(formData.siege_pays || "France") || "France",
+        representant_nom: normalizeHumanText(formData.representant_nom) || null,
+        representant_prenom: normalizeHumanText(formData.representant_prenom) || null,
+        representant_telephone: normalizePhone(formData.representant_telephone) || null,
+        representant_date_naissance: formData.representant_date_naissance || null,
+        representant_adresse_rue: normalizeHumanText(formData.representant_adresse_rue) || null,
+        representant_adresse_ville: normalizeHumanText(formData.representant_adresse_ville) || null,
+        representant_adresse_code_postal:
           normalizePostalCode(
             formData.representant_adresse_code_postal,
             formData.representant_adresse_pays || formData.siege_pays || formData.pays_entreprise || "France"
-          ) || null
-        updatePayload.representant_adresse_pays =
-          normalizeCountry(formData.representant_adresse_pays || "France") || "France"
-
-        updatePayload.nom = null
-        updatePayload.prenom = null
-        updatePayload.date_naissance = null
-        updatePayload.adresse_rue = null
-        updatePayload.adresse_ville = null
-        updatePayload.adresse_code_postal = null
-        updatePayload.adresse_pays = null
+          ) || null,
+        representant_adresse_pays:
+          normalizeCountry(formData.representant_adresse_pays || "France") || "France",
       }
 
       const { error: updateError } = await supabase
@@ -674,17 +599,6 @@ export default function ParametresPage() {
     const normalized = value.replace(/\[\d+\]/g, "")
 
     const exactLabels: Record<string, string> = {
-      "individual.first_name": "Prénom du titulaire du compte",
-      "individual.last_name": "Nom du titulaire du compte",
-      "individual.phone": "Numéro de téléphone du titulaire du compte",
-      "individual.email": "Adresse e-mail du titulaire du compte",
-      "individual.address.line1": "Adresse du titulaire du compte",
-      "individual.address.city": "Ville du titulaire du compte",
-      "individual.address.postal_code": "Code postal du titulaire du compte",
-      "individual.address.country": "Pays du titulaire du compte",
-      "individual.dob.day": "Jour de naissance du titulaire du compte",
-      "individual.dob.month": "Mois de naissance du titulaire du compte",
-      "individual.dob.year": "Année de naissance du titulaire du compte",
       "representative.first_name": "Prénom du représentant légal",
       "representative.last_name": "Nom du représentant légal",
       "representative.phone": "Numéro de téléphone du représentant légal",
@@ -713,10 +627,6 @@ export default function ParametresPage() {
 
     if (normalized.startsWith("representative.verification")) {
       return "Vérifier le représentant de compte"
-    }
-
-    if (normalized.startsWith("individual.verification")) {
-      return "Vérifier l'identité du titulaire du compte"
     }
 
     if (normalized.startsWith("person.verification")) {
@@ -751,6 +661,7 @@ export default function ParametresPage() {
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-6">
+          <div id="validation-compte" className="scroll-mt-28">
           <Card>
             <CardHeader>
               <CardTitle>Profil juridique</CardTitle>
@@ -758,16 +669,9 @@ export default function ParametresPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Type de compte</Label>
-                <Input
-                  value={
-                    lockedAccountType
-                      ? TYPE_ANNONCEUR_LABELS[lockedAccountType]
-                      : "Non renseigné"
-                  }
-                  readOnly
-                />
+                <Input value="Entreprise" readOnly />
                 <p className="text-xs text-gray-500">
-                  Le type de compte ne peut pas être modifié depuis cette page.
+                  Les comptes annonceur sont désormais limités aux entreprises.
                 </p>
               </div>
 
@@ -821,113 +725,14 @@ export default function ParametresPage() {
               )}
             </CardContent>
           </Card>
+          </div>
 
-          {lockedAccountType === "personne_physique" ? (
+          <>
             <Card>
               <CardHeader>
-                <CardTitle>Identité du titulaire</CardTitle>
+                <CardTitle>Informations de l&apos;entreprise</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nom">Nom <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="nom"
-                      type="text"
-                      value={formData.nom}
-                      onChange={(e) => handleInputChange("nom", e.target.value)}
-                      placeholder="Dupont"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="prenom">Prénom <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="prenom"
-                      type="text"
-                      value={formData.prenom}
-                      onChange={(e) => handleInputChange("prenom", e.target.value)}
-                      placeholder="Camille"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="date_naissance">Date de naissance <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="date_naissance"
-                    type="date"
-                    value={formData.date_naissance}
-                    onChange={(e) => handleInputChange("date_naissance", e.target.value)}
-                    max={maxBirthDate}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="telephone">Numéro de téléphone <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="telephone"
-                    type="tel"
-                    value={formData.telephone}
-                    onChange={(e) => handleInputChange("telephone", e.target.value)}
-                    onBlur={() => normalizePhoneField("telephone")}
-                    placeholder="+33 6 XX XX XX XX"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="adresse_rue">Adresse <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="adresse_rue"
-                    type="text"
-                    value={formData.adresse_rue}
-                    onChange={(e) => handleInputChange("adresse_rue", e.target.value)}
-                    placeholder="12 rue de la Paix"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="adresse_code_postal">Code postal <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="adresse_code_postal"
-                      type="text"
-                      value={formData.adresse_code_postal}
-                      onChange={(e) => handleInputChange("adresse_code_postal", e.target.value)}
-                      placeholder="75001"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="adresse_ville">Ville <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="adresse_ville"
-                      type="text"
-                      value={formData.adresse_ville}
-                      onChange={(e) => handleInputChange("adresse_ville", e.target.value)}
-                      placeholder="Paris"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="adresse_pays">Pays <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="adresse_pays"
-                    type="text"
-                    value={formData.adresse_pays}
-                    onChange={(e) => handleInputChange("adresse_pays", e.target.value)}
-                    onBlur={() => normalizeCountryField("adresse_pays")}
-                    placeholder="France"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informations de l&apos;entreprise</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="nom_entreprise">Nom légal de l&apos;entreprise <span className="text-red-500">*</span></Label>
                     <Input
@@ -992,14 +797,14 @@ export default function ParametresPage() {
                       />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Adresse du siège social</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Adresse du siège social</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="siege_rue">Adresse <span className="text-red-500">*</span></Label>
                     <Input
@@ -1045,14 +850,14 @@ export default function ParametresPage() {
                       placeholder="France"
                     />
                   </div>
-                </CardContent>
-              </Card>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Représentant légal</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Représentant légal</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="representant_nom">Nom <span className="text-red-500">*</span></Label>
@@ -1145,10 +950,9 @@ export default function ParametresPage() {
                       placeholder="France"
                     />
                   </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
+              </CardContent>
+            </Card>
+          </>
 
           <Card>
             <CardHeader>
@@ -1208,136 +1012,140 @@ export default function ParametresPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Paiements Stripe Connect</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {stripeLoading ? (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Chargement du statut Stripe...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="text-sm text-gray-700 space-y-1">
-                    <p>
-                      Compte Connect:{" "}
-                      <span className={stripeStatus?.connected ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
-                        {stripeStatus?.connected ? "Créé" : "Non créé"}
-                      </span>
-                    </p>
-                    <p>
-                      Onboarding:{" "}
-                      <span className={stripeStatus?.stripe_onboarding_complete ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
-                        {stripeStatus?.stripe_onboarding_complete ? "Terminé" : "Incomplet"}
-                      </span>
-                    </p>
-                    <p>
-                      Paiements entrants:{" "}
-                      <span className={stripeStatus?.stripe_charges_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
-                        {stripeStatus?.stripe_charges_enabled ? "Activés" : "Désactivés"}
-                      </span>
-                    </p>
-                    <p>
-                      Virements:{" "}
-                      <span className={stripeStatus?.stripe_payouts_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
-                        {stripeStatus?.stripe_payouts_enabled ? "Activés" : "Désactivés"}
-                      </span>
-                    </p>
-                    {stripeStatus?.stripe_account_id && (
-                      <p className="text-xs text-gray-500 font-mono">
-                        {stripeStatus.stripe_account_id}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
-                    {stripeDashboardReady ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full sm:w-auto"
-                        onClick={handleOpenStripeDashboard}
-                        disabled={stripeActionLoading}
-                      >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Ouvrir mon dashboard Stripe
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                          onClick={handleCreateOrSyncStripeAccount}
-                          disabled={stripeActionLoading}
-                        >
-                          {stripeActionLoading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Synchronisation...
-                            </>
-                          ) : (
-                            "Créer / Synchroniser le compte Stripe"
-                          )}
-                        </Button>
-
-                        <Button
-                          type="button"
-                          className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
-                          onClick={handleStartStripeOnboarding}
-                          disabled={stripeActionLoading}
-                        >
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          Compléter l&apos;onboarding Stripe
-                        </Button>
-                      </>
-                    )}
-                  </div>
-
-                  {stripeDashboardReady ? (
-                    <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
-                      Votre compte Stripe est prêt à recevoir les paiements.
-                    </div>
-                  ) : stripeConnected ? (
-                    <div className="space-y-3">
-                      <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
-                        {stripeStatus?.stripe_has_pending_representative_verification
-                          ? "Stripe attend encore la vérification du représentant de compte avant d'activer les paiements."
-                          : "Le compte Stripe est créé, mais il manque encore une validation ou une vérification avant l'activation des paiements."}
-                      </div>
-
-                      {summarizedPendingStripeItems.length > 0 && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
-                          <p className="font-medium mb-2">Actions restantes côté Stripe</p>
-                          <p className="mb-3 text-amber-700">
-                            Stripe demande encore quelques informations avant d&apos;activer complètement le compte.
-                          </p>
-                          <ul className="list-disc pl-5 space-y-1">
-                            {summarizedPendingStripeItems.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+          {annonceur?.identite_verifiee ? (
+            <div id="stripe-connect" className="scroll-mt-28">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Paiements Stripe Connect</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {stripeLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Chargement du statut Stripe...</span>
                     </div>
                   ) : (
-                    <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
-                      Aucun compte Stripe Connect n&apos;est encore créé. Vous pouvez le créer maintenant ou lancer directement l&apos;onboarding Stripe.
+                    <>
+                      <div className="text-sm text-gray-700 space-y-1">
+                        <p>
+                          Compte Connect:{" "}
+                          <span className={stripeStatus?.connected ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                            {stripeStatus?.connected ? "Créé" : "Non créé"}
+                          </span>
+                        </p>
+                        <p>
+                          Onboarding:{" "}
+                          <span className={stripeStatus?.stripe_onboarding_complete ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                            {stripeStatus?.stripe_onboarding_complete ? "Terminé" : "Incomplet"}
+                          </span>
+                        </p>
+                        <p>
+                          Paiements entrants:{" "}
+                          <span className={stripeStatus?.stripe_charges_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                            {stripeStatus?.stripe_charges_enabled ? "Activés" : "Désactivés"}
+                          </span>
+                        </p>
+                        <p>
+                          Virements:{" "}
+                          <span className={stripeStatus?.stripe_payouts_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                            {stripeStatus?.stripe_payouts_enabled ? "Activés" : "Désactivés"}
+                          </span>
+                        </p>
+                        {stripeStatus?.stripe_account_id && (
+                          <p className="text-xs text-gray-500 font-mono">
+                            {stripeStatus.stripe_account_id}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+                        {stripeDashboardReady ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={handleOpenStripeDashboard}
+                            disabled={stripeActionLoading}
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Ouvrir mon dashboard Stripe
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full sm:w-auto"
+                              onClick={handleCreateOrSyncStripeAccount}
+                              disabled={stripeActionLoading}
+                            >
+                              {stripeActionLoading ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Synchronisation...
+                                </>
+                              ) : (
+                                "Créer / Synchroniser le compte Stripe"
+                              )}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
+                              onClick={handleStartStripeOnboarding}
+                              disabled={stripeActionLoading}
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              Compléter l&apos;onboarding Stripe
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {stripeDashboardReady ? (
+                        <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
+                          Votre compte Stripe est prêt à recevoir les paiements.
+                        </div>
+                      ) : stripeConnected ? (
+                        <div className="space-y-3">
+                          <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
+                            {stripeStatus?.stripe_has_pending_representative_verification
+                              ? "Stripe attend encore la vérification du représentant de compte avant d'activer les paiements."
+                              : "Le compte Stripe est créé, mais il manque encore une validation ou une vérification avant l'activation des paiements."}
+                          </div>
+
+                          {summarizedPendingStripeItems.length > 0 && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+                              <p className="font-medium mb-2">Actions restantes côté Stripe</p>
+                              <p className="mb-3 text-amber-700">
+                                Stripe demande encore quelques informations avant d&apos;activer complètement le compte.
+                              </p>
+                              <ul className="list-disc pl-5 space-y-1">
+                                {summarizedPendingStripeItems.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
+                          Aucun compte Stripe Connect n&apos;est encore créé. Vous pouvez le créer maintenant ou lancer directement l&apos;onboarding Stripe.
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {stripeError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>{stripeError}</span>
                     </div>
                   )}
-                </>
-              )}
-
-              {stripeError && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{stripeError}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">

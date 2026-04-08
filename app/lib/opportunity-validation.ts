@@ -9,6 +9,7 @@ const opportunityTypeSchema = z.enum([
 ])
 
 const opportunityModelSchema = z.enum(["derniere_minute", "pre_vente"])
+const opportunityContentModeSchema = z.enum(["text", "image", "text_image", "image_text"])
 
 const optionalHttpUrlSchema = z
   .preprocess(
@@ -58,11 +59,12 @@ export const createOpportunitySchema = z
     type: opportunityTypeSchema,
     modele: opportunityModelSchema,
     titre: z.string().trim().min(5, "Le titre est trop court").max(120, "Le titre est trop long"),
+    contenu_mode: opportunityContentModeSchema.default("text"),
     resume: z
       .string()
       .transform((value) => sanitizeOpportunityHtml(value))
-      .refine((value) => value.length > 0, "La description est obligatoire")
-      .refine((value) => value.replace(/<[^>]+>/g, "").trim().length >= 20, "La description est trop courte"),
+      .default(""),
+    contenu_image_url: optionalHttpImageUrlSchema,
     image_url: optionalHttpImageUrlSchema,
     lien_infos: optionalHttpUrlSchema,
     prix_base: z.coerce.number().finite().positive("Le prix de base doit être supérieur à 0"),
@@ -73,6 +75,38 @@ export const createOpportunitySchema = z
     contact_email: z.email("L'email de contact est invalide").max(255, "L'email est trop long"),
   })
   .superRefine((value, ctx) => {
+    const plainTextLength = value.resume.replace(/<[^>]+>/g, "").trim().length
+    const hasText = value.resume.length > 0
+    const hasLongEnoughText = plainTextLength >= 20
+    const hasEmbeddedImage = /<img\b/i.test(value.resume)
+    const hasBodyImage = Boolean(value.contenu_image_url)
+
+    if (!hasText && !hasEmbeddedImage && !hasBodyImage) {
+      if (value.resume.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["resume"],
+          message: "Ajoutez du texte ou une image dans la description",
+        })
+      }
+    }
+
+    if (!hasEmbeddedImage && !hasBodyImage && hasText && !hasLongEnoughText) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["resume"],
+        message: "La description est trop courte",
+      })
+    }
+
+    if ((value.contenu_mode === "image" || value.contenu_mode === "text_image" || value.contenu_mode === "image_text") && !hasBodyImage) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contenu_image_url"],
+        message: "Ajoutez une image verticale pour le corps de l'opportunité",
+      })
+    }
+
     if (value.prix_reduit >= value.prix_base) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

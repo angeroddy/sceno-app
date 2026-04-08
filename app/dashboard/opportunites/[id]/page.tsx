@@ -7,6 +7,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { OpportunityStatusRibbon } from "@/components/opportunity-status-ribbon"
+import {
+  deriveOpportunityStatus,
+  isOpportunityReservableByComedian,
+} from "@/app/lib/opportunity-status"
 import {
   MapPin,
   Calendar,
@@ -24,8 +29,8 @@ import {
   Tag,
   Building2
 } from "lucide-react"
-import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
-import { SafeRichText } from "@/components/safe-rich-text"
+import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_STATUS_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
+import { OpportunityBodyContent } from "@/components/opportunity-body-content"
 
 export default function OpportuniteDetailsPage() {
   const params = useParams()
@@ -41,6 +46,7 @@ export default function OpportuniteDetailsPage() {
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [alreadyBooked, setAlreadyBooked] = useState(false)
+  const [wasDeleted, setWasDeleted] = useState(false)
 
   // Extraire l'ID des params
   useEffect(() => {
@@ -58,12 +64,31 @@ export default function OpportuniteDetailsPage() {
 
     try {
       setLoading(true)
+      setError(null)
+      setWasDeleted(false)
+      setOpportunite(null)
       const response = await fetch(`/api/comedien/opportunites/${opportuniteId}`)
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error('Erreur API:', errorData)
-        throw new Error(errorData.error || 'Opportunité introuvable')
+        let errorData: { error?: string } | null = null
+
+        try {
+          errorData = await response.json() as { error?: string }
+        } catch {
+          errorData = null
+        }
+
+        if (response.status === 410) {
+          setWasDeleted(true)
+          setError(errorData?.error || 'Cette opportunité a été supprimée et ne peut plus être consultée.')
+          return
+        }
+
+        console.error('Erreur API:', {
+          status: response.status,
+          error: errorData?.error || null,
+        })
+        throw new Error(errorData?.error || 'Opportunité introuvable')
       }
 
       const data = await response.json()
@@ -80,7 +105,7 @@ export default function OpportuniteDetailsPage() {
         setAlreadyBooked(hasConfirmedPurchase)
       }
     } catch (err) {
-      console.error('Erreur:', err)
+      console.error('Erreur lors du chargement de l’opportunité:', err)
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(false)
@@ -155,13 +180,19 @@ export default function OpportuniteDetailsPage() {
   if (error || !opportunite) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card className="border-red-200 bg-red-50">
+        <Card className={wasDeleted ? "border-slate-200 bg-slate-50" : "border-red-200 bg-red-50"}>
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 text-red-800">
+            <div className={`flex items-center gap-3 ${wasDeleted ? "text-slate-800" : "text-red-800"}`}>
               <AlertCircle className="w-6 h-6" />
               <div>
-                <h3 className="font-semibold mb-1">Erreur</h3>
-                <p className="text-sm">{error || 'Opportunité introuvable'}</p>
+                <h3 className="font-semibold mb-1">
+                  {wasDeleted ? "Opportunité supprimée" : "Erreur"}
+                </h3>
+                <p className="text-sm">
+                  {wasDeleted
+                    ? "Cette opportunité a été supprimée par l'annonceur et n'est plus consultable."
+                    : error || 'Opportunité introuvable'}
+                </p>
               </div>
             </div>
             <Button
@@ -189,6 +220,12 @@ export default function OpportuniteDetailsPage() {
     minute: '2-digit'
   })
   const checkoutWasCancelled = searchParams.get("checkout") === "cancel"
+  const derivedStatus = deriveOpportunityStatus({
+    statut: opportunite.statut,
+    date_evenement: opportunite.date_evenement,
+    places_restantes: opportunite.places_restantes,
+  })
+  const canReserve = isOpportunityReservableByComedian(derivedStatus)
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
@@ -207,6 +244,26 @@ export default function OpportuniteDetailsPage() {
           <Card className="mb-6 border-orange-200 bg-orange-50">
             <CardContent className="p-4 text-sm text-orange-900">
               Paiement annulé. Votre réservation n&apos;a pas été finalisée.
+            </CardContent>
+          </Card>
+        )}
+
+        {derivedStatus !== "validee" && (
+          <Card
+            className={
+              derivedStatus === "expiree"
+                ? "mb-6 border-amber-200 bg-amber-50"
+                : derivedStatus === "complete"
+                  ? "mb-6 border-blue-200 bg-blue-50"
+                  : "mb-6 border-slate-200 bg-slate-50"
+            }
+          >
+            <CardContent className="p-4 text-sm">
+              {derivedStatus === "expiree"
+                ? "Cette opportunité est expirée. Elle reste consultable, mais il n'est plus possible de réserver."
+                : derivedStatus === "complete"
+                  ? "Cette opportunité est complète. Elle reste consultable, mais il n'est plus possible de réserver."
+                  : "Cette opportunité a été supprimée."}
             </CardContent>
           </Card>
         )}
@@ -306,7 +363,7 @@ export default function OpportuniteDetailsPage() {
                           <div>
                             <p className="text-sm text-gray-600">Places</p>
                             <p className="font-semibold text-gray-900">
-                              Nombre de places : {opportunite.nombre_places}
+                              Nombre de places restantes : {opportunite.places_restantes}
                             </p>
                           </div>
                         </div>
@@ -330,7 +387,13 @@ export default function OpportuniteDetailsPage() {
                       <h3 className="text-xl font-bold mb-3 text-gray-900">
                         À propos de cette opportunité
                       </h3>
-                      <SafeRichText html={opportunite.resume} className="prose max-w-none text-gray-700" />
+                      <OpportunityBodyContent
+                        title={opportunite.titre}
+                        resume={opportunite.resume}
+                        bodyImageUrl={opportunite.contenu_image_url}
+                        contentMode={opportunite.contenu_mode}
+                        className="prose max-w-none text-gray-700"
+                      />
 
                       {opportunite.lien_infos && (
                         <div className="mt-4">
@@ -430,6 +493,13 @@ export default function OpportuniteDetailsPage() {
                   >
                     {OPPORTUNITY_MODEL_LABELS[opportunite.modele]}
                   </Badge>
+                  {derivedStatus !== "validee" && (
+                    <OpportunityStatusRibbon
+                      className="ml-2"
+                      status={derivedStatus}
+                      label={derivedStatus === "complete" ? "Complet" : OPPORTUNITY_STATUS_LABELS[derivedStatus]}
+                    />
+                  )}
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">
                     {opportunite.titre}
                   </h1>
@@ -460,9 +530,6 @@ export default function OpportuniteDetailsPage() {
                       {opportunite.prix_base}€
                     </div>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Location à partir de
-                  </p>
                 </div>
 
                 {/* Informations clés */}
@@ -495,14 +562,16 @@ export default function OpportuniteDetailsPage() {
                   <Button
                     size="lg"
                     className="w-full bg-[#E63832] hover:bg-[#E63832]/90 text-white font-semibold text-lg py-6"
-                    disabled={opportunite.places_restantes === 0 || bookingLoading || alreadyBooked}
+                    disabled={!canReserve || bookingLoading || alreadyBooked}
                     onClick={handleCheckout}
                   >
                     {alreadyBooked
                       ? 'Déjà réservé'
-                      : opportunite.places_restantes > 0
-                      ? (bookingLoading ? 'Redirection vers le paiement...' : 'Réserver ma place')
-                      : 'Complet'}
+                      : canReserve
+                        ? (bookingLoading ? 'Redirection vers le paiement...' : 'Réserver ma place')
+                        : derivedStatus === 'expiree'
+                          ? 'Expirée'
+                          : 'Complet'}
                   </Button>
 
                   {opportunite.lien_infos && (

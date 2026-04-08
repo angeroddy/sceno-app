@@ -7,22 +7,26 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Crop, RotateCcw, RotateCw, RefreshCcw, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2 } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Crop, RotateCcw, RotateCw, RefreshCcw, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Clock3, ChevronLeft, ChevronRight } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { OpportunityType, OpportunityModel } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
 import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
 import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
-import { SafeRichText } from "@/components/safe-rich-text"
+import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { cn } from "@/lib/utils"
 
 interface FormData {
   type: OpportunityType | ""
   modele: OpportunityModel | ""
   titre: string
+  contenu_mode: "text" | "image" | "text_image" | "image_text"
   resume: string
   image: File | null
+  contenu_image: File | null
   lien_infos: string
   prix_base: string
   prix_reduit: string
@@ -40,14 +44,53 @@ interface PublishingEligibility {
   stripe_payouts_enabled: boolean
 }
 
+const FRENCH_WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+function padTimeUnit(value: number) {
+  return String(value).padStart(2, "0")
+}
+
+function formatDateInputValue(date: Date) {
+  return `${date.getFullYear()}-${padTimeUnit(date.getMonth() + 1)}-${padTimeUnit(date.getDate())}`
+}
+
+function combineLocalDateTime(datePart: string, timePart: string) {
+  if (!datePart) return ""
+  return `${datePart}T${timePart || "19:00"}`
+}
+
+function getCalendarGrid(month: Date) {
+  const year = month.getFullYear()
+  const monthIndex = month.getMonth()
+  const firstDayOfMonth = new Date(year, monthIndex, 1)
+  const startOffset = (firstDayOfMonth.getDay() + 6) % 7
+  const gridStartDate = new Date(year, monthIndex, 1 - startOffset)
+  const rawDays = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStartDate)
+    date.setDate(gridStartDate.getDate() + index)
+    return date
+  })
+
+  // Trim completely out-of-month trailing weeks to keep the popover compact.
+  while (
+    rawDays.length > 35 &&
+    rawDays.slice(-7).every((day) => day.getMonth() !== monthIndex)
+  ) {
+    rawDays.splice(-7, 7)
+  }
+
+  return rawDays
+}
+
 export default function PublierOpportunitePage() {
   const router = useRouter()
   const [formData, setFormData] = useState<FormData>({
     type: "",
     modele: "",
     titre: "",
+    contenu_mode: "text",
     resume: "",
     image: null,
+    contenu_image: null,
     lien_infos: "",
     prix_base: "",
     prix_reduit: "",
@@ -58,6 +101,7 @@ export default function PublierOpportunitePage() {
   })
   const [imagePreview, setImagePreview] = useState<string>("")
   const [rawImageSrc, setRawImageSrc] = useState<string>("")
+  const [cropTarget, setCropTarget] = useState<"cover" | "body" | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
@@ -84,6 +128,15 @@ export default function PublierOpportunitePage() {
   const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false)
   const [stripeReady, setStripeReady] = useState(false)
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+
+  const openParametres = (anchor: "validation-compte" | "stripe-connect") => {
+    router.push(`/annonceur/parametres#${anchor}`)
+  }
 
   useEffect(() => {
     const checkIdentity = async () => {
@@ -136,6 +189,15 @@ export default function PublierOpportunitePage() {
   }
 
   useEffect(() => {
+    if (!formData.date_evenement) return
+
+    const selectedDate = new Date(formData.date_evenement)
+    if (Number.isNaN(selectedDate.getTime())) return
+
+    setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
+  }, [formData.date_evenement])
+
+  useEffect(() => {
     if (!isCropping || !cropperContainerRef.current) return
     const observer = new ResizeObserver(() => setAutoZoomed(false))
     observer.observe(cropperContainerRef.current)
@@ -174,6 +236,7 @@ export default function PublierOpportunitePage() {
       const reader = new FileReader()
       reader.onloadend = () => {
         setRawImageSrc(reader.result as string)
+        setCropTarget("cover")
         setIsCropping(true)
         setRotation(0)
         setZoom(1)
@@ -192,7 +255,7 @@ export default function PublierOpportunitePage() {
   }
 
   const applyCrop = async () => {
-    if (!rawImageSrc || !croppedAreaPixels) return
+    if (!rawImageSrc || !croppedAreaPixels || !cropTarget) return
 
     try {
       const croppedBlob = await getCroppedImage(rawImageSrc, croppedAreaPixels, {
@@ -205,12 +268,15 @@ export default function PublierOpportunitePage() {
       const fileName = `opportunite-${Date.now()}.${ext}`
       const croppedFile = new File([croppedBlob], fileName, { type: outputType })
 
-      setFormData(prev => ({ ...prev, image: croppedFile }))
-      setImagePreview(URL.createObjectURL(croppedBlob))
+      if (cropTarget === "cover") {
+        setFormData(prev => ({ ...prev, image: croppedFile }))
+        setImagePreview(URL.createObjectURL(croppedBlob))
+      }
       setIsCropping(false)
+      setCropTarget(null)
     } catch (error) {
       console.error("Erreur recadrage image:", error)
-      setError("Impossible de recadrer l'image. Veuillez rÃ©essayer.")
+      setError("Impossible de recadrer l'image. Veuillez réessayer.")
     }
   }
 
@@ -234,6 +300,37 @@ export default function PublierOpportunitePage() {
     : 0
   const previewPlaces = formData.nombre_places ? Number(formData.nombre_places) : 0
   const previewResume = sanitizeOpportunityHtml(formData.resume) || "<p>La description apparaîtra ici.</p>"
+  const [selectedDatePart, selectedTimePart] = formData.date_evenement
+    ? formData.date_evenement.split("T")
+    : ["", ""]
+  const normalizedTimePart = selectedTimePart?.slice(0, 5) || ""
+  const selectedEventDate = formData.date_evenement ? new Date(formData.date_evenement) : null
+  const selectedEventDateLabel = selectedEventDate
+    ? selectedEventDate.toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+    : "Choisir une date"
+  const selectedEventTimeLabel = normalizedTimePart || "Choisir une heure"
+  const selectedEventInputLabel = formData.date_evenement
+    ? `${selectedEventDate?.toLocaleDateString("fr-FR")} - ${selectedEventTimeLabel}`
+    : ""
+  const selectedEventMonthLabel = visibleMonth.toLocaleDateString("fr-FR", {
+    month: "long",
+    year: "numeric",
+  })
+  const calendarDays = getCalendarGrid(visibleMonth)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const setEventDatePart = (datePart: string) => {
+    handleInputChange("date_evenement", combineLocalDateTime(datePart, normalizedTimePart || "19:00"))
+  }
+
+  const setEventTimePart = (timePart: string) => {
+    handleInputChange("date_evenement", combineLocalDateTime(selectedDatePart, timePart))
+  }
 
   const renderPreviewCard = () => (
     <Card className="overflow-hidden">
@@ -354,7 +451,13 @@ export default function PublierOpportunitePage() {
           )}
         </div>
 
-        <SafeRichText html={previewResume} className="prose max-w-none text-gray-700" />
+        <OpportunityBodyContent
+          title={previewTitle}
+          resume={previewResume}
+          bodyImageUrl={null}
+          contentMode="text"
+          className="prose max-w-none text-gray-700"
+        />
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
@@ -370,6 +473,7 @@ export default function PublierOpportunitePage() {
   const resetCropper = () => {
     setRawImageSrc("")
     setIsCropping(false)
+    setCropTarget(null)
     setCrop({ x: 0, y: 0 })
     setZoom(1)
     setRotation(0)
@@ -393,12 +497,12 @@ export default function PublierOpportunitePage() {
   }, [imageInfo, isCropping])
 
 
-  const uploadImage = async (file: File, annonceurId: string): Promise<string | null> => {
+  const uploadImage = async (file: File, annonceurId: string, folder = "opportunites"): Promise<string | null> => {
     try {
       const supabase = createBrowserSupabaseClient()
       const fileExt = file.name.split('.').pop()
       const fileName = `${annonceurId}-${Date.now()}.${fileExt}`
-      const filePath = `opportunites/${fileName}`
+      const filePath = `${folder}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('photos')
@@ -419,6 +523,34 @@ export default function PublierOpportunitePage() {
       return data.publicUrl
     } catch (error) {
       console.error('Erreur lors de l\'upload:', error)
+      return null
+    }
+  }
+
+  const uploadInlineEditorImage = async (file: File): Promise<string | null> => {
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError("Vous devez être connecté pour ajouter une image")
+        return null
+      }
+
+      const { data: annonceur, error: annonceurError } = await supabase
+        .from("annonceurs")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single<{ id: string }>()
+
+      if (annonceurError || !annonceur) {
+        setError("Profil annonceur introuvable")
+        return null
+      }
+
+      return await uploadImage(file, annonceur.id, "opportunites-detail")
+    } catch (error) {
+      console.error("Erreur upload image éditeur:", error)
+      setError("Impossible d'ajouter l'image dans l'éditeur")
       return null
     }
   }
@@ -523,7 +655,7 @@ export default function PublierOpportunitePage() {
         return
       }
       if (!annonceur.stripe_onboarding_complete) {
-        setError("Finalisez le onboarding Stripe avant de publier une opportunité")
+        setError("Finalisez la configuration Stripe avant de publier une opportunité")
         setLoading(false)
         return
       }
@@ -541,7 +673,6 @@ export default function PublierOpportunitePage() {
       if (formData.image) {
         imageUrl = await uploadImage(formData.image, annonceur.id)
       }
-
       const prixBase = parseFloat(formData.prix_base)
       const prixReduit = parseFloat(formData.prix_reduit)
 
@@ -568,7 +699,9 @@ export default function PublierOpportunitePage() {
         type: formData.type as OpportunityType,
         modele: autoModele,
         titre: formData.titre,
+        contenu_mode: "text",
         resume: formData.resume,
+        contenu_image_url: null,
         image_url: imageUrl,
         lien_infos: formData.lien_infos.trim() || '',
         prix_base: prixBase,
@@ -651,45 +784,17 @@ export default function PublierOpportunitePage() {
               </div>
 
               <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
-                <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  Pourquoi cette vérification ?
-                </h3>
-                <ul className="space-y-2 text-sm text-orange-800">
-                  <li className="flex items-start gap-2">
-                    <span className="text-orange-600 mt-0.5">•</span>
-                    <span>Pour garantir la sécurité et la confiance sur notre plateforme</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-orange-600 mt-0.5">•</span>
-                    <span>Pour protéger les comédiens contre les fraudes</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-orange-600 mt-0.5">•</span>
-                    <span>Pour assurer la qualité des opportunités publiées</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-xl mx-auto">
-                <p className="text-sm text-blue-900">
-                  <strong>Notre équipe examine votre compte.</strong> Vous recevrez un email dès que votre compte sera vérifié et que vous pourrez publier des opportunités.
+                <p className="text-sm text-orange-800">
+                  Votre compte doit être validé par l&apos;équipe avant l&apos;activation de la publication et des paiements.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+              <div className="pt-4">
                 <Button
-                  onClick={() => router.push('/annonceur')}
-                  variant="outline"
-                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
-                >
-                  Retour au tableau de bord
-                </Button>
-                <Button
-                  onClick={() => router.push('/annonceur/parametres')}
+                  onClick={() => openParametres('validation-compte')}
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
-                  Voir mes informations
+                  Ouvrir mes paramètres
                 </Button>
               </div>
             </div>
@@ -713,29 +818,22 @@ export default function PublierOpportunitePage() {
 
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-orange-900">
-                  Onboarding Stripe requis
+                  Configuration Stripe requise
                 </h2>
                 <p className="text-orange-800 text-lg max-w-2xl mx-auto">
-                  Tant que vous n&apos;avez pas terminé le onboarding Stripe, vous ne pouvez pas créer d&apos;opportunité.
+                  Tant que vous n&apos;avez pas terminé la configuration Stripe, vous ne pouvez pas créer d&apos;opportunité.
                 </p>
               </div>
 
               <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
                 <p className="text-sm text-orange-800">
-                  Allez dans vos paramètres, créez ou synchronisez votre compte Stripe, puis terminez l&apos;onboarding.
+                  Allez dans vos paramètres, créez ou synchronisez votre compte Stripe, puis terminez la configuration.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+              <div className="pt-4">
                 <Button
-                  onClick={() => router.push('/annonceur')}
-                  variant="outline"
-                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
-                >
-                  Retour au tableau de bord
-                </Button>
-                <Button
-                  onClick={() => router.push('/annonceur/parametres')}
+                  onClick={() => openParametres('stripe-connect')}
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
                   Ouvrir mes paramètres
@@ -765,7 +863,7 @@ export default function PublierOpportunitePage() {
                   Activation Stripe requise
                 </h2>
                 <p className="text-orange-800 text-lg max-w-2xl mx-auto">
-                  Votre onboarding Stripe est terminé, mais votre compte n&apos;est pas encore complètement activé pour les paiements et virements.
+                  La configuration Stripe est terminée, mais votre compte n&apos;est pas encore complètement activé pour les paiements et les virements.
                 </p>
               </div>
 
@@ -775,16 +873,9 @@ export default function PublierOpportunitePage() {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+              <div className="pt-4">
                 <Button
-                  onClick={() => router.push('/annonceur')}
-                  variant="outline"
-                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
-                >
-                  Retour au tableau de bord
-                </Button>
-                <Button
-                  onClick={() => router.push('/annonceur/parametres')}
+                  onClick={() => openParametres('stripe-connect')}
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
                   Ouvrir mes paramètres
@@ -920,13 +1011,23 @@ export default function PublierOpportunitePage() {
                 <p className="text-xs text-gray-500">{formData.titre.length}/150 caractères</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="resume">Description détaillée <span className="text-red-500">*</span></Label>
-                <RichTextEditor
-                  value={formData.resume}
-                  onChange={(value) => handleInputChange("resume", value)}
-                  placeholder="Décrivez votre opportunité de manière détaillée : programme, objectifs, prérequis, etc."
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Corps de l&apos;opportunité <span className="text-red-500">*</span></Label>
+                  <p className="text-sm text-gray-600">
+                    Écrivez librement et utilisez le bouton <span className="font-medium">Ajouter</span> dans l&apos;éditeur pour insérer une image verticale directement dans le contenu.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="resume">Description détaillée <span className="text-red-500">*</span></Label>
+                  <RichTextEditor
+                    value={formData.resume}
+                    onChange={(value) => handleInputChange("resume", value)}
+                    onImageUpload={uploadInlineEditorImage}
+                    placeholder="Décrivez votre opportunité de manière détaillée : programme, objectifs, prérequis, etc."
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="image">Image de présentation <span className="text-gray-500 text-xs">(facultatif, recommandé)</span></Label>
@@ -953,7 +1054,16 @@ export default function PublierOpportunitePage() {
                       />
                     </div>
                     <div className="flex flex-wrap gap-3">
-                      <Button type="button" variant="outline" onClick={() => setIsCropping(true)}>
+                      <Button type="button" variant="outline" onClick={() => {
+                        setCropTarget("cover")
+                        setRawImageSrc(imagePreview)
+                        setIsCropping(true)
+                        setCrop({ x: 0, y: 0 })
+                        setZoom(1)
+                        setRotation(0)
+                        setCroppedAreaPixels(null)
+                        setAutoZoomed(false)
+                      }}>
                         Recadrer l&apos;image
                       </Button>
                     </div>
@@ -992,7 +1102,134 @@ export default function PublierOpportunitePage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date_evenement">Date et heure de l&apos;événement <span className="text-red-500">*</span></Label>
-                  <Input id="date_evenement" type="datetime-local" value={formData.date_evenement} onChange={(e) => handleInputChange("date_evenement", e.target.value)} />
+                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        id="date_evenement"
+                        type="button"
+                        className={cn(
+                          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition outline-none hover:border-[#E63832]/35 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                          !formData.date_evenement && "text-muted-foreground"
+                        )}
+                      >
+                        <span className="truncate">
+                          {selectedEventInputLabel || "jj/mm/aaaa --:--"}
+                        </span>
+                        <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-[min(92vw,19rem)] rounded-2xl border-[#E6DAD0] bg-[#FFF8F4] p-0 shadow-[0_18px_50px_rgba(35,24,21,0.12)]"
+                    >
+                      <div className="overflow-hidden rounded-2xl">
+                        <div className="border-b border-[#E6DAD0] bg-white px-4 py-2.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold capitalize text-[#231815]">{selectedEventMonthLabel}</p>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-full border-[#E6DAD0] bg-white"
+                                onClick={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-full border-[#E6DAD0] bg-white"
+                                onClick={() => setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 p-3">
+                          <div className="grid grid-cols-7 gap-1.5">
+                            {FRENCH_WEEKDAYS.map((weekday) => (
+                              <div
+                                key={weekday}
+                                className="pb-1 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9A6A58]"
+                              >
+                                {weekday}
+                              </div>
+                            ))}
+                            {calendarDays.map((day) => {
+                              const dayDatePart = formatDateInputValue(day)
+                              const isSelected = selectedDatePart === dayDatePart
+                              const isCurrentMonth = day.getMonth() === visibleMonth.getMonth()
+                              const isPast = day < today
+
+                              return (
+                                <button
+                                  key={day.toISOString()}
+                                  type="button"
+                                  onClick={() => setEventDatePart(dayDatePart)}
+                                  disabled={isPast}
+                                  className={cn(
+                                    "relative flex h-8 items-center justify-center rounded-lg text-sm font-medium transition",
+                                    isSelected
+                                      ? "bg-[#E63832] text-white shadow-lg shadow-[#E63832]/20"
+                                      : isCurrentMonth
+                                        ? "bg-white text-[#231815] hover:bg-[#F5E4DA]"
+                                        : "bg-[#F7EEE8] text-[#B9A198] hover:bg-[#F2E2D8]",
+                                    isPast && "cursor-not-allowed opacity-35 hover:bg-inherit"
+                                  )}
+                                >
+                                  {day.getDate()}
+                                  {isSelected && <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-white/90" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          <div className="rounded-2xl border border-[#E6DAD0] bg-white p-3">
+                            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[#3C2924]">
+                              <Clock3 className="h-4 w-4 text-[#E63832]" />
+                              Heure de début
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="date_evenement_time" className="text-[11px] uppercase tracking-[0.16em] text-[#9A6A58]">
+                                Heure
+                              </Label>
+                              <Input
+                                id="date_evenement_time"
+                                type="time"
+                                step="300"
+                                value={normalizedTimePart}
+                                onChange={(e) => setEventTimePart(e.target.value)}
+                                className="border-[#E6DAD0] bg-[#FFF8F4] text-[#231815]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-2xl bg-[#F5E4DA] px-3 py-2 text-sm text-[#5B3A30]">
+                            <div>
+                              <p className="font-medium text-[#231815]">Sélection</p>
+                              <p className="line-clamp-1 capitalize text-xs">{formData.date_evenement ? `${selectedEventDateLabel} à ${selectedEventTimeLabel}` : "Aucune date choisie"}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="bg-[#E63832] hover:bg-[#E63832]/90"
+                              onClick={() => setDatePickerOpen(false)}
+                              disabled={!formData.date_evenement}
+                            >
+                              Valider
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-[#7B6E68]">
+                    Sélecteur compact.
+                  </p>
                 </div>
               </div>
 
@@ -1035,7 +1272,9 @@ export default function PublierOpportunitePage() {
           <div className="w-full max-w-3xl max-h-[85vh] sm:max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-gray-900">Recadrer l&apos;image</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Recadrer l&apos;image
+                </h2>
                 <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
                   16:9
                 </span>

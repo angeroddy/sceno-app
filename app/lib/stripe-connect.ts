@@ -268,10 +268,6 @@ function hasStripeOnboardingStarted(account: Stripe.Account): boolean {
   )
 }
 
-function isEntrepriseAnnonceur(annonceur: Annonceur): boolean {
-  return annonceur.type_annonceur !== 'personne_physique'
-}
-
 function shouldAttemptKycPrefillSync(account: Stripe.Account): boolean {
   return !hasStripeOnboardingStarted(account)
 }
@@ -401,23 +397,6 @@ function toStripeBusinessId(
   return normalized
 }
 
-function buildIndividualPayload(
-  annonceur: Annonceur
-): Stripe.AccountCreateParams.Individual | Stripe.AccountUpdateParams.Individual {
-  return {
-    first_name: cleanString(annonceur.prenom),
-    last_name: cleanString(annonceur.nom),
-    email: cleanString(annonceur.email),
-    dob: toStripeDob(annonceur.date_naissance),
-    address: toStripeAddress(
-      annonceur.adresse_rue,
-      annonceur.adresse_ville,
-      annonceur.adresse_code_postal,
-      annonceur.adresse_pays
-    ),
-  }
-}
-
 function buildCompanyPayload(
   annonceur: Annonceur
 ): Stripe.AccountCreateParams.Company | Stripe.AccountUpdateParams.Company {
@@ -461,14 +440,13 @@ function buildRepresentativePersonPayload(
 }
 
 function buildAccountPayload(annonceur: Annonceur): Stripe.AccountCreateParams {
-  const businessType = annonceur.type_annonceur === 'personne_physique' ? 'individual' : 'company'
-  const country = toStripeCountryCode(annonceur.pays_entreprise || annonceur.adresse_pays || 'France')
+  const country = toStripeCountryCode(annonceur.pays_entreprise || annonceur.siege_pays || 'France')
 
   const payload: Stripe.AccountCreateParams = {
     type: 'express',
     country,
     email: annonceur.email,
-    business_type: businessType,
+    business_type: 'company',
     metadata: buildStripeMetadata(annonceur, false),
     capabilities: {
       card_payments: { requested: true },
@@ -477,12 +455,7 @@ function buildAccountPayload(annonceur: Annonceur): Stripe.AccountCreateParams {
     business_profile: {
       name: cleanString(annonceur.nom_formation),
     },
-  }
-
-  if (businessType === 'individual') {
-    payload.individual = buildIndividualPayload(annonceur) as Stripe.AccountCreateParams.Individual
-  } else {
-    payload.company = buildCompanyPayload(annonceur) as Stripe.AccountCreateParams.Company
+    company: buildCompanyPayload(annonceur) as Stripe.AccountCreateParams.Company,
   }
 
   return payload
@@ -517,11 +490,7 @@ function buildPrefillAccountUpdatePayload(
 ): Stripe.AccountUpdateParams {
   const payload = buildSafeAccountUpdatePayload(annonceur, onboardingStarted)
 
-  if (isEntrepriseAnnonceur(annonceur)) {
-    payload.company = buildCompanyPayload(annonceur) as Stripe.AccountUpdateParams.Company
-  } else {
-    payload.individual = buildIndividualPayload(annonceur) as Stripe.AccountUpdateParams.Individual
-  }
+  payload.company = buildCompanyPayload(annonceur) as Stripe.AccountUpdateParams.Company
 
   return payload
 }
@@ -574,10 +543,6 @@ async function syncRepresentativePersonForAnnonceur(
   accountId: string,
   annonceur: Annonceur
 ): Promise<void> {
-  if (!isEntrepriseAnnonceur(annonceur)) {
-    return
-  }
-
   const representative = buildRepresentativePersonPayload(annonceur)
   const existingPersons = await stripe.accounts.listPersons(accountId, {
     limit: 1,
@@ -618,23 +583,19 @@ export async function createExpressAccountForAnnonceur(
 ): Promise<Stripe.Account> {
   const account = await stripe.accounts.create(buildAccountPayload(annonceur))
 
-  if (isEntrepriseAnnonceur(annonceur)) {
-    try {
-      await syncRepresentativePersonForAnnonceur(stripe, account.id, annonceur)
-    } catch (error) {
-      if (!(error instanceof Stripe.errors.StripeError)) {
-        throw error
-      }
-
-      console.warn(
-        `Prefill Stripe du représentant impossible pour le compte ${account.id}: ${error.message}`
-      )
+  try {
+    await syncRepresentativePersonForAnnonceur(stripe, account.id, annonceur)
+  } catch (error) {
+    if (!(error instanceof Stripe.errors.StripeError)) {
+      throw error
     }
 
-    return stripe.accounts.retrieve(account.id)
+    console.warn(
+      `Prefill Stripe du représentant impossible pour le compte ${account.id}: ${error.message}`
+    )
   }
 
-  return account
+  return stripe.accounts.retrieve(account.id)
 }
 
 export interface SyncExpressAccountForAnnonceurOptions {
@@ -656,7 +617,7 @@ export async function syncExpressAccountForAnnonceur(
   try {
     await updateStripeAccountWithEmailFallback(stripe, accountId, accountPayload)
 
-    if (syncKycPrefill && isEntrepriseAnnonceur(annonceur)) {
+    if (syncKycPrefill) {
       await syncRepresentativePersonForAnnonceur(stripe, accountId, annonceur)
     }
   } catch (error) {

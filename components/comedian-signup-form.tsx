@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { PasswordStrengthPanel } from "@/components/ui/password-strength-panel"
 import { Stepper } from "@/components/ui/stepper"
-import { Upload, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Crop, Loader2, RefreshCcw, RotateCcw, RotateCw, Upload } from "lucide-react"
 import {
   Field,
   FieldError,
@@ -19,7 +19,17 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import {
+  getSignupEmailConflictForProfile,
+  type AuthProfileSupabase,
+} from "@/app/lib/auth-profile"
+import {
+  clearPendingComedianSignupPhoto,
+  savePendingComedianSignupPhoto,
+} from "@/app/lib/pending-comedian-photo"
+import Cropper from "react-easy-crop"
 import type { OpportunityType, ComedianGender } from "@/app/types"
+import { getCroppedImage } from "@/app/lib/crop-image"
 import {
   getAgeFromDate,
   isPastOrToday,
@@ -29,6 +39,10 @@ import {
   normalizeEmail,
   normalizeText,
 } from "@/app/lib/signup-validation"
+import {
+  isHandledAuthError,
+  translateAuthErrorMessage,
+} from "@/app/lib/auth-error-message"
 import { getDemoComedianData } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = [
@@ -104,9 +118,29 @@ export function ComedianSignupForm({
   const [fieldErrors, setFieldErrors] = useState<ComedianErrors>({})
   const [touchedFields, setTouchedFields] = useState<Partial<Record<ComedianField, boolean>>>({})
   const [photoPreview, setPhotoPreview] = useState<string>("")
+  const [rawPhotoSrc, setRawPhotoSrc] = useState<string>("")
+  const [isCroppingPhoto, setIsCroppingPhoto] = useState(false)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
+    width: number
+    height: number
+    x: number
+    y: number
+  } | null>(null)
+  const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
+  const [autoZoomed, setAutoZoomed] = useState(false)
+  const [photoSizeWarning, setPhotoSizeWarning] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [photoUploadWarning, setPhotoUploadWarning] = useState(false)
+  const [photoPendingSyncNotice, setPhotoPendingSyncNotice] = useState(false)
+  const cropperContainerRef = useRef<HTMLDivElement | null>(null)
+  const photoCropAspect = 1
+  const photoOutputType: "image/webp" = "image/webp"
+  const photoQuality = 0.9
+  const photoMaxSize = 1200
 
   const handlePreferenceChange = (key: keyof OpportunityPreferences) => {
     setPreferences((prev) => ({
@@ -148,10 +182,6 @@ export function ComedianSignupForm({
     setError("")
   }
 
-  const markTouched = (field: ComedianField) => {
-    setTouchedFields((prev) => ({ ...prev, [field]: true }))
-  }
-
   const getComedianErrors = (
     nextPreferences: OpportunityPreferences,
     nextPersonalInfo: PersonalInfo,
@@ -160,46 +190,46 @@ export function ComedianSignupForm({
     const errors: ComedianErrors = {}
 
     if (!Object.values(nextPreferences).some(Boolean)) {
-      errors.preferences = "Veuillez sélectionner au moins un type d'opportunité"
+      errors.preferences = "Veuillez sélectionner au moins un type d'opportunité."
     }
 
-    if (!normalizeText(nextPersonalInfo.lastName)) errors.lastName = "Le nom est obligatoire"
-    if (!normalizeText(nextPersonalInfo.firstName)) errors.firstName = "Le prénom est obligatoire"
+    if (!normalizeText(nextPersonalInfo.lastName)) errors.lastName = "Le nom est obligatoire."
+    if (!normalizeText(nextPersonalInfo.firstName)) errors.firstName = "Le prénom est obligatoire."
 
     if (!nextPersonalInfo.birthDate) {
-      errors.birthDate = "La date de naissance est obligatoire"
+      errors.birthDate = "La date de naissance est obligatoire."
     } else if (!isPastOrToday(nextPersonalInfo.birthDate)) {
-      errors.birthDate = "La date de naissance n'est pas valide"
+      errors.birthDate = "La date de naissance n'est pas valide."
     } else {
       const age = getAgeFromDate(nextPersonalInfo.birthDate)
       if (age !== null && age < 13) {
-        errors.birthDate = "Vous devez avoir au moins 13 ans pour créer un compte"
+        errors.birthDate = "Vous devez avoir au moins 13 ans pour créer un compte."
       }
     }
 
-    if (!nextPersonalInfo.gender) errors.gender = "Le genre est obligatoire"
-    if (!isValidUrl(nextPersonalInfo.demoLink)) errors.demoLink = "Veuillez entrer une URL valide (http ou https)"
+    if (!nextPersonalInfo.gender) errors.gender = "Le genre est obligatoire."
+    if (!isValidUrl(nextPersonalInfo.demoLink)) errors.demoLink = "Veuillez entrer une URL valide (http ou https)."
 
     if (!normalizeText(nextAccountInfo.email)) {
-      errors.email = "L'adresse e-mail est obligatoire"
+      errors.email = "L'adresse e-mail est obligatoire."
     } else if (!isValidEmail(nextAccountInfo.email)) {
-      errors.email = "Veuillez entrer une adresse e-mail valide"
+      errors.email = "Veuillez entrer une adresse e-mail valide."
     }
 
     if (!nextAccountInfo.password) {
-      errors.password = "Le mot de passe est obligatoire"
+      errors.password = "Le mot de passe est obligatoire."
     } else if (!isStrongEnoughPassword(nextAccountInfo.password)) {
-      errors.password = "Le mot de passe doit contenir au moins 8 caractères, avec au moins une lettre et un chiffre"
+      errors.password = "Le mot de passe doit contenir au moins 8 caractères, avec au moins une lettre et un chiffre."
     }
 
     if (!nextAccountInfo.confirmPassword) {
-      errors.confirmPassword = "Veuillez confirmer votre mot de passe"
+      errors.confirmPassword = "Veuillez confirmer votre mot de passe."
     } else if (nextAccountInfo.password !== nextAccountInfo.confirmPassword) {
-      errors.confirmPassword = "Les mots de passe ne correspondent pas"
+      errors.confirmPassword = "Les mots de passe ne correspondent pas."
     }
 
     if (!nextAccountInfo.acceptTerms) {
-      errors.acceptTerms = "Vous devez accepter les conditions générales d'utilisation"
+      errors.acceptTerms = "Vous devez accepter les conditions générales d'utilisation."
     }
 
     return errors
@@ -211,31 +241,140 @@ export function ComedianSignupForm({
     return ["email", "password", "confirmPassword", "acceptTerms"]
   }
 
-  const currentStepErrors = getCurrentStepFields()
-    .map((field) => getComedianErrors(preferences, personalInfo, accountInfo)[field])
-    .filter((message): message is string => Boolean(message))
-  const currentStepIsValid = currentStepErrors.length === 0
   const showFieldError = (field: ComedianField) => Boolean(touchedFields[field] && fieldErrors[field])
   const getFieldClassName = (field: ComedianField) =>
     cn(showFieldError(field) && "border-red-500 focus-visible:ring-red-200")
 
+  useEffect(() => {
+    if (!isCroppingPhoto || !cropperContainerRef.current) return
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(() => setAutoZoomed(false))
+    observer.observe(cropperContainerRef.current)
+    return () => observer.disconnect()
+  }, [isCroppingPhoto])
+
+  useEffect(() => {
+    if (!rawPhotoSrc) return
+
+    const img = new window.Image()
+    img.onload = () => {
+      setImageInfo({ width: img.width, height: img.height })
+      setAutoZoomed(false)
+    }
+    img.src = rawPhotoSrc
+  }, [rawPhotoSrc])
+
+  useEffect(() => {
+    if (!imageInfo || autoZoomed) return
+
+    const imageAspect = imageInfo.width / imageInfo.height
+    let nextZoom = 1
+
+    if (imageAspect > photoCropAspect) {
+      nextZoom = imageAspect / photoCropAspect
+    } else {
+      nextZoom = photoCropAspect / imageAspect
+    }
+
+    setZoom(Math.min(Math.max(nextZoom, 1), 3))
+    setAutoZoomed(true)
+  }, [imageInfo, autoZoomed])
+
+  useEffect(() => {
+    if (!cropperContainerRef.current || !imageInfo || !isCroppingPhoto) return
+    const containerWidth = cropperContainerRef.current.clientWidth
+    const containerHeight = cropperContainerRef.current.clientHeight
+    if (containerWidth === 0 || containerHeight === 0) return
+
+    const minWidth = Math.round(containerWidth * 2)
+    const minHeight = Math.round(containerHeight * 2)
+    if (imageInfo.width < minWidth || imageInfo.height < minHeight) {
+      setPhotoSizeWarning("Image un peu petite : le rendu peut paraître flou sur certains écrans.")
+    } else {
+      setPhotoSizeWarning("")
+    }
+  }, [imageInfo, isCroppingPhoto])
+
+  const resetPhotoCropper = () => {
+    setRawPhotoSrc("")
+    setIsCroppingPhoto(false)
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setRotation(0)
+    setCroppedAreaPixels(null)
+    setImageInfo(null)
+    setPhotoSizeWarning("")
+    setAutoZoomed(false)
+  }
+
+  const resetPhotoAdjustments = () => {
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setRotation(0)
+    setAutoZoomed(false)
+  }
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setPersonalInfo((prev) => ({ ...prev, photo: file }))
       const reader = new FileReader()
       reader.onloadend = () => {
-        setPhotoPreview(reader.result as string)
+        setRawPhotoSrc(reader.result as string)
+        setIsCroppingPhoto(true)
+        setRotation(0)
+        setZoom(1)
+        setCrop({ x: 0, y: 0 })
+        setCroppedAreaPixels(null)
+        setImageInfo(null)
+        setPhotoSizeWarning("")
+        setAutoZoomed(false)
+        setPhotoUploadWarning(false)
+        setPhotoPendingSyncNotice(false)
       }
       reader.readAsDataURL(file)
       setError("")
     }
+    e.target.value = ""
+  }
+
+  const onPhotoCropComplete = (_: unknown, croppedPixels: { width: number; height: number; x: number; y: number }) => {
+    setCroppedAreaPixels(croppedPixels)
+  }
+
+  const applyPhotoCrop = async () => {
+    if (!rawPhotoSrc || !croppedAreaPixels) return
+
+    try {
+      const croppedBlob = await getCroppedImage(rawPhotoSrc, croppedAreaPixels, {
+        rotation,
+        outputType: photoOutputType,
+        quality: photoQuality,
+        maxSize: photoMaxSize,
+      })
+      const croppedFile = new File([croppedBlob], `comedien-photo-${Date.now()}.webp`, {
+        type: photoOutputType,
+      })
+
+      setPersonalInfo((prev) => ({ ...prev, photo: croppedFile }))
+      setPhotoPreview(URL.createObjectURL(croppedBlob))
+      resetPhotoCropper()
+    } catch (cropError) {
+      console.error("Erreur recadrage photo:", cropError)
+      setError("Impossible de recadrer la photo. Veuillez réessayer.")
+    }
+  }
+
+  const removePhoto = () => {
+    setPersonalInfo((prev) => ({ ...prev, photo: null }))
+    setPhotoPreview("")
+    setPhotoUploadWarning(false)
+    setPhotoPendingSyncNotice(false)
   }
 
   const validateStep1 = () => {
     const errors = getComedianErrors(preferences, personalInfo, accountInfo)
     setFieldErrors(errors)
-    markTouched("preferences")
+    setTouchedFields((prev) => ({ ...prev, preferences: true }))
     setError("")
     return !errors.preferences
   }
@@ -290,32 +429,6 @@ export function ComedianSignupForm({
     setError("")
   }
 
-  // Traduire les erreurs Supabase en messages user-friendly
-  const translateAuthError = (errorMessage: string): string => {
-    // Vérifier les erreurs de duplication d'email
-    if (errorMessage.toLowerCase().includes('already') ||
-        errorMessage.toLowerCase().includes('duplicate') ||
-        errorMessage.toLowerCase().includes('exists')) {
-      return "Un compte existe déjà avec cet email"
-    }
-
-    // Autres erreurs courantes
-    if (errorMessage.toLowerCase().includes('invalid email')) {
-      return "L'adresse email n'est pas valide"
-    }
-
-    if (errorMessage.toLowerCase().includes('password')) {
-      return "Le mot de passe ne respecte pas les critères de sécurité"
-    }
-
-    if (errorMessage.toLowerCase().includes('network')) {
-      return "Erreur de connexion. Veuillez vérifier votre connexion internet"
-    }
-
-    // Message par défaut si l'erreur n'est pas reconnue
-    return "Une erreur s'est produite lors de l'inscription. Veuillez réessayer"
-  }
-
   // Mapper les préférences vers les types de la base de données
   const mapPreferencesToOpportunityTypes = (): OpportunityType[] => {
     const types: OpportunityType[] = []
@@ -326,20 +439,13 @@ export function ComedianSignupForm({
     return types
   }
 
-  const checkExistingComedianProfile = async (email: string): Promise<boolean> => {
-    const supabase = createBrowserSupabaseClient()
-    const { data, error } = await supabase
-      .from('comediens')
-      .select('id')
-      .eq('email', normalizeEmail(email))
-      .maybeSingle()
-
-    if (error) {
-      console.warn('Pré-vérification comédien impossible:', error)
-      return false
+  const checkEmailConflict = async (supabase: AuthProfileSupabase, email: string): Promise<string | null> => {
+    try {
+      return await getSignupEmailConflictForProfile(supabase, email, 'comedian')
+    } catch (lookupError) {
+      console.warn('Pré-vérification comédien impossible:', lookupError)
+      return null
     }
-
-    return Boolean(data)
   }
 
   // Upload de la photo vers Supabase Storage
@@ -389,10 +495,15 @@ export function ComedianSignupForm({
       try {
         const supabase = createBrowserSupabaseClient()
         const normalizedEmail = normalizeEmail(accountInfo.email)
+        setPhotoUploadWarning(false)
+        setPhotoPendingSyncNotice(false)
 
-        const profileAlreadyExists = await checkExistingComedianProfile(normalizedEmail)
-        if (profileAlreadyExists) {
-          setError("Un compte existe déjà avec cet email")
+        const emailConflict = await checkEmailConflict(
+          supabase as unknown as AuthProfileSupabase,
+          normalizedEmail
+        )
+        if (emailConflict) {
+          setError(emailConflict)
           setIsLoading(false)
           return
         }
@@ -410,14 +521,18 @@ export function ComedianSignupForm({
         })
 
         if (authError) {
-          console.error('Erreur d\'authentification:', authError)
-          setError(translateAuthError(authError.message))
+          if (isHandledAuthError(authError.message)) {
+            console.warn("Erreur d'authentification comédien traitée:", authError.message)
+          } else {
+            console.error("Erreur d'authentification:", authError)
+          }
+          setError(translateAuthErrorMessage(authError.message, "signup"))
           setIsLoading(false)
           return
         }
 
         if (!authData.user) {
-          setError("Erreur lors de la création du compte")
+          setError("Erreur lors de la création du compte.")
           setIsLoading(false)
           return
         }
@@ -427,14 +542,22 @@ export function ComedianSignupForm({
         // Sans session, l'upload Storage côté navigateur échoue souvent (RLS).
         let photoUrl: string | null = null
         if (personalInfo.photo) {
-          if (!authData.session) {
-            setPhotoUploadWarning(true)
-          } else {
+          let pendingSaved = false
+
+          if (authData.session) {
             photoUrl = await uploadPhoto(personalInfo.photo, authData.user.id)
-            // Si l'upload a échoué mais qu'on continue quand même
-            if (!photoUrl) {
-              setPhotoUploadWarning(true)
-            }
+          }
+
+          if (!photoUrl) {
+            pendingSaved = await savePendingComedianSignupPhoto(authData.user.id, personalInfo.photo)
+          } else {
+            clearPendingComedianSignupPhoto(authData.user.id)
+          }
+
+          if (pendingSaved) {
+            setPhotoPendingSyncNotice(true)
+          } else if (!photoUrl) {
+            setPhotoUploadWarning(true)
           }
         }
 
@@ -473,7 +596,7 @@ export function ComedianSignupForm({
           // Vérifier si c'est une erreur de duplication dans la table comediens
           if (profileError.message.toLowerCase().includes('duplicate') ||
               profileError.message.toLowerCase().includes('unique')) {
-            setError("Un compte existe déjà avec cet email")
+            setError("Un compte existe déjà avec cet email.")
           } else {
             setError("Le compte a été créé côté authentification, mais le profil comédien n'a pas pu être finalisé. Contactez le support avant de réessayer.")
           }
@@ -544,28 +667,6 @@ export function ComedianSignupForm({
         {/* Stepper */}
         <Stepper steps={STEPS} currentStep={currentStep} className="mb-8" />
 
-        {!isSuccess && (
-          <div
-            className={cn(
-              "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
-              currentStepIsValid
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-amber-200 bg-amber-50 text-amber-900"
-            )}
-          >
-            {currentStepIsValid ? (
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            ) : (
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            )}
-            <div>
-              {currentStepIsValid
-                ? "Cette étape est complète."
-                : `${currentStepErrors.length} point${currentStepErrors.length > 1 ? "s" : ""} à corriger avant de continuer.`}
-            </div>
-          </div>
-        )}
-
         {/* Étape 1 : Préférences d'opportunités */}
         {currentStep === 1 && (
           <div className="space-y-6">
@@ -574,7 +675,7 @@ export function ComedianSignupForm({
                 Quels types d&apos;opportunités voulez-vous recevoir ?
               </h2>
               <p className="text-sm text-muted-foreground">
-                Sélectionnez au moins une option
+                Sélectionnez au moins une option :
               </p>
             </div>
 
@@ -676,7 +777,6 @@ export function ComedianSignupForm({
                 placeholder="Dupont"
                 value={personalInfo.lastName}
                 onChange={(e) => handlePersonalInfoChange("lastName", e.target.value)}
-                onBlur={() => markTouched("lastName")}
                 aria-invalid={showFieldError("lastName")}
                 className={getFieldClassName("lastName")}
               />
@@ -693,7 +793,6 @@ export function ComedianSignupForm({
                 placeholder="Jean"
                 value={personalInfo.firstName}
                 onChange={(e) => handlePersonalInfoChange("firstName", e.target.value)}
-                onBlur={() => markTouched("firstName")}
                 aria-invalid={showFieldError("firstName")}
                 className={getFieldClassName("firstName")}
               />
@@ -709,7 +808,6 @@ export function ComedianSignupForm({
                 type="date"
                 value={personalInfo.birthDate}
                 onChange={(e) => handlePersonalInfoChange("birthDate", e.target.value)}
-                onBlur={() => markTouched("birthDate")}
                 max={new Date().toISOString().split("T")[0]}
                 aria-invalid={showFieldError("birthDate")}
                 className={getFieldClassName("birthDate")}
@@ -728,7 +826,6 @@ export function ComedianSignupForm({
                 id="gender"
                 value={personalInfo.gender}
                 onChange={(e) => handlePersonalInfoChange("gender", e.target.value)}
-                onBlur={() => markTouched("gender")}
                 aria-invalid={showFieldError("gender")}
                 className={cn(
                   "w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm",
@@ -772,19 +869,24 @@ export function ComedianSignupForm({
                   )}
                 </div>
                 {photoPreview && (
-                  <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
-                    <Image
-                      src={photoPreview}
-                      alt="Preview"
-                      fill
-                      className="object-cover"
-                      sizes="96px"
-                    />
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
+                      <Image
+                        src={photoPreview}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                        sizes="96px"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={removePhoto}>
+                      Supprimer
+                    </Button>
                   </div>
                 )}
               </div>
               <FieldDescription>
-                Ajoutez une photo pour personnaliser votre profil
+                Ajoutez une photo pour personnaliser votre profil. Vous pourrez la recadrer avant validation.
               </FieldDescription>
             </Field>
 
@@ -798,7 +900,6 @@ export function ComedianSignupForm({
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={personalInfo.demoLink}
                 onChange={(e) => handlePersonalInfoChange("demoLink", e.target.value)}
-                onBlur={() => markTouched("demoLink")}
                 aria-invalid={showFieldError("demoLink")}
                 className={getFieldClassName("demoLink")}
               />
@@ -838,7 +939,6 @@ export function ComedianSignupForm({
                 placeholder="exemple@email.com"
                 value={accountInfo.email}
                 onChange={(e) => handleAccountInfoChange("email", e.target.value)}
-                onBlur={() => markTouched("email")}
                 aria-invalid={showFieldError("email")}
                 className={getFieldClassName("email")}
               />
@@ -858,7 +958,6 @@ export function ComedianSignupForm({
                 placeholder="••••••••"
                 value={accountInfo.password}
                 onChange={(e) => handleAccountInfoChange("password", e.target.value)}
-                onBlur={() => markTouched("password")}
                 aria-invalid={showFieldError("password")}
                 className={getFieldClassName("password")}
               />
@@ -876,14 +975,19 @@ export function ComedianSignupForm({
                 placeholder="••••••••"
                 value={accountInfo.confirmPassword}
                 onChange={(e) => handleAccountInfoChange("confirmPassword", e.target.value)}
-                onBlur={() => markTouched("confirmPassword")}
                 aria-invalid={showFieldError("confirmPassword")}
                 className={getFieldClassName("confirmPassword")}
               />
               {showFieldError("confirmPassword") && <FieldError>{fieldErrors.confirmPassword}</FieldError>}
             </Field>
 
-            <div className="flex items-start space-x-3 p-4 rounded-lg border bg-accent/30">
+            <div
+              data-testid="accept-terms-card"
+              className={cn(
+                "flex items-start space-x-3 rounded-lg border bg-accent/30 p-4",
+                showFieldError("acceptTerms") && "border-red-500"
+              )}
+            >
               <Checkbox
                 id="acceptTerms"
                 checked={accountInfo.acceptTerms}
@@ -907,7 +1011,6 @@ export function ComedianSignupForm({
                   </a>
                   .
                 </p>
-                {showFieldError("acceptTerms") && <FieldError>{fieldErrors.acceptTerms}</FieldError>}
               </div>
             </div>
 
@@ -944,11 +1047,16 @@ export function ComedianSignupForm({
                 Compte créé avec succès !
               </h2>
               <p className="text-muted-foreground">
-                Bienvenue {personalInfo.firstName} ! Vous allez être redirigé vers la page de confirmation..
+                Bienvenue {personalInfo.firstName} ! Vous allez être redirigé vers la page de confirmation.
               </p>
               {photoUploadWarning && (
                 <p className="text-sm text-orange-600 mt-4 bg-orange-50 p-3 rounded-md">
                   Note : Votre photo n&apos;a pas pu être uploadée. Vous pourrez l&apos;ajouter plus tard dans vos paramètres.
+                </p>
+              )}
+              {photoPendingSyncNotice && !photoUploadWarning && (
+                <p className="text-sm text-blue-700 mt-4 bg-blue-50 p-3 rounded-md">
+                  Votre photo sera finalisée automatiquement dès votre première connexion après confirmation de votre adresse e-mail.
                 </p>
               )}
             </div>
@@ -996,6 +1104,102 @@ export function ComedianSignupForm({
           </div>
         )}
       </FieldGroup>
+
+      {isCroppingPhoto && rawPhotoSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-lg sm:max-h-[88vh]">
+            <div className="flex flex-col gap-3 border-b px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-gray-900">Recadrer la photo</h2>
+                <span className="rounded-full bg-[#E6DAD0] px-2 py-1 text-xs font-medium text-gray-900">
+                  Carré
+                </span>
+              </div>
+              <Button type="button" variant="outline" onClick={resetPhotoCropper}>
+                Fermer
+              </Button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div
+                ref={cropperContainerRef}
+                className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border bg-black"
+                style={{ aspectRatio: "1 / 1" }}
+              >
+                <Cropper
+                  image={rawPhotoSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  rotation={rotation}
+                  aspect={photoCropAspect}
+                  cropShape="round"
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onPhotoCropComplete}
+                  objectFit="horizontal-cover"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-600">Zoom</label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.1}
+                      value={zoom}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="w-40"
+                    />
+                    <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-600">Rotation</label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev - 90)}>
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev + 90)}>
+                        <RotateCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <input
+                      type="range"
+                      min={-45}
+                      max={45}
+                      step={1}
+                      value={rotation}
+                      onChange={(e) => setRotation(Number(e.target.value))}
+                      className="w-40"
+                    />
+                    <span className="text-xs text-gray-500">{rotation}°</span>
+                  </div>
+                </div>
+              </div>
+
+              {photoSizeWarning && (
+                <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
+                  {photoSizeWarning}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyPhotoCrop}>
+                  <Crop className="mr-2 h-4 w-4" />
+                  Appliquer le recadrage
+                </Button>
+                <Button type="button" variant="outline" onClick={resetPhotoAdjustments}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Réinitialiser
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   )
 }

@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { AppModal } from "@/components/ui/app-modal"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Crop, RotateCcw, RotateCw, RefreshCcw } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Crop, RotateCcw, RotateCw, RefreshCcw, Lock, Trash2 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import Image from "next/image"
 import type { OpportunityType, OpportunityModel, Opportunite, Annonceur } from "@/app/types"
@@ -15,14 +16,16 @@ import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LABELS } from "@/app/types"
 import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
 import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
-import { SafeRichText } from "@/components/safe-rich-text"
+import { OpportunityBodyContent } from "@/components/opportunity-body-content"
 
 interface FormData {
   type: OpportunityType | ""
   modele: OpportunityModel | ""
   titre: string
+  contenu_mode: "text" | "image" | "text_image" | "image_text"
   resume: string
   image: File | null
+  contenu_image: File | null
   lien_infos: string
   prix_base: string
   prix_reduit: string
@@ -41,8 +44,10 @@ export default function ModifierOpportunitePage() {
     type: "",
     modele: "",
     titre: "",
+    contenu_mode: "text",
     resume: "",
     image: null,
+    contenu_image: null,
     lien_infos: "",
     prix_base: "",
     prix_reduit: "",
@@ -53,6 +58,7 @@ export default function ModifierOpportunitePage() {
   })
   const [imagePreview, setImagePreview] = useState<string>("")
   const [rawImageSrc, setRawImageSrc] = useState<string>("")
+  const [cropTarget, setCropTarget] = useState<"cover" | "body" | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
@@ -77,6 +83,8 @@ export default function ModifierOpportunitePage() {
   const [success, setSuccess] = useState(false)
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
   const [existingOpportunity, setExistingOpportunity] = useState<Opportunite | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Extraire l'ID
   useEffect(() => {
@@ -108,13 +116,20 @@ export default function ModifierOpportunitePage() {
       const opp: Opportunite = data.opportunite
       setExistingOpportunity(opp)
 
+      if (opp.statut === "supprimee") {
+        router.replace(`/annonceur/opportunites/${opp.id}`)
+        return
+      }
+
       // Pré-remplir le formulaire
       setFormData({
         type: opp.type,
         modele: opp.modele,
         titre: opp.titre,
+        contenu_mode: "text",
         resume: opp.resume,
         image: null,
+        contenu_image: null,
         lien_infos: opp.lien_infos || "",
         prix_base: opp.prix_base.toString(),
         prix_reduit: opp.prix_reduit.toString(),
@@ -180,6 +195,7 @@ export default function ModifierOpportunitePage() {
       const reader = new FileReader()
       reader.onloadend = () => {
         setRawImageSrc(reader.result as string)
+        setCropTarget("cover")
         setIsCropping(true)
         setRotation(0)
         setZoom(1)
@@ -198,7 +214,7 @@ export default function ModifierOpportunitePage() {
   }
 
   const applyCrop = async () => {
-    if (!rawImageSrc || !croppedAreaPixels) return
+    if (!rawImageSrc || !croppedAreaPixels || !cropTarget) return
 
     try {
       const croppedBlob = await getCroppedImage(rawImageSrc, croppedAreaPixels, {
@@ -211,9 +227,12 @@ export default function ModifierOpportunitePage() {
       const fileName = `opportunite-${Date.now()}.${ext}`
       const croppedFile = new File([croppedBlob], fileName, { type: outputType })
 
-      setFormData(prev => ({ ...prev, image: croppedFile }))
-      setImagePreview(URL.createObjectURL(croppedBlob))
+      if (cropTarget === "cover") {
+        setFormData(prev => ({ ...prev, image: croppedFile }))
+        setImagePreview(URL.createObjectURL(croppedBlob))
+      }
       setIsCropping(false)
+      setCropTarget(null)
     } catch (cropError) {
       console.error("Erreur recadrage image:", cropError)
       setError("Impossible de recadrer l'image. Veuillez réessayer.")
@@ -223,6 +242,7 @@ export default function ModifierOpportunitePage() {
   const resetCropper = () => {
     setRawImageSrc("")
     setIsCropping(false)
+    setCropTarget(null)
     setCrop({ x: 0, y: 0 })
     setZoom(1)
     setRotation(0)
@@ -245,12 +265,12 @@ export default function ModifierOpportunitePage() {
     }
   }, [imageInfo, isCropping])
 
-  const uploadImage = async (file: File, annonceurId: string): Promise<string | null> => {
+  const uploadImage = async (file: File, annonceurId: string, folder = "opportunites"): Promise<string | null> => {
     try {
       const supabase = createBrowserSupabaseClient()
       const fileExt = file.name.split('.').pop()
       const fileName = `${annonceurId}-${Date.now()}.${fileExt}`
-      const filePath = `opportunites/${fileName}`
+      const filePath = `${folder}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('photos')
@@ -271,6 +291,36 @@ export default function ModifierOpportunitePage() {
       return data.publicUrl
     } catch (error) {
       console.error('Erreur lors de l\'upload:', error)
+      return null
+    }
+  }
+
+  const uploadInlineEditorImage = async (file: File): Promise<string | null> => {
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        setError("Vous devez être connecté pour ajouter une image")
+        return null
+      }
+
+      const { data: annonceurData } = await supabase
+        .from("annonceurs")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single()
+
+      const annonceur = annonceurData as Pick<Annonceur, "id"> | null
+      if (!annonceur) {
+        setError("Profil annonceur introuvable")
+        return null
+      }
+
+      return await uploadImage(file, annonceur.id, "opportunites-detail")
+    } catch (error) {
+      console.error("Erreur upload image éditeur:", error)
+      setError("Impossible d'ajouter l'image dans l'éditeur")
       return null
     }
   }
@@ -357,6 +407,11 @@ export default function ModifierOpportunitePage() {
       return
     }
 
+    if (!existingOpportunity) {
+      setError("Impossible de charger les informations actuelles de l'opportunité.")
+      return
+    }
+
     setLoading(true)
     setError("")
 
@@ -392,14 +447,10 @@ export default function ModifierOpportunitePage() {
           imageUrl = uploadedUrl
         }
       }
-
-      const prixBase = parseFloat(formData.prix_base)
-      const prixReduit = parseFloat(formData.prix_reduit)
-      const reductionPourcentage = ((prixBase - prixReduit) / prixBase) * 100
-      const nextNombrePlaces = parseInt(formData.nombre_places, 10)
-      const reservedPlaces = existingOpportunity
-        ? Math.max(existingOpportunity.nombre_places - existingOpportunity.places_restantes, 0)
-        : 0
+      const prixBase = existingOpportunity.prix_base
+      const prixReduit = existingOpportunity.prix_reduit
+      const nextNombrePlaces = existingOpportunity.nombre_places
+      const reservedPlaces = Math.max(existingOpportunity.nombre_places - existingOpportunity.places_restantes, 0)
       const nextStatus = existingOpportunity?.statut === 'en_attente'
         ? 'en_attente'
         : existingOpportunity?.statut === 'complete' || existingOpportunity?.statut === 'expiree'
@@ -421,14 +472,16 @@ export default function ModifierOpportunitePage() {
           type: formData.type as OpportunityType,
           modele: formData.modele as OpportunityModel,
           titre: formData.titre,
+          contenu_mode: "text",
           resume: formData.resume,
+          contenu_image_url: null,
           image_url: imageUrl,
           lien_infos: formData.lien_infos?.trim() || "",
           prix_base: prixBase,
           prix_reduit: prixReduit,
           nombre_places: nextNombrePlaces,
           places_restantes: nextPlacesRestantes,
-          date_evenement: new Date(formData.date_evenement).toISOString(),
+          date_evenement: existingOpportunity.date_evenement,
           contact_telephone: formData.contact_telephone || null,
           contact_email: formData.contact_email,
           statut: nextStatus,
@@ -468,6 +521,30 @@ export default function ModifierOpportunitePage() {
     e.preventDefault()
     if (!validateForm()) return
     setViewMode("preview")
+  }
+
+  const handleDeleteOpportunity = async () => {
+    if (!opportuniteId) return
+
+    try {
+      setDeleteLoading(true)
+      const response = await fetch(`/api/annonceur/opportunites/${opportuniteId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || "Suppression impossible")
+      }
+
+      router.replace("/annonceur/opportunites?statut=supprimee")
+    } catch (err) {
+      console.error("Erreur suppression:", err)
+      setDeleteModalOpen(false)
+      setError(err instanceof Error ? err.message : "Une erreur s'est produite lors de la suppression")
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   if (loadingData) {
@@ -637,7 +714,13 @@ export default function ModifierOpportunitePage() {
             <span className="text-2xl font-bold text-gray-900">{previewPrice || 0}€</span>
           )}
         </div>
-        <SafeRichText html={previewResume} className="prose max-w-none text-gray-700" />
+        <OpportunityBodyContent
+          title={previewTitle}
+          resume={previewResume}
+          bodyImageUrl={null}
+          contentMode="text"
+          className="prose max-w-none text-gray-700"
+        />
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
           <Button size="sm" variant="outline" className="w-full sm:w-auto">
@@ -758,13 +841,23 @@ export default function ModifierOpportunitePage() {
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="resume">Description *</Label>
-                <RichTextEditor
-                  value={formData.resume}
-                  onChange={(value) => handleInputChange('resume', value)}
-                  placeholder="Décrivez votre opportunité en détail..."
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Corps de l&apos;opportunité *</Label>
+                  <p className="text-sm text-gray-600">
+                    Écrivez librement et utilisez le bouton <span className="font-medium">Ajouter</span> dans l&apos;éditeur pour insérer une image verticale directement dans le contenu.
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="resume">Description *</Label>
+                  <RichTextEditor
+                    value={formData.resume}
+                    onChange={(value) => handleInputChange('resume', value)}
+                    onImageUpload={uploadInlineEditorImage}
+                    placeholder="Décrivez votre opportunité en détail..."
+                  />
+                </div>
               </div>
 
               <div>
@@ -809,6 +902,7 @@ export default function ModifierOpportunitePage() {
                         type="button"
                         variant="outline"
                         onClick={() => {
+                          setCropTarget("cover")
                           setRawImageSrc(imagePreview)
                           setIsCropping(true)
                           setRotation(0)
@@ -849,6 +943,18 @@ export default function ModifierOpportunitePage() {
                 Tarification
               </h2>
 
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="flex items-start gap-3">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Cette section n&apos;est plus modifiable.</p>
+                    <p className="mt-1 text-amber-800">
+                      Si une erreur s&apos;est glissée dans la tarification, supprimez cette opportunité puis recréez-la avec les bonnes informations.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="prix_base">Prix de base (€) *</Label>
@@ -858,8 +964,8 @@ export default function ModifierOpportunitePage() {
                     step="0.01"
                     min="0"
                     value={formData.prix_base}
-                    onChange={(e) => handleInputChange('prix_base', e.target.value)}
-                    placeholder="100.00"
+                    readOnly
+                    disabled
                   />
                 </div>
 
@@ -871,8 +977,8 @@ export default function ModifierOpportunitePage() {
                     step="0.01"
                     min="0"
                     value={formData.prix_reduit}
-                    onChange={(e) => handleInputChange('prix_reduit', e.target.value)}
-                    placeholder="75.00"
+                    readOnly
+                    disabled
                   />
                 </div>
               </div>
@@ -902,6 +1008,18 @@ export default function ModifierOpportunitePage() {
                 Disponibilité
               </h2>
 
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="flex items-start gap-3">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Cette section n&apos;est plus modifiable.</p>
+                    <p className="mt-1 text-amber-800">
+                      Si la date ou le nombre de places est erroné, supprimez cette opportunité puis publiez-en une nouvelle.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="nombre_places">Nombre de places *</Label>
@@ -910,8 +1028,8 @@ export default function ModifierOpportunitePage() {
                     type="number"
                     min="1"
                     value={formData.nombre_places}
-                    onChange={(e) => handleInputChange('nombre_places', e.target.value)}
-                    placeholder="20"
+                    readOnly
+                    disabled
                   />
                 </div>
 
@@ -921,7 +1039,8 @@ export default function ModifierOpportunitePage() {
                     id="date_evenement"
                     type="datetime-local"
                     value={formData.date_evenement}
-                    onChange={(e) => handleInputChange('date_evenement', e.target.value)}
+                    readOnly
+                    disabled
                   />
                 </div>
               </div>
@@ -987,14 +1106,68 @@ export default function ModifierOpportunitePage() {
               )}
             </Button>
           </div>
+
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <h2 className="text-xl font-bold text-red-900">
+                  Supprimer l&apos;opportunité
+                </h2>
+                <p className="mt-2 text-sm text-red-800">
+                  En cas d&apos;erreur sur la tarification ou la disponibilité, vous pouvez supprimer cette opportunité. Elle apparaîtra ensuite comme supprimée dans vos opportunités et ne sera plus consultable par les comédiens.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800"
+                onClick={() => setDeleteModalOpen(true)}
+                disabled={deleteLoading}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer cette opportunité
+              </Button>
+            </CardContent>
+          </Card>
         </form>
+
+        <AppModal
+          open={deleteModalOpen}
+          onClose={() => !deleteLoading && setDeleteModalOpen(false)}
+          title="Supprimer cette opportunité ?"
+          description="Cette action la rendra non consultable pour les comédiens et elle restera visible comme supprimée dans vos opportunités."
+          tone="warning"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={deleteLoading}>
+                Annuler
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700"
+                onClick={handleDeleteOpportunity}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Suppression...
+                  </>
+                ) : (
+                  "Supprimer"
+                )}
+              </Button>
+            </>
+          }
+        />
 
         {isCropping && rawImageSrc && (
           <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
             <div className="w-full max-w-3xl max-h-[85vh] sm:max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-gray-900">Recadrer l&apos;image</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                  Recadrer l&apos;image
+                  </h3>
                   <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
                     16:9
                   </span>

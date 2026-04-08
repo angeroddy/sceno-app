@@ -169,7 +169,7 @@ export default function AnnonceurDetailsPage() {
               )}
             </div>
             <p className="text-gray-600 text-base sm:text-lg">
-              {annonceur.type_annonceur === 'personne_physique' ? 'Personne physique' : 'Entreprise'}
+              Entreprise
             </p>
           </div>
           {!annonceur.identite_verifiee && (
@@ -237,61 +237,16 @@ export default function AnnonceurDetailsPage() {
             </CardContent>
           </Card>
 
-          {/* Informations personne physique */}
-          {annonceur.type_annonceur === 'personne_physique' && (
+          {/* Informations entreprise */}
+          <>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Informations personnelles
+                  <Building2 className="w-5 h-5" />
+                  Informations entreprise
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-600">Nom</label>
-                    <p className="font-medium break-words">{annonceur.nom || 'Non renseigné'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-600">Prénom</label>
-                    <p className="font-medium break-words">{annonceur.prenom || 'Non renseigné'}</p>
-                  </div>
-                </div>
-                {annonceur.date_naissance && (
-                  <div>
-                    <label className="text-sm text-gray-600">Date de naissance</label>
-                    <p className="font-medium flex items-center gap-2 mt-1">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(annonceur.date_naissance).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <label className="text-sm text-gray-600">Adresse</label>
-                  <div className="flex items-start gap-2 mt-1">
-                    <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div className="font-medium break-words min-w-0 flex-1">
-                      {annonceur.adresse_rue || 'Non renseigné'}<br />
-                      {annonceur.adresse_code_postal} {annonceur.adresse_ville}<br />
-                      {annonceur.adresse_pays || 'France'}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Informations entreprise */}
-          {annonceur.type_annonceur === 'entreprise' && (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5" />
-                    Informations entreprise
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
                   <div>
                     <label className="text-sm text-gray-600">Nom légal de l&apos;entreprise</label>
                     <p className="font-medium break-words">{annonceur.nom_entreprise || 'Non renseigné'}</p>
@@ -317,17 +272,17 @@ export default function AnnonceurDetailsPage() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Représentant légal
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Représentant légal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-600">Nom</label>
@@ -358,10 +313,9 @@ export default function AnnonceurDetailsPage() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
+              </CardContent>
+            </Card>
+          </>
 
           {/* Informations bancaires */}
           <Card>

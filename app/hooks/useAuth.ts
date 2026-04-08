@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '../lib/supabase-client'
 import type { User } from '@supabase/supabase-js'
-
-export type UserType = 'comedian' | 'advertiser' | 'admin' | null
+import {
+  syncPendingComedianSignupPhoto,
+  type PendingComedianPhotoSupabase,
+} from '../lib/pending-comedian-photo'
+import type { UserType } from '../lib/auth-profile'
 
 export function useAuth() {
   const router = useRouter()
@@ -26,6 +29,11 @@ export function useAuth() {
       }
 
       try {
+        await syncPendingComedianSignupPhoto(
+          supabase as unknown as PendingComedianPhotoSupabase,
+          sessionUser.id
+        )
+
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' })
         if (!response.ok) {
           setUserType(null)
@@ -33,6 +41,16 @@ export function useAuth() {
         }
 
         const data = await response.json() as { userType: UserType }
+
+        if (data.userType === 'deleted') {
+          await supabase.auth.signOut().catch(() => undefined)
+          setUser(null)
+          setUserType(null)
+          setLoading(false)
+          router.push('/connexion')
+          return
+        }
+
         setUserType(data.userType ?? null)
       } catch {
         setUserType(null)

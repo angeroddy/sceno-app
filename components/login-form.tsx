@@ -13,6 +13,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import {
+  syncEmailVerificationForAuthUser,
+  type AuthProfileSupabase,
+} from "@/app/lib/auth-profile"
+import {
+  isHandledAuthError,
+  translateAuthErrorMessage,
+} from "@/app/lib/auth-error-message"
 
 export function LoginForm({
   className,
@@ -58,18 +66,12 @@ export function LoginForm({
       })
 
       if (signInError) {
-        console.error('Erreur de connexion:', signInError)
-
-        // Messages d'erreur plus clairs
-        if (signInError.message.includes('Invalid login credentials')) {
-          setError("Identifiants incorrects. Vérifiez votre email et mot de passe.")
-        } else if (signInError.message.includes('Email not confirmed')) {
-          setError("Veuillez confirmer votre adresse e-mail avant de vous connecter.")
-        } else if (signInError.message.toLowerCase().includes('network')) {
-          setError("Erreur de connexion. Veuillez vérifier votre connexion internet.")
+        if (isHandledAuthError(signInError.message)) {
+          console.warn('Erreur de connexion traitée:', signInError.message)
         } else {
-          setError("Une erreur s'est produite lors de la connexion. Veuillez réessayer.")
+          console.error('Erreur de connexion:', signInError)
         }
+        setError(translateAuthErrorMessage(signInError.message, 'signin'))
         setIsLoading(false)
         return
       }
@@ -80,46 +82,33 @@ export function LoginForm({
         return
       }
 
-      // Vérifier le type d'utilisateur pour rediriger correctement
-      // 1. Vérifier si c'est un admin (priorité)
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .maybeSingle()
+      const userType = await syncEmailVerificationForAuthUser(
+        supabase as unknown as AuthProfileSupabase,
+        data.user
+      )
 
-      if (adminData) {
-        // L'utilisateur est un admin
+      if (userType === 'admin') {
         setIsLoading(false)
         router.push('/admin')
         return
       }
 
-      // 2. Vérifier si c'est un comédien
-      const { data: comedienData } = await supabase
-        .from('comediens')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .maybeSingle()
-
-      if (comedienData) {
-        // L'utilisateur est un comédien
+      if (userType === 'comedian') {
         setIsLoading(false)
         router.push('/dashboard')
         return
       }
 
-      // 3. Vérifier si c'est un annonceur
-      const { data: annonceurData } = await supabase
-        .from('annonceurs')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .maybeSingle()
-
-      if (annonceurData) {
-        // L'utilisateur est un annonceur
+      if (userType === 'advertiser') {
         setIsLoading(false)
         router.push('/annonceur')
+        return
+      }
+
+      if (userType === 'deleted') {
+        await supabase.auth.signOut().catch(() => undefined)
+        setError("Ce compte a été supprimé et ne peut plus être utilisé.")
+        setIsLoading(false)
         return
       }
 
@@ -214,7 +203,7 @@ export function LoginForm({
 
         <div className="text-center text-sm">
           Pas encore de compte ?{" "}
-          <a href="/inscription" className="underline underline-offset-4 hover:text-primary">
+          <a href="/inscription" className="font-semibold underline underline-offset-4 hover:text-primary">
             Créer un compte
           </a>
         </div>

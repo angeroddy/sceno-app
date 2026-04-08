@@ -32,7 +32,7 @@ import {
   XCircle
 } from "lucide-react"
 import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
-import { SafeRichText } from "@/components/safe-rich-text"
+import { OpportunityBodyContent } from "@/components/opportunity-body-content"
 import { AppModal } from "@/components/ui/app-modal"
 
 export default function AdminOpportuniteDetailsPage() {
@@ -380,7 +380,13 @@ export default function AdminOpportuniteDetailsPage() {
                       <h3 className="text-xl font-bold mb-4 text-gray-900">
                         Description de l&apos;opportunité
                       </h3>
-                      <SafeRichText html={opportunite.resume} className="prose max-w-none text-gray-700" />
+                      <OpportunityBodyContent
+                        title={opportunite.titre}
+                        resume={opportunite.resume}
+                        bodyImageUrl={opportunite.contenu_image_url}
+                        contentMode={opportunite.contenu_mode}
+                        className="prose max-w-none text-gray-700"
+                      />
                     </div>
 
                     {opportunite.lien_infos && (

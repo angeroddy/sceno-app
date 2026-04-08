@@ -156,11 +156,24 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       opportunite: notifOppById.get(notif.opportunite_id) || null,
     }))
 
+    const { data: deletionAuditRows, error: deletionAuditError } = await supabase
+      .from('account_deletions')
+      .select('id, deleted_by, reason, metadata, created_at')
+      .eq('profile_type', 'comedian')
+      .eq('profile_id', comedienId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (deletionAuditError) {
+      console.error('Erreur account_deletions:', deletionAuditError)
+    }
+
     return NextResponse.json({
       comedien,
       achats: achatsEnrichis,
       annonceurs_bloques: annonceursBloques,
       notifications_email: notificationsEnrichies,
+      deletion_audit: deletionAuditRows?.[0] || null,
     })
   } catch (error) {
     console.error('Erreur lors de la récupération du comédien:', error)

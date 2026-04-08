@@ -1,6 +1,5 @@
 import type {
   InscriptionAnnonceurForm,
-  TypeAnnonceur,
 } from "@/app/types"
 
 export const isDevMode = process.env.NODE_ENV !== "production"
@@ -65,19 +64,6 @@ function createFrenchIban(bankCode: string, branchCode: string, accountNumber: s
   const checkDigits = 98 - calculateMod97(numeric)
   return `FR${String(checkDigits).padStart(2, "0")}${bban}`
 }
-
-const PERSONAL_ADVERTISER_SEEDS = [
-  { nom: "Leroy", prenom: "Camille", date_naissance: "1991-04-12", adresse_rue: "14 rue de la Paix", adresse_ville: "Paris", adresse_code_postal: "75008", telephone: "+33 6 12 34 56 78" },
-  { nom: "Bernard", prenom: "Léo", date_naissance: "1989-11-04", adresse_rue: "8 avenue des Lilas", adresse_ville: "Lyon", adresse_code_postal: "69002", telephone: "+33 6 98 76 54 32" },
-  { nom: "Moreau", prenom: "Ines", date_naissance: "1993-07-21", adresse_rue: "27 rue Nationale", adresse_ville: "Lille", adresse_code_postal: "59800", telephone: "+33 6 44 21 10 87" },
-  { nom: "Roussel", prenom: "Hugo", date_naissance: "1987-03-15", adresse_rue: "5 place Graslin", adresse_ville: "Nantes", adresse_code_postal: "44000", telephone: "+33 6 31 87 65 20" },
-  { nom: "Faure", prenom: "Sarah", date_naissance: "1990-09-28", adresse_rue: "19 rue Sainte-Catherine", adresse_ville: "Bordeaux", adresse_code_postal: "33000", telephone: "+33 6 72 18 43 95" },
-  { nom: "Giraud", prenom: "Noah", date_naissance: "1985-01-09", adresse_rue: "42 cours Mirabeau", adresse_ville: "Aix-en-Provence", adresse_code_postal: "13100", telephone: "+33 6 53 20 48 16" },
-  { nom: "Chevalier", prenom: "Manon", date_naissance: "1994-12-02", adresse_rue: "11 rue Foch", adresse_ville: "Montpellier", adresse_code_postal: "34000", telephone: "+33 6 25 67 91 34" },
-  { nom: "Robin", prenom: "Yanis", date_naissance: "1988-06-17", adresse_rue: "7 rue des Tanneurs", adresse_ville: "Strasbourg", adresse_code_postal: "67000", telephone: "+33 6 60 19 74 52" },
-  { nom: "Perrin", prenom: "Julie", date_naissance: "1992-05-30", adresse_rue: "23 rue du Port", adresse_ville: "La Rochelle", adresse_code_postal: "17000", telephone: "+33 6 84 22 50 13" },
-  { nom: "Marchal", prenom: "Théo", date_naissance: "1986-10-11", adresse_rue: "3 rue de Metz", adresse_ville: "Toulouse", adresse_code_postal: "31000", telephone: "+33 6 47 82 15 69" },
-] as const
 
 const COMPANY_ADVERTISER_SEEDS = [
   {
@@ -252,38 +238,21 @@ const COMPANY_ADVERTISER_SEEDS = [
   },
 ] as const
 
-const ADVERTISER_DEMO_FIXTURES_BY_TYPE = {
-  personne_physique: PERSONAL_ADVERTISER_SEEDS.map((seed, index) => ({
-    type_annonceur: "personne_physique" as const,
-    ...seed,
-    adresse_pays: BASE_ADDRESS.pays,
-    nom_titulaire_compte: `${seed.prenom} ${seed.nom}`,
-    iban: createFrenchIban(
-      "3000" + String((index % 7) + 1).padStart(1, "0"),
-      "6000" + String((index % 9) + 1).padStart(1, "0"),
-      `123456789${String(index).padStart(2, "0")}`,
-      String(10 + index).padStart(2, "0")
-    ),
-    bic_swift: FRENCH_BICS[index % FRENCH_BICS.length],
-  })),
-  entreprise: COMPANY_ADVERTISER_SEEDS.map((seed, index) => ({
-    type_annonceur: "entreprise" as const,
-    ...seed,
-    pays_entreprise: BASE_ADDRESS.pays,
-    siege_pays: BASE_ADDRESS.pays,
-    representant_adresse_pays: BASE_ADDRESS.pays,
-    nom_titulaire_compte: seed.nom_entreprise,
-    iban: createFrenchIban(
-      "2004" + String((index % 8) + 1).padStart(1, "0"),
-      "1000" + String((index % 9) + 1).padStart(1, "0"),
-      `987654321${String(index).padStart(2, "0")}`,
-      String(21 + index).padStart(2, "0")
-    ),
-    bic_swift: FRENCH_BICS[(index + 3) % FRENCH_BICS.length],
-  })),
-}
-
-const ADVERTISER_DEMO_SEQUENCE: TypeAnnonceur[] = ["personne_physique", "entreprise"]
+const ADVERTISER_DEMO_FIXTURES = COMPANY_ADVERTISER_SEEDS.map((seed, index) => ({
+  type_annonceur: "entreprise" as const,
+  ...seed,
+  pays_entreprise: BASE_ADDRESS.pays,
+  siege_pays: BASE_ADDRESS.pays,
+  representant_adresse_pays: BASE_ADDRESS.pays,
+  nom_titulaire_compte: seed.nom_entreprise,
+  iban: createFrenchIban(
+    "2004" + String((index % 8) + 1).padStart(1, "0"),
+    "1000" + String((index % 9) + 1).padStart(1, "0"),
+    `987654321${String(index).padStart(2, "0")}`,
+    String(21 + index).padStart(2, "0")
+  ),
+  bic_swift: FRENCH_BICS[(index + 3) % FRENCH_BICS.length],
+}))
 const COMEDIAN_DEMO_FIXTURE_SEEDS = [
   { lastName: "Durand", firstName: "Anaïs", birthDate: "1994-06-18", gender: "feminin", demoLink: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", preferences: { stages: true, formations: true, coachs: true, services: false } },
   { lastName: "Martin", firstName: "Julien", birthDate: "1990-11-22", gender: "masculin", demoLink: "https://vimeo.com/76979871", preferences: { stages: true, formations: false, coachs: false, services: true } },
@@ -326,16 +295,8 @@ const COMEDIAN_DEMO_FIXTURES: DemoComedianPayload[] = COMEDIAN_DEMO_FIXTURE_SEED
 }))
 
 const DEMO_FIXTURE_STORE_PREFIX = "scenio-demo-fixture-cursor"
-const advertiserTypeCursor: Record<"fallback" | TypeAnnonceur, number> = {
-  fallback: 0,
-  personne_physique: 0,
-  entreprise: 0,
-}
-const advertiserTypeLastIndex: Record<"fallback" | TypeAnnonceur, number | null> = {
-  fallback: getStoredValue<number | null>("last-fallback", null),
-  personne_physique: getStoredValue<number | null>("last-personne_physique", null),
-  entreprise: getStoredValue<number | null>("last-entreprise", null),
-}
+let advertiserDemoCursor = getStoredCursor("advertiser", 0)
+let advertiserLastIndex: number | null = getStoredValue<number | null>("last-advertiser", null)
 let comedianDemoCursor = getStoredCursor("comedian", 0)
 let comedianLastIndex: number | null = getStoredValue<number | null>("last-comedian", null)
 
@@ -383,42 +344,25 @@ function setStoredValue<T>(key: string, value: T) {
   }
 }
 
-function getNextIndexAvoidRepeat(
-  key: "fallback" | TypeAnnonceur,
-  length: number,
-  last: number | null
-): { index: number; nextCursor: number; nextLast: number } {
-  const cursor = getStoredCursor(key, advertiserTypeCursor[key])
+function getNextAdvertiserFixtureIndex(length: number): number {
+  const cursor = getStoredCursor("advertiser", advertiserDemoCursor)
   let index = cursor % length
 
-  if (length > 1 && last !== null && index === last) {
+  if (length > 1 && advertiserLastIndex !== null && index === advertiserLastIndex) {
     index = (index + 1) % length
   }
 
-  const nextCursor = cursor + 1
-  advertiserTypeCursor[key] = nextCursor
-  setStoredCursor(key, nextCursor)
-  return { index, nextCursor, nextLast: index }
-}
-
-function getNextAdvertiserFixtureIndex(key: "fallback" | TypeAnnonceur, length: number): number {
-  const { index, nextLast } = getNextIndexAvoidRepeat(key, length, advertiserTypeLastIndex[key])
-  advertiserTypeLastIndex[key] = nextLast
-  setStoredValue(`last-${key}`, nextLast)
+  advertiserDemoCursor = cursor + 1
+  setStoredCursor("advertiser", advertiserDemoCursor)
+  advertiserLastIndex = index
+  setStoredValue("last-advertiser", advertiserLastIndex)
   return index
 }
 
-const getNextAdvertiserFallbackFixture = (): Partial<InscriptionAnnonceurForm> => {
-  const sequenceIndex = getNextAdvertiserFixtureIndex("fallback", ADVERTISER_DEMO_SEQUENCE.length)
-  const fixtureType = ADVERTISER_DEMO_SEQUENCE[sequenceIndex]
-  return getNextAdvertiserFixtureByType(fixtureType)
-}
-
-const getNextAdvertiserFixtureByType = (type: TypeAnnonceur): Partial<InscriptionAnnonceurForm> => {
-  const fixtures = ADVERTISER_DEMO_FIXTURES_BY_TYPE[type]
-  const index = getNextAdvertiserFixtureIndex(type, fixtures.length)
+const getNextAdvertiserFixture = (): Partial<InscriptionAnnonceurForm> => {
+  const index = getNextAdvertiserFixtureIndex(ADVERTISER_DEMO_FIXTURES.length)
   return {
-    ...fixtures[index],
+    ...ADVERTISER_DEMO_FIXTURES[index],
   } as Partial<InscriptionAnnonceurForm>
 }
 
@@ -435,13 +379,8 @@ const getNextComedianFixture = (): DemoComedianPayload => {
   return COMEDIAN_DEMO_FIXTURES[index]
 }
 
-export function getDemoAdvertiserData(
-  preferredType?: TypeAnnonceur
-): Partial<InscriptionAnnonceurForm> {
-  if (preferredType) {
-    return getNextAdvertiserFixtureByType(preferredType)
-  }
-  return getNextAdvertiserFallbackFixture()
+export function getDemoAdvertiserData(): Partial<InscriptionAnnonceurForm> {
+  return getNextAdvertiserFixture()
 }
 
 export function getDemoComedianData(): DemoComedianPayload {

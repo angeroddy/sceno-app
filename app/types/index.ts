@@ -19,6 +19,7 @@ export type OpportunityStatus =
   | 'refusee'
   | 'expiree'
   | 'complete'
+  | 'supprimee'
 
 export type PurchaseStatus =
   | 'en_attente'
@@ -26,9 +27,7 @@ export type PurchaseStatus =
   | 'remboursee'
   | 'annulee'
 
-export type TypeAnnonceur =
-  | 'personne_physique'
-  | 'entreprise'
+export type TypeAnnonceur = 'entreprise'
 
 export type TypeJuridique =
   | 'auto_entrepreneur'
@@ -68,6 +67,10 @@ export interface Comedien {
   date_naissance: string | null
   preferences_opportunites: OpportunityType[]
   email_verifie: boolean
+  compte_supprime: boolean
+  compte_supprime_at: string | null
+  compte_supprime_par: 'self' | 'admin' | null
+  email_anonymise: string | null
   created_at: string
   updated_at: string
 }
@@ -144,7 +147,9 @@ export interface Opportunite {
   type: OpportunityType
   modele: OpportunityModel
   titre: string
+  contenu_mode?: "text" | "image" | "text_image" | "image_text"
   resume: string
+  contenu_image_url?: string | null
   image_url: string | null
   lien_infos: string | null
   prix_base: number
@@ -213,6 +218,17 @@ export interface StripeEvent {
   created_at: string
 }
 
+export interface AccountDeletion {
+  id: string
+  auth_user_id: string
+  profile_type: 'comedian'
+  profile_id: string
+  deleted_by: 'self' | 'admin'
+  reason: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+}
+
 export interface Moderation {
   id: string
   admin_id: string
@@ -252,25 +268,14 @@ export interface InscriptionComedienForm {
 }
 
 export interface InscriptionAnnonceurForm {
-  // Étape 1 : Type d'annonceur
+  // Type d'annonceur
   type_annonceur: TypeAnnonceur
 
-  // Étape 2a : Personne physique (conditionnelle)
-  nom?: string
-  prenom?: string
-  date_naissance?: string
-  adresse_rue?: string
-  adresse_ville?: string
-  adresse_code_postal?: string
-  adresse_pays?: string
-  telephone?: string
-  type_piece_identite?: TypePieceIdentite
-  piece_identite_file?: File
-
-  // Étape 2b : Entreprise (conditionnelle)
+  // Informations entreprise
   nom_formation?: string
   nom_entreprise?: string
   type_juridique?: TypeJuridique
+  telephone?: string
   pays_entreprise?: string
   numero_legal?: string
   siege_rue?: string
@@ -290,29 +295,10 @@ export interface InscriptionAnnonceurForm {
   representant_type_piece_identite?: TypePieceIdentite
   representant_piece_identite_file?: File
 
-  // Étape 3 : Compte et bancaire
+  // Étape 2 : Compte et bancaire
   email: string
   password: string
-  iban: string
-  nom_titulaire_compte: string
-  bic_swift: string
-}
-
-// Types conditionnels pour les formulaires
-export interface InscriptionPersonnePhysiqueForm {
-  type_annonceur: 'personne_physique'
-  nom: string
-  prenom: string
-  date_naissance: string
-  adresse_rue: string
-  adresse_ville: string
-  adresse_code_postal: string
-  adresse_pays: string
-  telephone: string
-  type_piece_identite: TypePieceIdentite
-  piece_identite_file: File
-  email: string
-  password: string
+  confirmPassword: string
   iban: string
   nom_titulaire_compte: string
   bic_swift: string
@@ -342,6 +328,7 @@ export interface InscriptionEntrepriseForm {
   representant_piece_identite_file: File
   email: string
   password: string
+  confirmPassword: string
   iban: string
   nom_titulaire_compte: string
   bic_swift: string
@@ -351,7 +338,9 @@ export interface PublierOpportuniteForm {
   type: OpportunityType
   modele: OpportunityModel
   titre: string
+  contenu_mode?: "text" | "image" | "text_image" | "image_text"
   resume: string
+  contenu_image_url?: string
   image_url?: string
   lien_infos?: string
   prix_base: number
@@ -371,7 +360,17 @@ export interface Database {
     Tables: {
       comediens: {
         Row: Comedien
-        Insert: Omit<Comedien, 'id' | 'created_at' | 'updated_at' | 'email_verifie'>
+        Insert: Omit<
+          Comedien,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'email_verifie'
+          | 'compte_supprime'
+          | 'compte_supprime_at'
+          | 'compte_supprime_par'
+          | 'email_anonymise'
+        >
         Update: Partial<Omit<Comedien, 'id' | 'created_at' | 'updated_at'>>
       }
       annonceurs: {
@@ -425,6 +424,11 @@ export interface Database {
         Row: StripeEvent
         Insert: Omit<StripeEvent, 'id' | 'created_at' | 'processed_at' | 'processing_error'>
         Update: Partial<Pick<StripeEvent, 'processed_at' | 'processing_error'>>
+      }
+      account_deletions: {
+        Row: AccountDeletion
+        Insert: Omit<AccountDeletion, 'id' | 'created_at'>
+        Update: never
       }
       moderations: {
         Row: Moderation
@@ -485,7 +489,8 @@ export const OPPORTUNITY_STATUS_LABELS: Record<OpportunityStatus, string> = {
   validee: 'Validée',
   refusee: 'Refusée',
   expiree: 'Expirée',
-  complete: 'Complète'
+  complete: 'Complète',
+  supprimee: 'Supprimée'
 }
 
 export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
@@ -493,11 +498,6 @@ export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
   confirmee: 'Confirmée',
   remboursee: 'Remboursée',
   annulee: 'Annulée'
-}
-
-export const TYPE_ANNONCEUR_LABELS: Record<TypeAnnonceur, string> = {
-  personne_physique: 'Personne physique',
-  entreprise: 'Entreprise'
 }
 
 export const TYPE_JURIDIQUE_LABELS: Record<TypeJuridique, string> = {

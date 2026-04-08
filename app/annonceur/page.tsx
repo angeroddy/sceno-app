@@ -126,6 +126,23 @@ export default function AnnonceurPage() {
     )
   }
 
+  const getStatusBadge = (statut: string) => {
+    switch (statut) {
+      case 'validee':
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Validée</Badge>
+      case 'en_attente':
+        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">En attente</Badge>
+      case 'refusee':
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Refusée</Badge>
+      case 'expiree':
+        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">Expirée</Badge>
+      case 'complete':
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Complète</Badge>
+      default:
+        return <Badge>{statut}</Badge>
+    }
+  }
+
   const statCards = [
     {
       title: "Total opportunités",
@@ -175,23 +192,6 @@ export default function AnnonceurPage() {
     const tmp = document.createElement("DIV")
     tmp.innerHTML = html
     return tmp.textContent || tmp.innerText || ""
-  }
-
-  const getStatusBadge = (statut: string) => {
-    switch (statut) {
-      case 'validee':
-        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Validée</Badge>
-      case 'en_attente':
-        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">En attente</Badge>
-      case 'refusee':
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Refusée</Badge>
-      case 'expiree':
-        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">Expirée</Badge>
-      case 'complete':
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Complète</Badge>
-      default:
-        return <Badge>{statut}</Badge>
-    }
   }
 
   return (

@@ -101,3 +101,60 @@ export async function GET(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    const { data: annonceurData, error: annonceurError } = await supabase
+      .from('annonceurs')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .single()
+
+    if (annonceurError || !annonceurData) {
+      return NextResponse.json({ error: 'Profil annonceur introuvable' }, { status: 404 })
+    }
+
+    const { id } = await context.params
+
+    const { data: opportunite, error: opportuniteError } = await supabase
+      .from('opportunites')
+      .select('id, statut')
+      .eq('id', id)
+      .eq('annonceur_id', (annonceurData as { id: string }).id)
+      .single()
+
+    if (opportuniteError || !opportunite) {
+      return NextResponse.json({ error: 'Opportunité introuvable' }, { status: 404 })
+    }
+
+    if ((opportunite as { statut: string }).statut === 'supprimee') {
+      return NextResponse.json({ success: true })
+    }
+
+    const { error: updateError } = await supabase
+      .from('opportunites')
+      .update({ statut: 'supprimee' } as never)
+      .eq('id', id)
+      .eq('annonceur_id', (annonceurData as { id: string }).id)
+
+    if (updateError) {
+      console.error('Erreur suppression logique opportunité:', updateError)
+      return NextResponse.json({ error: 'Suppression impossible' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Erreur suppression opportunité:', error)
+    return NextResponse.json({ error: 'Erreur serveur interne' }, { status: 500 })
+  }
+}

@@ -70,9 +70,21 @@ interface ComedienDetails {
   lien_demo: string | null
   preferences_opportunites: string[]
   email_verifie: boolean
+  compte_supprime: boolean
+  compte_supprime_at: string | null
+  compte_supprime_par: "self" | "admin" | null
+  email_anonymise: string | null
   date_naissance: string | null
   created_at: string
   updated_at: string
+}
+
+interface DeletionAudit {
+  id: string
+  deleted_by: "self" | "admin"
+  reason: string | null
+  metadata?: { original_email?: string | null } | null
+  created_at: string
 }
 
 export default function AdminComedienDetailsPage() {
@@ -88,6 +100,7 @@ export default function AdminComedienDetailsPage() {
   const [achats, setAchats] = useState<AchatRow[]>([])
   const [bloques, setBloques] = useState<BloqueRow[]>([])
   const [notifications, setNotifications] = useState<NotificationRow[]>([])
+  const [deletionAudit, setDeletionAudit] = useState<DeletionAudit | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [refundError, setRefundError] = useState("")
@@ -120,6 +133,7 @@ export default function AdminComedienDetailsPage() {
       setAchats(data.achats || [])
       setBloques(data.annonceurs_bloques || [])
       setNotifications(data.notifications_email || [])
+      setDeletionAudit(data.deletion_audit || null)
     } catch (err) {
       console.error("Erreur:", err)
       setError("Une erreur inattendue s'est produite")
@@ -244,6 +258,11 @@ export default function AdminComedienDetailsPage() {
               <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
                 <Mail className="w-4 h-4" />
                 <span>{comedien.email}</span>
+                {comedien.compte_supprime && (
+                  <Badge variant="outline" className="border-orange-300 text-orange-700">
+                    Compte supprimé
+                  </Badge>
+                )}
                 {comedien.email_verifie ? (
                   <Badge className="bg-green-100 text-green-700">Email vérifié</Badge>
                 ) : (
@@ -291,15 +310,15 @@ export default function AdminComedienDetailsPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Date de naissance</p>
-                <p className="font-medium">{formatDate(comedien.date_naissance)}</p>
+                <p className="font-medium">{comedien.compte_supprime ? "Anonymisée" : formatDate(comedien.date_naissance)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Genre</p>
-                <p className="font-medium">{formatGender(comedien.genre)}</p>
+                <p className="font-medium">{comedien.compte_supprime ? "Anonymisé" : formatGender(comedien.genre)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Lien démo</p>
-                {comedien.lien_demo ? (
+                {!comedien.compte_supprime && comedien.lien_demo ? (
                   <a
                     href={comedien.lien_demo}
                     target="_blank"
@@ -310,13 +329,13 @@ export default function AdminComedienDetailsPage() {
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 ) : (
-                  <p className="text-gray-400">Non renseigné</p>
+                  <p className="text-gray-400">{comedien.compte_supprime ? "Supprimé" : "Non renseigné"}</p>
                 )}
               </div>
               <div>
                 <p className="text-xs text-gray-500">Préférences d&apos;opportunités</p>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {(comedien.preferences_opportunites || []).length > 0 ? (
+                  {!comedien.compte_supprime && (comedien.preferences_opportunites || []).length > 0 ? (
                     comedien.preferences_opportunites.map((pref) => (
                       <Badge key={pref} variant="outline" className="text-xs">
                         {OPPORTUNITY_TYPE_LABELS[pref as keyof typeof OPPORTUNITY_TYPE_LABELS] || pref}
@@ -409,6 +428,12 @@ export default function AdminComedienDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
+                <span className="text-gray-600">Statut du compte</span>
+                <span className="font-semibold">
+                  {comedien.compte_supprime ? "Supprimé" : "Actif"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-gray-600">Achats</span>
                 <span className="font-semibold">{achats.length}</span>
               </div>
@@ -420,8 +445,42 @@ export default function AdminComedienDetailsPage() {
                 <span className="text-gray-600">Notifications email</span>
                 <span className="font-semibold">{notifications.length}</span>
               </div>
+              {comedien.compte_supprime_at && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Suppression</span>
+                  <span className="font-semibold">{formatDateTime(comedien.compte_supprime_at)}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {comedien.compte_supprime && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Traçabilité</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-gray-700">
+                <div>
+                  <p className="text-xs text-gray-500">Supprimé par</p>
+                  <p className="font-medium">
+                    {deletionAudit?.deleted_by === "admin" ? "Administrateur" : "Utilisateur"}
+                  </p>
+                </div>
+                {deletionAudit?.metadata?.original_email && (
+                  <div>
+                    <p className="text-xs text-gray-500">Email d&apos;origine</p>
+                    <p className="font-medium break-all">{deletionAudit.metadata.original_email}</p>
+                  </div>
+                )}
+                {deletionAudit?.reason && (
+                  <div>
+                    <p className="text-xs text-gray-500">Raison</p>
+                    <p className="font-medium">{deletionAudit.reason}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

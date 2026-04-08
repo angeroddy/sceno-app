@@ -12,7 +12,7 @@ export default function InscriptionReussiePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F5F0EB] to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <Image src={logoApp} alt="Scenio Logo" height={100} width={100} />
@@ -29,59 +29,12 @@ export default function InscriptionReussiePage() {
           </div>
           <CardTitle className="text-3xl">Inscription réussie !</CardTitle>
           <CardDescription className="text-lg">
-            Un email de confirmation vous a été envoyé
+            Un e-mail de confirmation vient d&apos;être envoyé à l&apos;adresse indiquée.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h3 className="font-semibold text-lg mb-3 text-blue-900">
-              Prochaines étapes :
-            </h3>
-            <ol className="space-y-3 text-sm text-blue-800">
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                  1
-                </span>
-                <span>
-                  <strong>Vérifiez votre boîte email</strong> (y compris vos spams/courrier indésirable)
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                  2
-                </span>
-                <span>
-                  <strong>Cliquez sur le lien de confirmation</strong> dans l&apos;email
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                  3
-                </span>
-                <span>
-                  <strong>Connectez-vous</strong> à votre compte
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                  4
-                </span>
-                <span>
-                  <strong>Complétez votre profil</strong> et publiez votre première opportunité
-                </span>
-              </li>
-            </ol>
-          </div>
-
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              <strong>Vous ne recevez pas l&apos;email ?</strong>
-            </p>
-            <ul className="text-sm text-yellow-700 mt-2 space-y-1 ml-4 list-disc">
-              <li>Vérifiez votre dossier spam/courrier indésirable</li>
-              <li>Attendez quelques minutes (parfois il y a un délai)</li>
-              <li>Vérifiez que l&apos;adresse email est correcte</li>
-            </ul>
+        <CardContent className="space-y-5">
+          <div className="rounded-lg border bg-[#F5F0EB] p-4 text-sm text-gray-700">
+            Vérifiez votre boîte de réception ainsi que vos spams, puis cliquez sur le lien reçu pour activer votre compte. Si le message tarde, patientez quelques minutes avant de vous connecter.
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -100,14 +53,12 @@ export default function InscriptionReussiePage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm text-gray-500 pt-4 border-t">
-            <p>
-              Besoin d&apos;aide ? Contactez-nous à{' '}
-              <a href="mailto:support@scenio.com" className="text-[#E63832] hover:underline">
-                support@scenio.com
-              </a>
-            </p>
-          </div>
+          <p className="text-center text-sm text-gray-500">
+            Besoin d&apos;aide ? Contactez-nous à{" "}
+            <a href="mailto:support@scenio.com" className="text-[#E63832] hover:underline">
+              support@scenio.com
+            </a>
+          </p>
         </CardContent>
       </Card>
     </div>

@@ -117,43 +117,6 @@ describe('stripe-connect helpers', () => {
       expect(retrieve).toHaveBeenCalledWith('acct_new')
     })
 
-    it('préremplit business_type et individual à la création d’un compte personne physique', async () => {
-      const annonceur = createBaseAnnonceur({
-        type_annonceur: 'personne_physique',
-        nom: 'Martin',
-        prenom: 'Lea',
-        date_naissance: '1988-07-14',
-        adresse_rue: '3 rue des Lilas',
-        adresse_ville: 'Lyon',
-        adresse_code_postal: '69001',
-        adresse_pays: 'France',
-        pays_entreprise: null,
-      })
-      const create = jest.fn().mockResolvedValue({ id: 'acct_individual' })
-      const stripe = { accounts: { create } } as any
-
-      await createExpressAccountForAnnonceur(stripe, annonceur)
-
-      expect(create).toHaveBeenCalledWith(expect.objectContaining({
-        business_type: 'individual',
-        country: 'FR',
-        metadata: expect.objectContaining({
-          scenio_onboarding_started: 'false',
-        }),
-        individual: expect.objectContaining({
-          first_name: 'Lea',
-          last_name: 'Martin',
-          dob: { year: 1988, month: 7, day: 14 },
-          address: expect.objectContaining({
-            line1: '3 rue des Lilas',
-            city: 'Lyon',
-            postal_code: '69001',
-            country: 'FR',
-          }),
-        }),
-      }))
-    })
-
     it("n'utilise plus le téléphone de l'organisme comme fallback du représentant", async () => {
       const annonceur = createBaseAnnonceur({
         telephone: '+33123456789',

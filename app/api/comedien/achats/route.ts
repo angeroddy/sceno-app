@@ -32,14 +32,19 @@ export async function GET(request: NextRequest) {
 
     const { data: comedienData, error: comedienError } = await supabase
       .from('comediens')
-      .select('id')
+      .select('id, compte_supprime')
       .eq('auth_user_id', user.id)
       .single()
 
-    if (comedienError || !comedienData) {
+    const comedienRecord = comedienData as (Pick<Comedien, 'id'> & { compte_supprime?: boolean }) | null
+
+    if (comedienError || !comedienRecord) {
       return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
     }
-    const comedien = comedienData as Pick<Comedien, 'id'>
+    if (comedienRecord.compte_supprime) {
+      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
+    }
+    const comedien = comedienRecord as Pick<Comedien, 'id'>
 
     const achatId = request.nextUrl.searchParams.get('achatId')
     let achatsQuery = supabase
@@ -58,6 +63,7 @@ export async function GET(request: NextRequest) {
           image_url,
           date_evenement,
           contact_email,
+          contact_telephone,
           annonceur_id,
           annonceur:annonceurs(nom_formation, email)
         )
@@ -85,6 +91,7 @@ export async function GET(request: NextRequest) {
           image_url: string | null
           date_evenement: string
           contact_email: string
+          contact_telephone: string | null
           annonceur_id: string
           annonceur: { nom_formation: string; email: string } | null
         } | null

@@ -1,6 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  syncEmailVerificationForAuthUser,
+  type AuthProfileSupabase,
+} from '@/app/lib/auth-profile'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -35,58 +39,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && data.user) {
-      // Vérifier si c'est un admin, comédien ou annonceur et mettre à jour email_verifie
-      let userType = 'unknown'
-
-      // Vérifier d'abord si c'est un admin (priorité)
-      const { data: admin } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .maybeSingle()
-
-      if (admin) {
-        userType = 'admin'
-      } else {
-        // Essayer dans la table comediens
-        const { data: comedien } = await supabase
-          .from('comediens')
-          .select('id')
-          .eq('auth_user_id', data.user.id)
-          .maybeSingle()
-
-        if (comedien) {
-          // C'est un comédien
-          userType = 'comedian'
-          const { error: updateError } = await supabase
-            .from('comediens')
-            .update({ email_verifie: true })
-            .eq('auth_user_id', data.user.id)
-
-          if (updateError) {
-            console.error('[AUTH CALLBACK] Erreur mise à jour email_verifie (comedien)')
-          }
-        } else {
-          // Essayer dans la table annonceurs
-          const { data: annonceur } = await supabase
-            .from('annonceurs')
-            .select('id')
-            .eq('auth_user_id', data.user.id)
-            .maybeSingle()
-
-          if (annonceur) {
-            userType = 'advertiser'
-            const { error: updateError } = await supabase
-              .from('annonceurs')
-              .update({ email_verifie: true })
-              .eq('auth_user_id', data.user.id)
-
-            if (updateError) {
-              console.error('[AUTH CALLBACK] Erreur mise à jour email_verifie (annonceur)')
-            }
-          }
-        }
-      }
+      const userType =
+        (await syncEmailVerificationForAuthUser(
+          supabase as unknown as AuthProfileSupabase,
+          data.user
+        )) ?? 'unknown'
 
       // Rediriger vers la page de confirmation avec succès et le type d'utilisateur
       const redirectUrl = `${requestUrl.origin}/auth/confirm?success=true&userType=${userType}`

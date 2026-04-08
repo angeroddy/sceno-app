@@ -111,6 +111,32 @@ describe('useAuth', () => {
       expect(result.current.userType).toBe('advertiser')
     })
 
+    it("déconnecte l'utilisateur si son compte est marqué comme supprimé", async () => {
+      const mockUser = {
+        id: 'deleted-user-id',
+        email: 'deleted@example.com',
+      }
+
+      mockSupabase.auth.getSession.mockResolvedValue({
+        data: { session: { user: mockUser } },
+      })
+      mockSupabase.auth.signOut.mockResolvedValue({ error: null })
+      ;(global as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userType: 'deleted' }),
+      })
+
+      const { result } = renderHook(() => useAuth())
+
+      await waitFor(() => {
+        expect(mockSupabase.auth.signOut).toHaveBeenCalled()
+      })
+
+      expect(result.current.user).toBe(null)
+      expect(result.current.userType).toBe(null)
+      expect(mockRouter.push).toHaveBeenCalledWith('/connexion')
+    })
+
     it('devrait gérer le cas où l\'utilisateur n\'a pas de profil', async () => {
       const mockUser = {
         id: 'test-no-profile-id',

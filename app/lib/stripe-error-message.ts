@@ -35,10 +35,6 @@ export function getReadableStripeError(error: unknown): string {
         return "Stripe refuse le téléphone de l'organisme. Vérifiez le champ « Téléphone de l'organisme » et utilisez un numéro réel au format international (par exemple +33 suivi de 9 chiffres)."
       }
 
-      if (errorParam === 'individual.phone') {
-        return "Stripe refuse le téléphone du titulaire du compte. Vérifiez le numéro saisi et utilisez un numéro réel au format international (par exemple +33 suivi de 9 chiffres)."
-      }
-
       return "Stripe refuse ce numéro de téléphone. Utilisez un numéro réel au format international (par exemple +33 suivi de 9 chiffres). Pour le représentant légal, utilisez son numéro personnel plutôt que celui de l'organisme."
     }
 

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import {
+  deriveOpportunityStatus,
+  isOpportunityConsultableByComedian,
+  isOpportunityVisibleToComedian,
+} from '@/app/lib/opportunity-status'
 import { trackOpportunityView } from '@/app/lib/opportunity-views'
 
 export async function GET(
@@ -23,14 +28,19 @@ export async function GET(
     // Recuperer le comedien courant
     const { data: comedien, error: comedienError } = await supabase
       .from('comediens')
-      .select('id')
+      .select('id, compte_supprime')
       .eq('auth_user_id', user.id)
       .single()
 
-    if (comedienError || !comedien) {
+    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
+
+    if (comedienError || !comedienTyped) {
       return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
     }
-    const comedienTyped = comedien as { id: string }
+    if (comedienTyped.compte_supprime) {
+      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
+    }
+    
 
     // Recuperer les parametres
     const { id } = await context.params
@@ -40,7 +50,6 @@ export async function GET(
       .from('opportunites')
       .select('*, annonceur:annonceurs(nom_formation, email)')
       .eq('id', id)
-      .eq('statut', 'validee')
       .single()
 
     if (opportuniteError || !opportunite) {
@@ -49,7 +58,19 @@ export async function GET(
         { status: 404 }
       )
     }
-    const opportuniteTyped = opportunite as { annonceur_id: string; places_restantes: number }
+    const opportuniteTyped = opportunite as {
+      annonceur_id: string
+      places_restantes: number
+      date_evenement: string
+      statut: string
+    }
+
+    if (!isOpportunityVisibleToComedian(opportuniteTyped.statut as never)) {
+      return NextResponse.json(
+        { error: "Cette opportunite n'existe pas ou n'est plus disponible" },
+        { status: 404 }
+      )
+    }
 
     // Verifier si l'annonceur de cette opportunite est bloque par le comedien
     const { data: blockedRow, error: blockedError } = await supabase
@@ -72,8 +93,19 @@ export async function GET(
     }
 
     const reconciledOpportunity = await reconcileOpportunityPlaces(supabase as never, id)
-    if (reconciledOpportunity) {
-      opportuniteTyped.places_restantes = reconciledOpportunity.places_restantes
+    const nextPlacesRestantes = reconciledOpportunity?.places_restantes ?? opportuniteTyped.places_restantes
+    opportuniteTyped.places_restantes = nextPlacesRestantes
+    opportuniteTyped.statut = deriveOpportunityStatus({
+      statut: opportuniteTyped.statut as never,
+      date_evenement: opportuniteTyped.date_evenement,
+      places_restantes: nextPlacesRestantes,
+    })
+
+    if (!isOpportunityConsultableByComedian(opportuniteTyped.statut as never)) {
+      return NextResponse.json(
+        { error: "Cette opportunité a été supprimée et ne peut plus être consultée." },
+        { status: 410 }
+      )
     }
 
     await trackOpportunityView(supabase as never, id, comedienTyped.id)

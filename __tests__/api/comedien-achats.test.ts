@@ -32,6 +32,28 @@ describe('GET /api/comedien/achats', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Profil comedien introuvable' })
   })
 
+  it('retourne 403 si le compte comédien est supprimé', async () => {
+    ;(createServerSupabaseClient as jest.Mock).mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'auth-1' } }, error: null }),
+      },
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: { id: 'comedien-1', compte_supprime: true }, error: null }),
+          })),
+        })),
+      })),
+    })
+
+    const response = await GET({
+      nextUrl: new URL('http://localhost/api/comedien/achats'),
+    } as any)
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ error: 'Compte supprimé' })
+  })
+
   it('retourne les achats confirmés/remboursés sans achatId', async () => {
     const order = jest.fn().mockResolvedValue({
       data: [{ id: 'achat-1', statut: 'confirmee', opportunite: null }],
