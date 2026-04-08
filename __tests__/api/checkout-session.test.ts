@@ -320,7 +320,7 @@ describe('POST /api/checkout/session', () => {
     const response = await POST(createRequest({ opportuniteId: 'opp-1' }))
 
     expect(response.status).toBe(409)
-    await expect(response.json()).resolves.toEqual({ error: 'Cette opportunite est complete' })
+    await expect(response.json()).resolves.toEqual({ error: 'Cette opportunité est complète' })
   })
 
   it('retourne 404 si l’annonceur de l’opportunité est bloqué', async () => {
@@ -450,7 +450,7 @@ describe('POST /api/checkout/session', () => {
     const response = await POST(createRequest({ opportuniteId: 'opp-1' }))
 
     expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: 'Opportunite indisponible' })
+    await expect(response.json()).resolves.toEqual({ error: 'Opportunité indisponible' })
   })
 
   it('crée une session Stripe avec commission et met à jour l’achat', async () => {
