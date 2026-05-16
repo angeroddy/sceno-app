@@ -24,7 +24,7 @@ describe('getPublicOpportunityDetails', () => {
     }
 
     await expect(getPublicOpportunityDetails(supabase as never, 'opp-404')).resolves.toBeNull()
-    expect(inMock).toHaveBeenCalledWith('statut', ['validee', 'complete'])
+    expect(inMock).toHaveBeenCalledWith('statut', ['validee', 'complete', 'expiree'])
   })
 
   it('retourne l opportunite publique avec les places reconcilees', async () => {
