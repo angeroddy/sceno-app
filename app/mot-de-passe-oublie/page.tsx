@@ -77,7 +77,7 @@ function ForgotPasswordContent() {
     try {
       const supabase = createBrowserSupabaseClient()
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
-        redirectTo: `${window.location.origin}/mot-de-passe-oublie?mode=reset`,
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
       })
 
       if (resetError) {

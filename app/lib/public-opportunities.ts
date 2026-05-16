@@ -1,4 +1,5 @@
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { deriveOpportunityStatus } from '@/app/lib/opportunity-status'
 import type { Annonceur, Opportunite } from '@/app/types'
 
 export type PublicOpportunityDetails = Opportunite & {
@@ -25,7 +26,7 @@ export async function getPublicOpportunityDetails(
     .from('opportunites')
     .select('*, annonceur:annonceurs(nom_formation, email)')
     .eq('id', opportunityId)
-    .in('statut', ['validee', 'complete'])
+    .in('statut', ['validee', 'complete', 'expiree'])
     .maybeSingle()
 
   if (error || !data) {
@@ -36,6 +37,12 @@ export async function getPublicOpportunityDetails(
   if (reconciledOpportunity) {
     data.places_restantes = reconciledOpportunity.places_restantes
   }
+
+  data.statut = deriveOpportunityStatus({
+    statut: data.statut,
+    date_evenement: data.date_evenement,
+    places_restantes: data.places_restantes,
+  })
 
   return data
 }

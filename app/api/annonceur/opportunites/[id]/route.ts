@@ -143,7 +143,10 @@ export async function DELETE(
 
     const { error: updateError } = await supabase
       .from('opportunites')
-      .update({ statut: 'supprimee' } as never)
+      .update({
+        statut: 'supprimee',
+        statut_qualifie_at: new Date().toISOString(),
+      } as never)
       .eq('id', id)
       .eq('annonceur_id', (annonceurData as { id: string }).id)
 

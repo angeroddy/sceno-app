@@ -16,7 +16,11 @@ import {
   Users,
 } from 'lucide-react'
 import { Footer } from '@/app/components/Footer'
-import logoApp from '@/app/assets/images/logoApp2.png'
+import logoApp from '@/app/assets/images/logoApp.png'
+import {
+  buildPublicOpportunityPath,
+  extractOpportunityIdFromPublicParam,
+} from '@/app/lib/public-opportunity-url'
 import { getPublicOpportunityDetails } from '@/app/lib/public-opportunities'
 import {
   getAuthenticatedUserContext,
@@ -42,8 +46,14 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
+  const opportunityId = extractOpportunityIdFromPublicParam(id)
+
+  if (!opportunityId) {
+    return { title: 'Opportunité introuvable' }
+  }
+
   const supabase = await getOpportunityReader()
-  const opportunite = await getPublicOpportunityDetails(supabase as never, id)
+  const opportunite = await getPublicOpportunityDetails(supabase as never, opportunityId)
 
   if (!opportunite) {
     return { title: 'Opportunité introuvable' }
@@ -51,11 +61,12 @@ export async function generateMetadata({
 
   const title = opportunite.titre
   const description = `${opportunite.titre} — proposée par ${opportunite.annonceur?.nom_formation || 'un organisme partenaire'} sur Scenio. Réservez votre place dès maintenant.`
+  const publicOpportunityPath = buildPublicOpportunityPath(opportunite.titre, opportunite.id)
 
   return {
     title,
     description,
-    alternates: { canonical: `/opportunite/${id}` },
+    alternates: { canonical: publicOpportunityPath },
     openGraph: {
       title,
       description,
@@ -105,12 +116,18 @@ export default async function OpportunitePage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const opportunityId = extractOpportunityIdFromPublicParam(id)
+
+  if (!opportunityId) {
+    notFound()
+  }
+
   const [{ userType }, supabase] = await Promise.all([
     getAuthenticatedUserContext(),
     getOpportunityReader(),
   ])
 
-  const opportunite = await getPublicOpportunityDetails(supabase as never, id)
+  const opportunite = await getPublicOpportunityDetails(supabase as never, opportunityId)
 
   if (!opportunite) {
     notFound()
@@ -131,17 +148,20 @@ export default async function OpportunitePage({
   }).format(date)
   const dashboardHref = getDashboardHref(userType, opportunite.id)
   const isSoldOut = opportunite.statut === 'complete' || opportunite.places_restantes <= 0
+  const isExpired = opportunite.statut === 'expiree'
+  const isUnavailable = isSoldOut || isExpired
   const hasDiscount = opportunite.prix_reduit < opportunite.prix_base
-  const primaryHref = userType ? dashboardHref : '/inscription'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://scenio.fr'
+  const publicOpportunityPath = buildPublicOpportunityPath(opportunite.titre, opportunite.id)
+  const publicOpportunityUrl = `${siteUrl}${publicOpportunityPath}`
+  const primaryHref = userType ? dashboardHref : `/inscription?next=${encodeURIComponent(publicOpportunityPath)}`
   const primaryLabel = userType === 'comedian'
     ? 'Voir et réserver dans mon espace'
     : userType
       ? 'Retourner à mon espace'
-      : isSoldOut
+      : isUnavailable
         ? "Créer un compte pour voir d'autres opportunités"
-        : 'Créer un compte pour réserver'
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://scenio.fr'
+        : 'Réserver'
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] via-white to-[#F5F0EB]">
@@ -160,10 +180,10 @@ export default async function OpportunitePage({
             '@type': 'Offer',
             price: opportunite.prix_reduit,
             priceCurrency: 'EUR',
-            availability: isSoldOut
+            availability: isUnavailable
               ? 'https://schema.org/SoldOut'
               : 'https://schema.org/InStock',
-            url: `${siteUrl}/opportunite/${opportunite.id}`,
+            url: publicOpportunityUrl,
           },
           ...(opportunite.image_url ? { image: opportunite.image_url } : {}),
         }}
@@ -183,12 +203,12 @@ export default async function OpportunitePage({
               '@type': 'ListItem',
               position: 2,
               name: opportunite.titre,
-              item: `${siteUrl}/opportunite/${opportunite.id}`,
+              item: publicOpportunityUrl,
             },
           ],
         }}
       />
-      <header className="border-b border-black/10 bg-white/90 backdrop-blur">
+      <header className="border-b border-black/10 bg-[#E6DAD0] backdrop-blur">
         <div className="container mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3">
             <Image
@@ -250,9 +270,6 @@ export default async function OpportunitePage({
                 <div className="absolute left-4 top-4 flex flex-wrap gap-2">
                   <Badge className="bg-black text-white hover:bg-black">
                     {OPPORTUNITY_TYPE_LABELS[opportunite.type as OpportunityType]}
-                  </Badge>
-                  <Badge className={isSoldOut ? 'bg-blue-600 text-white hover:bg-blue-600' : 'bg-green-600 text-white hover:bg-green-600'}>
-                    {isSoldOut ? 'Complet' : 'Réservable'}
                   </Badge>
                 </div>
               </div>
@@ -425,11 +442,11 @@ export default async function OpportunitePage({
                   </div>
                 </div>
 
-                <div className={`rounded-2xl p-4 text-sm ${isSoldOut ? 'bg-blue-50 text-blue-900' : 'bg-green-50 text-green-900'}`}>
-                  {isSoldOut
-                    ? 'Cette opportunité est actuellement complète. Vous pouvez tout de même créer un compte pour recevoir les prochaines offres.'
-                    : `${opportunite.places_restantes} place(s) restante(s) à réserver via votre espace Scenio.`}
-                </div>
+                {!isUnavailable && (
+                  <div className="rounded-2xl bg-green-50 p-4 text-sm text-green-900">
+                    {`${opportunite.places_restantes} place(s) restante(s) à réserver via votre espace Scenio.`}
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <Button className="w-full bg-[#E63832] text-white hover:bg-[#E63832]/90" asChild>
@@ -465,12 +482,14 @@ export default async function OpportunitePage({
                       {OPPORTUNITY_MODEL_LABELS[opportunite.modele]}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Disponibilité</span>
-                    <span className="font-medium text-gray-950">
-                      {isSoldOut ? 'Complète' : `${opportunite.places_restantes} place(s)`}
-                    </span>
-                  </div>
+                  {!isUnavailable && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Disponibilité</span>
+                      <span className="font-medium text-gray-950">
+                        {`${opportunite.places_restantes} place(s)`}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

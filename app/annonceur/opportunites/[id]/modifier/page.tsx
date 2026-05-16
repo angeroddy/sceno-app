@@ -386,8 +386,8 @@ export default function ModifierOpportunitePage() {
       setError("Le modèle 'Dernière minute' n'est autorisé que si l'événement est dans 72h.")
       return false
     }
-    if (formData.modele === 'pre_vente' && diffDays < 56) {
-      setError("Le modèle 'Prévente' n'est autorisé que si l'événement est à au moins 8 semaines.")
+    if (formData.modele === 'pre_vente' && diffDays < 28) {
+      setError("Le modèle 'Prévente' n'est autorisé que si l'événement est à au moins 1 mois.")
       return false
     }
     if (!formData.contact_email.trim()) {

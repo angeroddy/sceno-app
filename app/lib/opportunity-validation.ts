@@ -144,11 +144,11 @@ export const createOpportunitySchema = z
       })
     }
 
-    if (value.modele === "pre_vente" && daysUntilEvent < 56) {
+    if (value.modele === "pre_vente" && daysUntilEvent < 28) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["modele"],
-        message: "Le mode prévente est réservé aux événements à au moins 8 semaines",
+        message: "Le mode prévente est réservé aux événements à au moins 1 mois",
       })
     }
   })

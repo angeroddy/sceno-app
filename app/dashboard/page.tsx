@@ -25,11 +25,11 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { deriveOpportunityStatus } from "@/app/lib/opportunity-status"
+import { ShareOpportunityUrlButton } from "@/components/share-opportunity-url-button"
 import {
   OpportuniteWithAnnonceur,
   OPPORTUNITY_TYPE_LABELS,
   OPPORTUNITY_MODEL_LABELS,
-  OPPORTUNITY_STATUS_LABELS,
   OpportunityType,
   OpportunityModel,
   OpportunityStatus,
@@ -71,11 +71,12 @@ interface PurchasedTicket {
   time: string
   location: string
   price: string
-  purchasedAt: string
   contactEmail: string
   contactPhone: string
   status: "confirmee" | "remboursee"
 }
+
+const TICKET_TIME_ZONE = "Europe/Paris"
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
@@ -207,7 +208,6 @@ export default function DashboardPage() {
           ? new Date(achat.opportunite.date_evenement)
           : new Date()
         const organizer = achat.opportunite?.annonceur?.nom_formation || "Organisme"
-        const purchaseDate = new Date(achat.created_at)
 
         return {
           id: achat.id,
@@ -216,13 +216,24 @@ export default function DashboardPage() {
           title: achat.opportunite?.titre || "Opportunité",
           organizer,
           image: achat.opportunite?.image_url || null,
-          date: eventDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }),
-          dateDay: eventDate.getDate().toString().padStart(2, "0"),
-          dateMonth: eventDate.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "").toUpperCase(),
-          time: eventDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          date: eventDate.toLocaleDateString("fr-FR", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            timeZone: TICKET_TIME_ZONE,
+          }),
+          dateDay: new Intl.DateTimeFormat("fr-FR", { day: "2-digit", timeZone: TICKET_TIME_ZONE }).format(eventDate),
+          dateMonth: new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: TICKET_TIME_ZONE })
+            .format(eventDate)
+            .replace(".", "")
+            .toUpperCase(),
+          time: eventDate.toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: TICKET_TIME_ZONE,
+          }),
           location: organizer,
           price: `${achat.prix_paye.toFixed(2)}€`,
-          purchasedAt: `${purchaseDate.toLocaleDateString("fr-FR")} ${purchaseDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`,
           contactEmail: achat.opportunite?.contact_email || "",
           contactPhone: achat.opportunite?.contact_telephone || "",
           status: achat.statut
@@ -488,15 +499,18 @@ export default function DashboardPage() {
                         const isExpired = opportunity.status === "expiree"
                         const isComplete = opportunity.status === "complete"
                         const isRemoved = opportunity.status === "supprimee"
-                        const hasStatusOverlay = isExpired || isComplete || isRemoved
-                        const bookingDisabled = isExpired || isComplete || isRemoved
-                        const bookingLabel = isRemoved
-                          ? "Non consultable"
+                        const hasUnavailableVisual = isExpired || isComplete || isRemoved
+                        const unavailableLabel = isRemoved
+                          ? "Supprimée"
                           : isExpired
                             ? "Expirée"
                             : isComplete
                               ? "Complet"
-                              : confirmedOpportunityIds.has(opportunity.id)
+                              : null
+                        const bookingDisabled = isExpired || isComplete || isRemoved
+                        const bookingLabel = bookingDisabled
+                          ? "Indisponible"
+                          : confirmedOpportunityIds.has(opportunity.id)
                                 ? "Déjà réservé"
                                 : bookingOpportunityId === opportunity.id
                                   ? "Paiement..."
@@ -520,8 +534,8 @@ export default function DashboardPage() {
                               fill
                               className={
                                 `object-cover transition-transform duration-300 cursor-pointer ${
-                                  hasStatusOverlay
-                                    ? "scale-105 blur-[2px] brightness-[0.55]"
+                                  hasUnavailableVisual
+                                    ? "scale-105 blur-[2px] grayscale brightness-[0.72]"
                                     : "group-hover:scale-105"
                                 }`
                               }
@@ -531,33 +545,28 @@ export default function DashboardPage() {
                           ) : (
                             <div
                               className={`w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB] ${
-                                hasStatusOverlay ? "brightness-[0.8]" : ""
+                                hasUnavailableVisual ? "grayscale brightness-[0.85]" : ""
                               }`}
                             >
                               <Calendar className="w-16 h-16 text-gray-400" />
                             </div>
                           )}
 
-                          {hasStatusOverlay && (
-                            <>
-                              <div className="absolute inset-0 bg-slate-950/35" />
-                              <div className="absolute inset-0 z-10 flex items-center justify-center px-6">
-                                <span className="text-center text-4xl font-black tracking-[0.35em] text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)] md:text-5xl">
-                                  {isComplete ? "COMPLET" : isRemoved ? "SUPPRIMÉE" : "EXPIRÉE"}
-                                </span>
-                              </div>
-                            </>
+                          {unavailableLabel && (
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/15 px-6">
+                              <span className="text-center text-3xl font-normal italic text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] md:text-4xl">
+                                {unavailableLabel}
+                              </span>
+                            </div>
                           )}
 
-                          <div className="absolute bottom-4 left-4 z-10">
-                            <span className="text-white text-sm font-medium bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
-                              {isRemoved
-                                ? "Annonce supprimée"
-                                : isComplete
-                                ? "Complet"
-                                : `${opportunity.placesLeft} place${opportunity.placesLeft > 1 ? "s" : ""} restante${opportunity.placesLeft > 1 ? "s" : ""}`}
-                            </span>
-                          </div>
+                          {!hasUnavailableVisual && (
+                            <div className="absolute bottom-4 left-4 z-10">
+                              <span className="text-white text-sm font-medium bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
+                                {`${opportunity.placesLeft} place${opportunity.placesLeft > 1 ? "s" : ""} restante${opportunity.placesLeft > 1 ? "s" : ""}`}
+                              </span>
+                            </div>
+                          )}
 
                           {opportunity.discount > 0 && (
                             <div className="absolute top-4 right-4 z-10">
@@ -583,23 +592,6 @@ export default function DashboardPage() {
                           >
                             {OPPORTUNITY_MODEL_LABELS[opportunity.model]}
                           </Badge>
-                          {opportunity.status !== "validee" && (
-                            <Badge
-                              className={
-                                opportunity.status === "expiree" || opportunity.status === "supprimee"
-                                  ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
-                                  : opportunity.status === "complete"
-                                    ? "bg-slate-800 text-white hover:bg-slate-800"
-                                    : "bg-slate-100 text-slate-700 hover:bg-slate-100"
-                              }
-                            >
-                              {opportunity.status === "complete"
-                                ? "Complet"
-                                : opportunity.status === "supprimee"
-                                  ? "Annonce supprimée"
-                                  : OPPORTUNITY_STATUS_LABELS[opportunity.status]}
-                            </Badge>
-                          )}
                         </div>
 
                         <div className="flex items-start justify-between gap-3">
@@ -677,14 +669,27 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <div className="flex gap-2 pt-2">
-                          <Link href={`/dashboard/opportunites/${opportunity.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <Link href={`/dashboard/opportunites/${opportunity.id}`} onClick={(e) => e.stopPropagation()}>
                             <Button variant="outline" className="w-full">
                               Voir détails
                             </Button>
                           </Link>
+                          {isRemoved ? (
+                            <Button variant="outline" className="w-full" disabled>
+                              Partager
+                            </Button>
+                          ) : (
+                            <ShareOpportunityUrlButton
+                              opportunityId={opportunity.id}
+                              title={opportunity.title}
+                              text={`Découvre cette opportunité sur Scenio: ${opportunity.title}`}
+                              className="w-full"
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          )}
                           <Button
-                            className="flex-1 bg-[#E63832] hover:bg-[#E63832]/90"
+                            className="col-span-2 bg-[#E63832] hover:bg-[#E63832]/90"
                             disabled={bookingDisabled || bookingOpportunityId === opportunity.id || confirmedOpportunityIds.has(opportunity.id)}
                             onClick={(e) => {
                               e.stopPropagation()
@@ -777,10 +782,6 @@ export default function DashboardPage() {
                               <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4" />
                                 <span>{ticket.location}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Tag className="w-4 h-4" />
-                                <span>Reçu du {ticket.purchasedAt}</span>
                               </div>
                             </div>
 

@@ -78,6 +78,19 @@ type AdvertiserField =
 
 type AdvertiserErrors = Partial<Record<AdvertiserField, string>>
 
+function withFinalPeriod(message: string) {
+  return /[.!?…]$/.test(message) ? message : `${message}.`
+}
+
+function withFinalPeriods(errors: AdvertiserErrors): AdvertiserErrors {
+  return Object.fromEntries(
+    Object.entries(errors).map(([field, message]) => [
+      field,
+      message ? withFinalPeriod(message) : message,
+    ])
+  ) as AdvertiserErrors
+}
+
 const ENTERPRISE_STEP_FIELDS: AdvertiserField[] = [
   "nom_formation",
   "nom_entreprise",
@@ -235,7 +248,7 @@ export function AdvertiserSignupForm({
       errors.bic_swift = "Le format du code BIC/SWIFT n'est pas valide"
     }
 
-    return errors
+    return withFinalPeriods(errors)
   }
 
   const getCurrentStepFields = (): AdvertiserField[] =>

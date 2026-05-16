@@ -68,7 +68,7 @@ describe('ForgotPasswordPage', () => {
       expect(mockSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith(
         'test@example.com',
         expect.objectContaining({
-          redirectTo: `${window.location.origin}/mot-de-passe-oublie?mode=reset`,
+          redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
         })
       )
     })

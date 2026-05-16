@@ -11,7 +11,7 @@ function createMockSupabase({
   comedian = null,
 }: {
   admin?: { id: string } | null
-  advertiser?: { id: string } | null
+  advertiser?: { id: string; compte_supprime?: boolean | null } | null
   comedian?: { id: string; compte_supprime?: boolean | null } | null
 } = {}) {
   const update = jest.fn().mockResolvedValue({ error: null })
@@ -64,6 +64,14 @@ describe('auth-profile helpers', () => {
   it("retourne deleted si le profil comédien est marqué comme supprimé", async () => {
     const { supabase } = createMockSupabase({
       comedian: { id: 'comedien-1', compte_supprime: true },
+    })
+
+    await expect(resolveUserTypeForAuthUser(supabase, 'auth-user-1')).resolves.toBe('deleted')
+  })
+
+  it("retourne deleted si le profil annonceur est marqué comme supprimé", async () => {
+    const { supabase } = createMockSupabase({
+      advertiser: { id: 'annonceur-1', compte_supprime: true },
     })
 
     await expect(resolveUserTypeForAuthUser(supabase, 'auth-user-1')).resolves.toBe('deleted')

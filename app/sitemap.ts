@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next"
+import { buildPublicOpportunityPath } from "@/app/lib/public-opportunity-url"
 import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
 import { createServerSupabaseClient } from "@/app/lib/supabase"
 
@@ -16,12 +17,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const { data: opportunites } = await supabase
     .from("opportunites")
-    .select("id, updated_at")
+    .select("id, titre, updated_at")
     .in("statut", ["validee", "complete"])
 
   const opportuniteEntries: MetadataRoute.Sitemap = (opportunites ?? []).map(
-    (opp: { id: string; updated_at: string }) => ({
-      url: `${SITE_URL}/opportunite/${opp.id}`,
+    (opp: { id: string; titre: string; updated_at: string }) => ({
+      url: `${SITE_URL}${buildPublicOpportunityPath(opp.titre, opp.id)}`,
       lastModified: new Date(opp.updated_at),
       changeFrequency: "daily" as const,
       priority: 0.8,

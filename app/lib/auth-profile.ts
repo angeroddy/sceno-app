@@ -38,11 +38,12 @@ export async function resolveUserTypeForAuthUser(
 ): Promise<UserType> {
   const [adminResult, annonceurResult, comedienResult] = await Promise.all([
     supabase.from("admins").select("id").eq("auth_user_id", userId).maybeSingle(),
-    supabase.from("annonceurs").select("id").eq("auth_user_id", userId).maybeSingle(),
+    supabase.from("annonceurs").select("id, compte_supprime").eq("auth_user_id", userId).maybeSingle(),
     supabase.from("comediens").select("id, compte_supprime").eq("auth_user_id", userId).maybeSingle(),
   ])
 
   if (adminResult.data) return "admin"
+  if (annonceurResult.data?.compte_supprime) return "deleted"
   if (annonceurResult.data) return "advertiser"
   if (comedienResult.data?.compte_supprime) return "deleted"
   if (comedienResult.data) return "comedian"

@@ -94,7 +94,10 @@ export async function POST(request: Request) {
       const ids = expiredRows.map((r) => r.id)
       await supabase
         .from("opportunites")
-        .update({ statut: "expiree" } as unknown as never)
+        .update({
+          statut: "expiree",
+          statut_qualifie_at: now.toISOString(),
+        } as unknown as never)
         .in("id", ids)
 
       results.expirees = ids.length

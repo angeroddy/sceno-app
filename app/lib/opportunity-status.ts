@@ -46,3 +46,20 @@ export function isOpportunityConsultableByComedian(status: OpportunityStatus) {
 export function isOpportunityReservableByComedian(status: OpportunityStatus) {
   return status === 'validee'
 }
+
+export function isQualifiedStatus(status: OpportunityStatus) {
+  return status === 'expiree' || status === 'complete' || status === 'supprimee'
+}
+
+export function isWithinQualifiedStatusVisibilityWindow(
+  qualifiedAt: string | null | undefined,
+  now = new Date()
+) {
+  if (!qualifiedAt) return true
+
+  const qualifiedDate = new Date(qualifiedAt)
+  if (Number.isNaN(qualifiedDate.getTime())) return true
+
+  const visibleUntil = qualifiedDate.getTime() + 72 * 60 * 60 * 1000
+  return visibleUntil > now.getTime()
+}

@@ -131,6 +131,10 @@ export interface Annonceur {
   stripe_charges_enabled: boolean
   stripe_payouts_enabled: boolean
   stripe_details_submitted: boolean
+  compte_supprime?: boolean
+  compte_supprime_at?: string | null
+  compte_supprime_par?: 'self' | 'admin' | null
+  email_anonymise?: string | null
 }
 
 export interface Admin {
@@ -161,6 +165,7 @@ export interface Opportunite {
   contact_telephone: string | null
   contact_email: string
   statut: OpportunityStatus
+  statut_qualifie_at: string | null
   created_at: string
   updated_at: string
 }
@@ -221,7 +226,7 @@ export interface StripeEvent {
 export interface AccountDeletion {
   id: string
   auth_user_id: string
-  profile_type: 'comedian'
+  profile_type: 'comedian' | 'advertiser'
   profile_id: string
   deleted_by: 'self' | 'admin'
   reason: string | null
@@ -387,6 +392,10 @@ export interface Database {
           | 'stripe_charges_enabled'
           | 'stripe_payouts_enabled'
           | 'stripe_details_submitted'
+          | 'compte_supprime'
+          | 'compte_supprime_at'
+          | 'compte_supprime_par'
+          | 'email_anonymise'
         >
         Update: Partial<Omit<Annonceur, 'id' | 'auth_user_id' | 'created_at' | 'updated_at'>>
       }
@@ -397,7 +406,7 @@ export interface Database {
       }
       opportunites: {
         Row: Opportunite
-        Insert: Omit<Opportunite, 'id' | 'created_at' | 'updated_at' | 'reduction_pourcentage' | 'statut'> & { statut?: OpportunityStatus }
+        Insert: Omit<Opportunite, 'id' | 'created_at' | 'updated_at' | 'reduction_pourcentage' | 'statut' | 'statut_qualifie_at'> & { statut?: OpportunityStatus; statut_qualifie_at?: string | null }
         Update: Partial<Omit<Opportunite, 'id' | 'created_at' | 'updated_at' | 'reduction_pourcentage'>>
       }
       achats: {

@@ -83,4 +83,36 @@ describe('GET /auth/callback', () => {
       'http://localhost/auth/confirm?success=true&userType=comedian'
     )
   })
+
+  it('redirige vers le formulaire de nouveau mot de passe pour un callback recovery', async () => {
+    ;(createServerClient as jest.Mock).mockReturnValue({
+      auth: {
+        exchangeCodeForSession: jest.fn().mockResolvedValue({
+          data: { user: { id: 'auth-1' } },
+          error: null,
+        }),
+      },
+      from: jest.fn((table: string) => {
+        if (table === 'admins' || table === 'annonceurs' || table === 'comediens') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              })),
+            })),
+          }
+        }
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    })
+
+    const response = await GET({
+      url: 'http://localhost/auth/callback?code=abc123&type=recovery&next=/mot-de-passe-oublie?mode=reset',
+    } as any)
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/mot-de-passe-oublie?mode=reset'
+    )
+  })
 })

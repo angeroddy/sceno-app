@@ -100,9 +100,10 @@ describe('DashboardPage', () => {
       'href',
       '/dashboard/opportunites/opp-1'
     )
+    expect(screen.queryByText(/Reçu du/i)).not.toBeInTheDocument()
   })
 
-  it("affiche les statuts expirée, complet et annonce supprimée sur les cards comédien", async () => {
+  it("affiche les statuts qualifiés en lettrage discret sur les vignettes comédien", async () => {
     ;(global as any).fetch = jest.fn().mockImplementation((input: string) => {
       if (input.includes('/api/comedien/achats')) {
         return Promise.resolve({
@@ -147,7 +148,7 @@ describe('DashboardPage', () => {
               image_url: null,
               lien_infos: null,
               contact_email: 'contact@orga.fr',
-              date_evenement: '2026-04-10T18:00:00.000Z',
+              date_evenement: '2099-04-10T18:00:00.000Z',
               statut: 'complete',
               annonceur: { nom_formation: 'Org B' },
             },
@@ -164,7 +165,7 @@ describe('DashboardPage', () => {
               image_url: null,
               lien_infos: null,
               contact_email: 'contact@orga.fr',
-              date_evenement: '2026-04-18T18:00:00.000Z',
+              date_evenement: '2099-04-18T18:00:00.000Z',
               statut: 'supprimee',
               annonceur: { nom_formation: 'Org C' },
             },
@@ -176,11 +177,12 @@ describe('DashboardPage', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findAllByText('Expirée')).not.toHaveLength(0)
+    await screen.findByText('Stage expiré')
+
+    expect(screen.getAllByText('Expirée').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Complet').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Annonce supprimée').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Non consultable' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^Expirée$/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^Complet$/i })).toBeDisabled()
+    expect(screen.getAllByText('Supprimée').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Annonce supprimée')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Indisponible' })).toHaveLength(3)
   })
 })

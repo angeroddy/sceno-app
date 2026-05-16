@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react"
+import { AppModal } from "@/components/ui/app-modal"
+import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle, Trash2 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import {
   TYPE_JURIDIQUE_LABELS,
@@ -157,6 +158,9 @@ export default function ParametresPage() {
   const [stripeActionLoading, setStripeActionLoading] = useState(false)
   const [stripeError, setStripeError] = useState("")
   const [formData, setFormData] = useState<AnnonceurSettingsForm>(EMPTY_FORM_DATA)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
 
   const lockedEmail = normalizeEmail(annonceur?.email || formData.email)
   const maxBirthDate = getTodayIsoDate()
@@ -233,34 +237,6 @@ export default function ParametresPage() {
       setStripeError(fetchError instanceof Error ? fetchError.message : "Erreur lors du chargement Stripe")
     } finally {
       setStripeLoading(false)
-    }
-  }
-
-  const handleCreateOrSyncStripeAccount = async () => {
-    try {
-      setStripeActionLoading(true)
-      setStripeError("")
-
-      const response = await fetch("/api/stripe/connect/account", {
-        method: "POST",
-      })
-      const data = await response.json() as StripeConnectStatus | StripeApiErrorResponse
-
-      if (!response.ok) {
-        const message =
-          (data as StripeApiErrorResponse)?.param === "representative.phone"
-            ? "Stripe refuse le téléphone du représentant légal. Vérifiez le champ « Téléphone du représentant »."
-            : (data as StripeApiErrorResponse)?.error || "Impossible de créer le compte Stripe"
-        setStripeError(message)
-        return
-      }
-
-      setStripeStatus(data as StripeConnectStatus)
-      await fetchStripeStatus(true)
-    } catch (actionError) {
-      setStripeError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
-    } finally {
-      setStripeActionLoading(false)
     }
   }
 
@@ -562,6 +538,32 @@ export default function ParametresPage() {
       setError("Une erreur inattendue s'est produite")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    try {
+      setDeleteLoading(true)
+      setDeleteError("")
+
+      const response = await fetch("/api/annonceur/compte", { method: "DELETE" })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Suppression du compte impossible.")
+      }
+
+      const supabase = createBrowserSupabaseClient()
+      await supabase.auth.signOut().catch(() => undefined)
+      window.location.href = "/connexion"
+    } catch (deleteAccountError) {
+      console.error("Erreur suppression compte annonceur:", deleteAccountError)
+      setDeleteError(
+        deleteAccountError instanceof Error
+          ? deleteAccountError.message
+          : "Suppression du compte impossible."
+      )
+      setDeleteLoading(false)
     }
   }
 
@@ -1014,45 +1016,54 @@ export default function ParametresPage() {
 
           {annonceur?.identite_verifiee ? (
             <div id="stripe-connect" className="scroll-mt-28">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Paiements Stripe Connect</CardTitle>
+              <Card className="overflow-hidden border-[#635BFF]/30 bg-[linear-gradient(135deg,#F7F5FF_0%,#F6FAFF_45%,#FFFFFF_100%)] shadow-[0_18px_45px_rgba(99,91,255,0.12)]">
+                <CardHeader className="border-b border-[#635BFF]/15 bg-white/60">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle className="text-[#0A2540]">Paiements Stripe Connect</CardTitle>
+                    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#635BFF] px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
+                      <span className="font-bold tracking-normal">stripe</span>
+                      <span className="h-4 w-px bg-white/35" />
+                      <span className="text-xs font-medium">Connect</span>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {stripeLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-[#425466]">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Chargement du statut Stripe...</span>
                     </div>
                   ) : (
                     <>
-                      <div className="text-sm text-gray-700 space-y-1">
-                        <p>
-                          Compte Connect:{" "}
-                          <span className={stripeStatus?.connected ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                      <div className="grid gap-3 text-sm text-[#425466] sm:grid-cols-2 lg:grid-cols-4">
+                        <p className="rounded-md border border-[#635BFF]/15 bg-white/75 p-3">
+                          <span className="block text-xs font-medium uppercase text-[#697386]">Compte Connect</span>
+                          <span className={stripeStatus?.connected ? "text-[#00856F] font-semibold" : "text-[#B54708] font-semibold"}>
                             {stripeStatus?.connected ? "Créé" : "Non créé"}
                           </span>
                         </p>
-                        <p>
-                          Onboarding:{" "}
-                          <span className={stripeStatus?.stripe_onboarding_complete ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        <p className="rounded-md border border-[#635BFF]/15 bg-white/75 p-3">
+                          <span className="block text-xs font-medium uppercase text-[#697386]">Onboarding</span>
+                          <span className={stripeStatus?.stripe_onboarding_complete ? "text-[#00856F] font-semibold" : "text-[#B54708] font-semibold"}>
                             {stripeStatus?.stripe_onboarding_complete ? "Terminé" : "Incomplet"}
                           </span>
                         </p>
-                        <p>
-                          Paiements entrants:{" "}
-                          <span className={stripeStatus?.stripe_charges_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        <p className="rounded-md border border-[#635BFF]/15 bg-white/75 p-3">
+                          <span className="block text-xs font-medium uppercase text-[#697386]">Paiements entrants</span>
+                          <span className={stripeStatus?.stripe_charges_enabled ? "text-[#00856F] font-semibold" : "text-[#B54708] font-semibold"}>
                             {stripeStatus?.stripe_charges_enabled ? "Activés" : "Désactivés"}
                           </span>
                         </p>
-                        <p>
-                          Virements:{" "}
-                          <span className={stripeStatus?.stripe_payouts_enabled ? "text-green-700 font-medium" : "text-orange-700 font-medium"}>
+                        <p className="rounded-md border border-[#635BFF]/15 bg-white/75 p-3">
+                          <span className="block text-xs font-medium uppercase text-[#697386]">Virements</span>
+                          <span className={stripeStatus?.stripe_payouts_enabled ? "text-[#00856F] font-semibold" : "text-[#B54708] font-semibold"}>
                             {stripeStatus?.stripe_payouts_enabled ? "Activés" : "Désactivés"}
                           </span>
                         </p>
+                      </div>
+                      <div className="text-sm text-[#425466]">
                         {stripeStatus?.stripe_account_id && (
-                          <p className="text-xs text-gray-500 font-mono">
+                          <p className="inline-flex rounded-md border border-[#635BFF]/15 bg-white/80 px-2.5 py-1 text-xs font-mono text-[#697386]">
                             {stripeStatus.stripe_account_id}
                           </p>
                         )}
@@ -1063,7 +1074,7 @@ export default function ParametresPage() {
                           <Button
                             type="button"
                             variant="outline"
-                            className="w-full sm:w-auto"
+                            className="w-full border-[#635BFF]/30 text-[#635BFF] hover:bg-[#F7F5FF] hover:text-[#4F46E5] sm:w-auto"
                             onClick={handleOpenStripeDashboard}
                             disabled={stripeActionLoading}
                           >
@@ -1071,53 +1082,43 @@ export default function ParametresPage() {
                             Ouvrir mon dashboard Stripe
                           </Button>
                         ) : (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full sm:w-auto"
-                              onClick={handleCreateOrSyncStripeAccount}
-                              disabled={stripeActionLoading}
-                            >
-                              {stripeActionLoading ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Synchronisation...
-                                </>
-                              ) : (
-                                "Créer / Synchroniser le compte Stripe"
-                              )}
-                            </Button>
-
-                            <Button
-                              type="button"
-                              className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
-                              onClick={handleStartStripeOnboarding}
-                              disabled={stripeActionLoading}
-                            >
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              Compléter l&apos;onboarding Stripe
-                            </Button>
-                          </>
+                          <Button
+                            type="button"
+                            className="w-full bg-[#635BFF] text-white shadow-sm hover:bg-[#4F46E5] sm:w-auto"
+                            onClick={handleStartStripeOnboarding}
+                            disabled={stripeActionLoading}
+                          >
+                            {stripeActionLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Redirection vers Stripe...
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                Configurer mes paiements Stripe
+                              </>
+                            )}
+                          </Button>
                         )}
                       </div>
 
                       {stripeDashboardReady ? (
-                        <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
+                        <div className="rounded-md border border-[#00D924]/25 bg-[#F0FFF4] p-3 text-sm text-[#006B5B]">
                           Votre compte Stripe est prêt à recevoir les paiements.
                         </div>
                       ) : stripeConnected ? (
                         <div className="space-y-3">
-                          <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
+                          <div className="rounded-md border border-[#FFB020]/30 bg-white/80 p-3 text-sm text-[#8A3A00]">
                             {stripeStatus?.stripe_has_pending_representative_verification
                               ? "Stripe attend encore la vérification du représentant de compte avant d'activer les paiements."
                               : "Le compte Stripe est créé, mais il manque encore une validation ou une vérification avant l'activation des paiements."}
                           </div>
 
                           {summarizedPendingStripeItems.length > 0 && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
-                              <p className="font-medium mb-2">Actions restantes côté Stripe</p>
-                              <p className="mb-3 text-amber-700">
+                            <div className="rounded-md border border-[#635BFF]/20 bg-white/80 p-3 text-sm text-[#425466]">
+                              <p className="mb-2 font-semibold text-[#0A2540]">Actions restantes côté Stripe</p>
+                              <p className="mb-3 text-[#697386]">
                                 Stripe demande encore quelques informations avant d&apos;activer complètement le compte.
                               </p>
                               <ul className="list-disc pl-5 space-y-1">
@@ -1129,8 +1130,8 @@ export default function ParametresPage() {
                           )}
                         </div>
                       ) : (
-                        <div className="bg-orange-50 border border-orange-200 rounded-md p-3 text-sm text-orange-700">
-                          Aucun compte Stripe Connect n&apos;est encore créé. Vous pouvez le créer maintenant ou lancer directement l&apos;onboarding Stripe.
+                        <div className="rounded-md border border-[#635BFF]/20 bg-white/80 p-3 text-sm text-[#425466]">
+                          Aucun compte Stripe Connect n&apos;est encore créé. La configuration Stripe créera le compte puis vous guidera dans l&apos;onboarding.
                         </div>
                       )}
                     </>
@@ -1160,6 +1161,32 @@ export default function ParametresPage() {
             </div>
           )}
 
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-700">Zone dangereuse</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="font-medium text-gray-900">Supprimer mon compte annonceur</p>
+                <p className="text-sm text-gray-600">
+                  Votre profil sera anonymisé et vos opportunités seront fermées.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-red-300 text-red-700 hover:bg-red-50 sm:w-auto"
+                onClick={() => {
+                  setDeleteError("")
+                  setDeleteModalOpen(true)
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer mon compte
+              </Button>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end">
             <Button
               type="submit"
@@ -1181,6 +1208,49 @@ export default function ParametresPage() {
           </div>
         </div>
       </form>
+
+      <AppModal
+        open={deleteModalOpen}
+        onClose={() => {
+          if (!deleteLoading) setDeleteModalOpen(false)
+        }}
+        title="Supprimer votre compte annonceur ?"
+        description="Cette action anonymise votre profil, ferme vos opportunités et supprime votre accès de connexion."
+        tone="warning"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deleteLoading}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer définitivement"
+              )}
+            </Button>
+          </>
+        }
+      >
+        {deleteError && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        )}
+      </AppModal>
     </div>
   )
 }

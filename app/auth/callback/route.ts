@@ -9,6 +9,12 @@ import {
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const callbackType = requestUrl.searchParams.get('type')
+  const nextPath = requestUrl.searchParams.get('next')
+  const isPasswordRecovery =
+    callbackType === 'recovery' ||
+    nextPath === '/mot-de-passe-oublie' ||
+    nextPath === '/mot-de-passe-oublie?mode=reset'
 
   if (code) {
     const cookieStore = await cookies()
@@ -44,6 +50,10 @@ export async function GET(request: NextRequest) {
           supabase as unknown as AuthProfileSupabase,
           data.user
         )) ?? 'unknown'
+
+      if (isPasswordRecovery) {
+        return NextResponse.redirect(`${requestUrl.origin}/mot-de-passe-oublie?mode=reset`)
+      }
 
       // Rediriger vers la page de confirmation avec succès et le type d'utilisateur
       const redirectUrl = `${requestUrl.origin}/auth/confirm?success=true&userType=${userType}`

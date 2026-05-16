@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { deriveOpportunityStatus, isOpportunityVisibleToComedian } from '@/app/lib/opportunity-status'
+import {
+  deriveOpportunityStatus,
+  isOpportunityVisibleToComedian,
+  isQualifiedStatus,
+  isWithinQualifiedStatusVisibilityWindow,
+} from '@/app/lib/opportunity-status'
 import { Comedien } from '@/app/types'
 
 export async function GET(request: NextRequest) {
@@ -91,6 +96,8 @@ export async function GET(request: NextRequest) {
           statut: string
           date_evenement: string
           places_restantes?: number
+          statut_qualifie_at?: string | null
+          updated_at?: string | null
         }
         const reconciledOpportunity = await reconcileOpportunityPlaces(
           supabase as never,
@@ -108,13 +115,30 @@ export async function GET(request: NextRequest) {
           ...currentOpportunity,
           places_restantes: nextPlacesRestantes,
           statut: derivedStatus,
+          statut_qualifie_at: currentOpportunity.statut_qualifie_at,
         }
       })
     )
 
+    const now = new Date()
     return NextResponse.json({
       opportunites: opportunitesReconciled.filter(
-        (opportunite: { statut?: string }) => isOpportunityVisibleToComedian((opportunite.statut || 'validee') as never)
+        (opportunite: { statut?: string; statut_qualifie_at?: string | null; updated_at?: string | null }) => {
+          const status = (opportunite.statut || 'validee') as never
+
+          if (!isOpportunityVisibleToComedian(status)) {
+            return false
+          }
+
+          if (!isQualifiedStatus(status)) {
+            return true
+          }
+
+          return isWithinQualifiedStatusVisibilityWindow(
+            opportunite.statut_qualifie_at ?? opportunite.updated_at,
+            now
+          )
+        }
       ),
       total: count || 0,
       page,

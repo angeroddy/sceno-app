@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Crop, RotateCcw, RotateCw, RefreshCcw, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Clock3, ChevronLeft, ChevronRight } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Crop, RotateCcw, RotateCw, RefreshCcw, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Clock3, ChevronLeft, ChevronRight, Percent } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { OpportunityType, OpportunityModel } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
@@ -37,12 +37,16 @@ interface FormData {
 }
 
 interface PublishingEligibility {
+  id: string
   identite_verifiee: boolean
   stripe_onboarding_complete: boolean
   stripe_account_id: string | null
   stripe_charges_enabled: boolean
   stripe_payouts_enabled: boolean
 }
+
+const OPPORTUNITY_DATE_MODEL_ERROR =
+  "La date de l'événement doit être soit dans 72h (Dernière minute), soit à au moins 1 mois (Prévente)."
 
 const FRENCH_WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
 function padTimeUnit(value: number) {
@@ -56,6 +60,21 @@ function formatDateInputValue(date: Date) {
 function combineLocalDateTime(datePart: string, timePart: string) {
   if (!datePart) return ""
   return `${datePart}T${timePart || "19:00"}`
+}
+
+function getOpportunityModelForDate(dateValue: string): OpportunityModel | null {
+  const eventDate = new Date(dateValue)
+  const diffDays = (eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+
+  if (diffDays <= 3) {
+    return "derniere_minute"
+  }
+
+  if (diffDays >= 28) {
+    return "pre_vente"
+  }
+
+  return null
 }
 
 function getCalendarGrid(month: Date) {
@@ -129,6 +148,9 @@ export default function PublierOpportunitePage() {
   const [stripeReady, setStripeReady] = useState(false)
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [showPublishingPrinciplesModal, setShowPublishingPrinciplesModal] = useState(false)
+  const [publishingPrinciplesStorageKey, setPublishingPrinciplesStorageKey] = useState("")
+  const [publishingPrincipleStep, setPublishingPrincipleStep] = useState(0)
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -137,6 +159,49 @@ export default function PublierOpportunitePage() {
   const openParametres = (anchor: "validation-compte" | "stripe-connect") => {
     router.push(`/annonceur/parametres#${anchor}`)
   }
+
+  const acceptPublishingPrinciples = () => {
+    if (publishingPrinciplesStorageKey) {
+      window.localStorage.setItem(publishingPrinciplesStorageKey, "true")
+    }
+    setShowPublishingPrinciplesModal(false)
+  }
+
+  const publishingPrinciples = [
+    {
+      title: "Prévente",
+      icon: Calendar,
+      copy: "Vos places doivent être vendues au moins 1 mois avant l'événement.",
+      hint: "Idéal pour remplir tôt une formation déjà planifiée.",
+    },
+    {
+      title: "Dernière minute",
+      icon: Clock3,
+      copy: "Vos places doivent être vendues au maximum 3 jours avant l'événement.",
+      hint: "Parfait pour compléter une session imminente.",
+    },
+    {
+      title: "Réduction",
+      icon: Percent,
+      copy: "Dans les deux cas, le prix réduit doit être au moins 25 % moins cher.",
+      hint: "C'est ce qui rend l'offre vraiment attractive pour les comédiens.",
+    },
+  ]
+
+  const activePublishingPrinciple = publishingPrinciples[publishingPrincipleStep]
+  const ActivePublishingPrincipleIcon = activePublishingPrinciple.icon
+  const isLastPublishingPrincipleStep = publishingPrincipleStep === publishingPrinciples.length - 1
+
+  useEffect(() => {
+    if (!showPublishingPrinciplesModal) return
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [showPublishingPrinciplesModal])
 
   useEffect(() => {
     const checkIdentity = async () => {
@@ -151,7 +216,7 @@ export default function PublierOpportunitePage() {
 
         const { data: annonceur, error: annonceurError } = await supabase
           .from('annonceurs')
-          .select('identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
+          .select('id, identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
           .eq('auth_user_id', user.id)
           .single<PublishingEligibility>()
 
@@ -164,14 +229,21 @@ export default function PublierOpportunitePage() {
 
         setIdentityVerified(annonceur.identite_verifiee)
         setStripeOnboardingComplete(Boolean(annonceur.stripe_onboarding_complete))
-        setStripeReady(
-          Boolean(
-            annonceur.stripe_onboarding_complete &&
-            annonceur.stripe_account_id &&
-            annonceur.stripe_charges_enabled &&
-            annonceur.stripe_payouts_enabled
-          )
+        const isStripeReady = Boolean(
+          annonceur.stripe_onboarding_complete &&
+          annonceur.stripe_account_id &&
+          annonceur.stripe_charges_enabled &&
+          annonceur.stripe_payouts_enabled
         )
+        setStripeReady(isStripeReady)
+
+        const principlesStorageKey = `scenio-publishing-principles-accepted:${annonceur.id}`
+        setPublishingPrinciplesStorageKey(principlesStorageKey)
+
+        if (annonceur.identite_verifiee && isStripeReady && window.localStorage.getItem(principlesStorageKey) !== "true") {
+          setPublishingPrincipleStep(0)
+          setShowPublishingPrinciplesModal(true)
+        }
       } catch (error) {
         console.error('Erreur lors de la vérification:', error)
         setError("Une erreur s'est produite")
@@ -606,6 +678,10 @@ export default function PublierOpportunitePage() {
       setError("La date de l'événement doit être dans le futur")
       return false
     }
+    if (!getOpportunityModelForDate(formData.date_evenement)) {
+      setError(OPPORTUNITY_DATE_MODEL_ERROR)
+      return false
+    }
     if (!formData.contact_email.trim()) {
       setError("L'email de contact est obligatoire")
       return false
@@ -616,6 +692,7 @@ export default function PublierOpportunitePage() {
       return false
     }
 
+    setError("")
     return true
   }
 
@@ -676,20 +753,9 @@ export default function PublierOpportunitePage() {
       const prixBase = parseFloat(formData.prix_base)
       const prixReduit = parseFloat(formData.prix_reduit)
 
-      // Auto-déterminer le modèle selon les règles :
-      //   - dernière minute  → événement dans ≤ 72h
-      //   - prévente          → événement dans ≥ 56 jours
-      //   - entre 72h et 56j  → non autorisé
-      const eventDate = new Date(formData.date_evenement)
-      const diffDays = (eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-
-      let autoModele: OpportunityModel | null = null
-      if (diffDays <= 3) {
-        autoModele = 'derniere_minute'
-      } else if (diffDays >= 56) {
-        autoModele = 'pre_vente'
-      } else {
-        setError("La date de l'événement doit être soit dans 72h (Dernière minute), soit à au moins 8 semaines (Prévente).")
+      const autoModele = getOpportunityModelForDate(formData.date_evenement)
+      if (!autoModele) {
+        setError(OPPORTUNITY_DATE_MODEL_ERROR)
         setLoading(false)
         return
       }
@@ -807,26 +873,40 @@ export default function PublierOpportunitePage() {
   if (!stripeOnboardingComplete) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-[#6dd0ff] bg-[#6dd0ff]/10">
           <CardContent className="pt-6">
             <div className="text-center py-8 space-y-6">
               <div className="flex justify-center">
-                <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-10 h-10 text-orange-600" />
+                <div className="w-20 h-20 bg-[#6dd0ff]/20 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-10 h-10 text-[#0b6f8f]" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-orange-900">
+                <div className="flex items-center justify-center gap-2">
+                  <h2 className="text-2xl font-bold text-[#0b4054]">
                   Configuration Stripe requise
-                </h2>
-                <p className="text-orange-800 text-lg max-w-2xl mx-auto">
-                  Tant que vous n&apos;avez pas terminé la configuration Stripe, vous ne pouvez pas créer d&apos;opportunité.
+                  </h2>
+                  <div className="group relative inline-flex">
+                    <button
+                      type="button"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[#0b6f8f]/30 bg-white text-[#0b6f8f]"
+                      aria-label="Pourquoi Stripe est requis"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 top-9 z-20 w-72 -translate-x-1/2 rounded-md border border-[#6dd0ff] bg-white p-3 text-left text-sm text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      Stripe est l&apos;intermédiaire que Scenio utilise pour vendre vos places en ligne et qui vérifie au passage votre bonne identité en tant que professionnel.
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[#0b4054] text-lg max-w-2xl mx-auto">
+                  Votre compte annonceur a bien été validé par nos services mais vous devez désormais configurer Stripe pour publier une opportunité.
                 </p>
               </div>
 
-              <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
-                <p className="text-sm text-orange-800">
+              <div className="bg-white border border-[#6dd0ff] rounded-lg p-6 max-w-xl mx-auto text-left">
+                <p className="text-sm text-[#0b4054]">
                   Allez dans vos paramètres, créez ou synchronisez votre compte Stripe, puis terminez la configuration.
                 </p>
               </div>
@@ -836,7 +916,7 @@ export default function PublierOpportunitePage() {
                   onClick={() => openParametres('stripe-connect')}
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
-                  Ouvrir mes paramètres
+                  Compléter l&apos;onboarding
                 </Button>
               </div>
             </div>
@@ -863,13 +943,7 @@ export default function PublierOpportunitePage() {
                   Activation Stripe requise
                 </h2>
                 <p className="text-orange-800 text-lg max-w-2xl mx-auto">
-                  La configuration Stripe est terminée, mais votre compte n&apos;est pas encore complètement activé pour les paiements et les virements.
-                </p>
-              </div>
-
-              <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
-                <p className="text-sm text-orange-800">
-                  Revenez dans vos paramètres Stripe et vérifiez que les paiements et virements sont bien activés.
+                  Votre compte Stripe est créé mais vous devez renseigner toutes les informations demandées pour terminer sa configuration. Pour ce faire, veuillez cliquer sur le bouton « Compléter l&apos;onboarding » ci dessus.
                 </p>
               </div>
 
@@ -878,7 +952,7 @@ export default function PublierOpportunitePage() {
                   onClick={() => openParametres('stripe-connect')}
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
-                  Ouvrir mes paramètres
+                  Compléter l&apos;onboarding
                 </Button>
               </div>
             </div>
@@ -967,10 +1041,150 @@ export default function PublierOpportunitePage() {
   }
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 ">
+      {showPublishingPrinciplesModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="publishing-principles-title"
+        >
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#E6DAD0] bg-white shadow-2xl">
+            <div className="grid gap-6 p-6 sm:grid-cols-[220px_1fr] sm:p-8">
+              <div className="flex items-center justify-center rounded-xl bg-[#F5F0EB] p-5">
+                <svg
+                  viewBox="0 0 220 220"
+                  className="h-44 w-44"
+                  aria-hidden="true"
+                >
+                  <circle cx="110" cy="110" r="82" fill="#fff" stroke="#E6DAD0" strokeWidth="3" />
+                  <circle cx="110" cy="110" r="68" fill="none" stroke="#E63832" strokeWidth="4" strokeLinecap="round" strokeDasharray="28 18">
+                    <animateTransform
+                      attributeName="transform"
+                      type="rotate"
+                      from="0 110 110"
+                      to="360 110 110"
+                      dur="9s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                  <path d="M72 138 C88 112 100 128 112 100 C124 72 145 79 152 58" fill="none" stroke="#111827" strokeWidth="6" strokeLinecap="round">
+                    <animate
+                      attributeName="stroke-dasharray"
+                      values="0 180;180 0;180 0"
+                      dur="3.2s"
+                      repeatCount="indefinite"
+                    />
+                  </path>
+                  <circle cx="72" cy="138" r="7" fill="#E63832">
+                    <animate attributeName="r" values="6;9;6" dur="1.8s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="112" cy="100" r="7" fill="#E63832">
+                    <animate attributeName="r" values="7;10;7" dur="1.8s" begin=".35s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="152" cy="58" r="7" fill="#E63832">
+                    <animate attributeName="r" values="6;9;6" dur="1.8s" begin=".7s" repeatCount="indefinite" />
+                  </circle>
+                  <rect x="70" y="150" width="80" height="16" rx="8" fill="#E6DAD0" />
+                  <rect x="84" y="172" width="52" height="10" rx="5" fill="#E63832">
+                    <animate attributeName="width" values="30;68;30" dur="2.4s" repeatCount="indefinite" />
+                  </rect>
+                </svg>
+              </div>
+
+              <div className="flex min-h-[340px] flex-col">
+                <div className="mb-5 flex items-center gap-2">
+                  {publishingPrinciples.map((principle, index) => (
+                    <button
+                      key={principle.title}
+                      type="button"
+                      className={cn(
+                        "h-2.5 rounded-full transition-all",
+                        index === publishingPrincipleStep
+                          ? "w-8 bg-[#E63832]"
+                          : "w-2.5 bg-[#E6DAD0] hover:bg-[#E63832]/50"
+                      )}
+                      aria-label={`Voir l'étape ${index + 1}`}
+                      onClick={() => setPublishingPrincipleStep(index)}
+                    />
+                  ))}
+                </div>
+
+                <div className="mb-6">
+                  <p className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-[#E63832]">
+                    Étape {publishingPrincipleStep + 1} sur {publishingPrinciples.length}
+                  </p>
+                  <h2 id="publishing-principles-title" className="text-2xl font-bold text-gray-950 sm:text-3xl">
+                    Avant de publier
+                  </h2>
+                </div>
+
+                <div className="flex flex-1 flex-col justify-center rounded-xl border border-[#E6DAD0] bg-[#F5F0EB] p-5">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+                    <ActivePublishingPrincipleIcon className="h-6 w-6 text-[#E63832]" />
+                  </div>
+                  <h3 className="mb-3 text-xl font-bold text-gray-950">
+                    {activePublishingPrinciple.title}
+                  </h3>
+                  <p className="text-base leading-7 text-gray-800">
+                    {activePublishingPrinciple.copy}
+                  </p>
+                  <p className="mt-4 rounded-lg border border-[#E63832]/20 bg-white/70 p-3 text-sm font-medium text-gray-900">
+                    {activePublishingPrinciple.hint}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => setPublishingPrincipleStep((step) => Math.max(step - 1, 0))}
+                    disabled={publishingPrincipleStep === 0}
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Précédent
+                  </Button>
+
+                  <Button
+                    type="button"
+                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90 sm:w-auto"
+                    onClick={() => {
+                      if (isLastPublishingPrincipleStep) {
+                        acceptPublishingPrinciples()
+                        return
+                      }
+
+                      setPublishingPrincipleStep((step) => Math.min(step + 1, publishingPrinciples.length - 1))
+                    }}
+                  >
+                    {isLastPublishingPrincipleStep ? "J'ai compris !" : "Suivant"}
+                    {!isLastPublishingPrincipleStep && <ChevronRight className="ml-2 h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-          Publier une opportunité
-        </h1>
+        <div className="mb-2 flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+            Publier une opportunité
+          </h1>
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E6DAD0] bg-white text-[#E63832] shadow-sm transition-colors hover:bg-[#F5F0EB] focus:outline-none focus:ring-2 focus:ring-[#E63832]/30"
+            aria-label="Revoir les règles de publication"
+            title="Revoir les règles de publication"
+            onClick={() => {
+              setPublishingPrincipleStep(0)
+              setShowPublishingPrinciplesModal(true)
+            }}
+          >
+            <Info className="h-4 w-4" />
+          </button>
+        </div>
         <p className="text-gray-600 text-base sm:text-lg">
           Remplissez le formulaire ci-dessous pour créer une nouvelle opportunité
         </p>

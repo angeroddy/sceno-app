@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { OpportunityStatusRibbon } from "@/components/opportunity-status-ribbon"
 import {
   deriveOpportunityStatus,
   isOpportunityReservableByComedian,
@@ -29,8 +28,9 @@ import {
   Tag,
   Building2
 } from "lucide-react"
-import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_STATUS_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
+import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
 import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { ShareOpportunityUrlButton } from "@/components/share-opportunity-url-button"
 
 export default function OpportuniteDetailsPage() {
   const params = useParams()
@@ -244,26 +244,6 @@ export default function OpportuniteDetailsPage() {
           <Card className="mb-6 border-orange-200 bg-orange-50">
             <CardContent className="p-4 text-sm text-orange-900">
               Paiement annulé. Votre réservation n&apos;a pas été finalisée.
-            </CardContent>
-          </Card>
-        )}
-
-        {derivedStatus !== "validee" && (
-          <Card
-            className={
-              derivedStatus === "expiree"
-                ? "mb-6 border-amber-200 bg-amber-50"
-                : derivedStatus === "complete"
-                  ? "mb-6 border-blue-200 bg-blue-50"
-                  : "mb-6 border-slate-200 bg-slate-50"
-            }
-          >
-            <CardContent className="p-4 text-sm">
-              {derivedStatus === "expiree"
-                ? "Cette opportunité est expirée. Elle reste consultable, mais il n'est plus possible de réserver."
-                : derivedStatus === "complete"
-                  ? "Cette opportunité est complète. Elle reste consultable, mais il n'est plus possible de réserver."
-                  : "Cette opportunité a été supprimée."}
             </CardContent>
           </Card>
         )}
@@ -493,13 +473,6 @@ export default function OpportuniteDetailsPage() {
                   >
                     {OPPORTUNITY_MODEL_LABELS[opportunite.modele]}
                   </Badge>
-                  {derivedStatus !== "validee" && (
-                    <OpportunityStatusRibbon
-                      className="ml-2"
-                      status={derivedStatus}
-                      label={derivedStatus === "complete" ? "Complet" : OPPORTUNITY_STATUS_LABELS[derivedStatus]}
-                    />
-                  )}
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">
                     {opportunite.titre}
                   </h1>
@@ -569,9 +542,7 @@ export default function OpportuniteDetailsPage() {
                       ? 'Déjà réservé'
                       : canReserve
                         ? (bookingLoading ? 'Redirection vers le paiement...' : 'Réserver ma place')
-                        : derivedStatus === 'expiree'
-                          ? 'Expirée'
-                          : 'Complet'}
+                        : 'Indisponible'}
                   </Button>
 
                   {opportunite.lien_infos && (
@@ -587,6 +558,14 @@ export default function OpportuniteDetailsPage() {
                       </a>
                     </Button>
                   )}
+
+                  <ShareOpportunityUrlButton
+                    opportunityId={opportunite.id}
+                    title={opportunite.titre}
+                    text={`Découvre cette opportunité sur Scenio: ${opportunite.titre}`}
+                    size="lg"
+                    className="w-full"
+                  />
 
                   <Button
                     size="lg"

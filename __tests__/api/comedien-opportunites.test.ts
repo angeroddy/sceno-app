@@ -178,6 +178,79 @@ describe('API comédien opportunités', () => {
     expect(notFn).toHaveBeenCalledWith('annonceur_id', 'in', '(ann-1,ann-2)')
   })
 
+  it('masque les opportunités qualifiées depuis plus de 72h dans la liste', async () => {
+    const now = new Date()
+    const range = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'opp-recent',
+          titre: 'Stage récent',
+          statut: 'expiree',
+          date_evenement: '2020-06-15T10:00:00.000Z',
+          places_restantes: 3,
+          statut_qualifie_at: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+        },
+        {
+          id: 'opp-old',
+          titre: 'Stage ancien',
+          statut: 'expiree',
+          date_evenement: '2020-06-15T10:00:00.000Z',
+          places_restantes: 3,
+          statut_qualifie_at: new Date(now.getTime() - 96 * 60 * 60 * 1000).toISOString(),
+        },
+      ],
+      error: null,
+      count: 2,
+    })
+    const order = jest.fn(() => ({ range }))
+    const inStatusFn = jest.fn(() => ({ order }))
+
+    const supabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'auth-1' } }, error: null }),
+      },
+      from: jest.fn((table: string) => {
+        if (table === 'comediens') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({
+                  data: { id: 'comedien-1', preferences_opportunites: [] },
+                  error: null,
+                }),
+              })),
+            })),
+          }
+        }
+        if (table === 'annonceurs_bloques') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+            })),
+          }
+        }
+        if (table === 'opportunites') {
+          return {
+            select: jest.fn(() => ({
+              in: inStatusFn,
+            })),
+          }
+        }
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    }
+    ;(createServerSupabaseClient as jest.Mock).mockResolvedValue(supabase)
+
+    const response = await getList({
+      nextUrl: new URL('http://localhost/api/comedien/opportunites'),
+    } as any)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.opportunites).toHaveLength(1)
+    expect(data.opportunites[0].id).toBe('opp-recent')
+  })
+
   it('retourne 404 sur le détail si l’annonceur est bloqué', async () => {
     const supabase = {
       auth: {
