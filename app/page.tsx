@@ -5,9 +5,9 @@ import mainImg from '../app/assets/images/mainImg.webp'
 import mainImg2 from '../app/assets/images/mainImg2.webp'
 import { Button } from "@/components/ui/button";
 import { TextAnimate } from "@/components/ui/text-animate";
-import { ImageCarousel } from "./components/ImageCarousel";
+import { ImageCarousel } from "@/components/ImageCarousel";
 import { ChevronRight } from "lucide-react"
-import { Footer } from "./components/Footer"
+import { Footer } from "@/components/Footer"
 import Link from 'next/link'
 import { useAuth } from "./hooks/useAuth";
 

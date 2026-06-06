@@ -15,7 +15,7 @@ import {
   Ticket,
   Users,
 } from 'lucide-react'
-import { Footer } from '@/app/components/Footer'
+import { Footer } from '@/components/Footer'
 import logoApp from '@/app/assets/images/logoApp.png'
 import {
   buildPublicOpportunityPath,

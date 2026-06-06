@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import logoApp from '../assets/images/logoApp2.png';
+import logoApp from '@/app/assets/images/logoApp2.png';
 interface MenuItem {
   title: string;
   links: {
