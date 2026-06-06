@@ -1,28 +1,11 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/app/lib/supabase"
+import { requireComedian } from "@/app/server/auth"
 
 export async function GET() {
   try {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
-    }
-
-    const { data: comedien } = await supabase
-      .from("comediens")
-      .select("id, compte_supprime")
-      .eq("auth_user_id", user.id)
-      .single()
-
-    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
-
-    if (!comedienTyped) {
-      return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
-    }
-    if (comedienTyped.compte_supprime) {
-      return NextResponse.json({ error: "Compte supprimé" }, { status: 403 })
-    }
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedienTyped } = auth
 
     const { data: rows, error } = await supabase
       .from("annonceurs_bloques")
@@ -42,31 +25,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
-    }
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedienTyped } = auth
 
     const body = await request.json()
     const { annonceur_id } = body
     if (!annonceur_id) {
       return NextResponse.json({ error: "annonceur_id requis" }, { status: 400 })
-    }
-
-    const { data: comedien } = await supabase
-      .from("comediens")
-      .select("id, compte_supprime")
-      .eq("auth_user_id", user.id)
-      .single()
-
-    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
-
-    if (!comedienTyped) {
-      return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
-    }
-    if (comedienTyped.compte_supprime) {
-      return NextResponse.json({ error: "Compte supprimé" }, { status: 403 })
     }
 
     const { error: insertError } = await supabase
@@ -87,30 +53,13 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
-    }
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedienTyped } = auth
 
     const { annonceur_id } = await request.json()
     if (!annonceur_id) {
       return NextResponse.json({ error: "annonceur_id requis" }, { status: 400 })
-    }
-
-    const { data: comedien } = await supabase
-      .from("comediens")
-      .select("id, compte_supprime")
-      .eq("auth_user_id", user.id)
-      .single()
-
-    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
-
-    if (!comedienTyped) {
-      return NextResponse.json({ error: "Profil comédien introuvable" }, { status: 404 })
-    }
-    if (comedienTyped.compte_supprime) {
-      return NextResponse.json({ error: "Compte supprimé" }, { status: 403 })
     }
 
     const { error: deleteError } = await supabase

@@ -102,6 +102,13 @@ describe('API /api/comedien/annonceurs-bloques', () => {
           error: null,
         }),
       },
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: { id: 'comedien-1' }, error: null }),
+          })),
+        })),
+      })),
     })
 
     const response = await DELETE(

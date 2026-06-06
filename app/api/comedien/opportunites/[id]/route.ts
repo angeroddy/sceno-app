@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireComedian } from '@/app/server/auth'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 import {
   deriveOpportunityStatus,
@@ -13,34 +13,10 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedienTyped } = auth
 
-    // Verifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    // Recuperer le comedien courant
-    const { data: comedien, error: comedienError } = await supabase
-      .from('comediens')
-      .select('id, compte_supprime')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    const comedienTyped = comedien as { id: string; compte_supprime?: boolean } | null
-
-    if (comedienError || !comedienTyped) {
-      return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
-    }
-    if (comedienTyped.compte_supprime) {
-      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
-    }
-    
 
     // Recuperer les parametres
     const { id } = await context.params

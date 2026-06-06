@@ -29,7 +29,7 @@ describe('GET /api/comedien/achats', () => {
     } as any)
 
     expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: 'Profil comedien introuvable' })
+    await expect(response.json()).resolves.toEqual({ error: 'Profil comédien introuvable' })
   })
 
   it('retourne 403 si le compte comédien est supprimé', async () => {

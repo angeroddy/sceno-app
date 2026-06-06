@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/app/lib/supabase"
+import { requireAdvertiser } from "@/app/server/auth"
 import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
-import type { Annonceur, Comedien } from "@/app/types"
+import type { Comedien } from "@/app/types"
 
 type ParticipantRow = {
   id: string
@@ -14,27 +14,10 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const auth = await requireAdvertiser()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: annonceur } = auth
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
-    }
-
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from("annonceurs")
-      .select("*")
-      .eq("auth_user_id", user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json({ error: "Profil annonceur introuvable" }, { status: 404 })
-    }
-
-    const annonceur = annonceurData as Annonceur
     const { id } = await context.params
 
     const { data: opportunite, error: opportuniteError } = await supabase

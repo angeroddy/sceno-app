@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireComedian } from '@/app/server/auth'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 import {
   deriveOpportunityStatus,
@@ -7,39 +7,12 @@ import {
   isQualifiedStatus,
   isWithinQualifiedStatusVisibilityWindow,
 } from '@/app/lib/opportunity-status'
-import { Comedien } from '@/app/types'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
-
-    // Verifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    // Recuperer le profil du comedien avec ses preferences
-    const { data: comedienDataRaw, error: comedienError } = await supabase
-      .from('comediens')
-      .select('id, preferences_opportunites, compte_supprime')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    const comedienData = comedienDataRaw as (Pick<Comedien, 'id' | 'preferences_opportunites'> & {
-      compte_supprime?: boolean
-    }) | null
-
-    if (comedienError || !comedienData) {
-      return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
-    }
-    if (comedienData.compte_supprime) {
-      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
-    }
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedienData } = auth
 
     // Recuperer les annonceurs bloques par le comedien
     const { data: blockedRows, error: blockedError } = await supabase

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireAdvertiser } from '@/app/server/auth'
 import { getReadableStripeError } from '@/app/lib/stripe-error-message'
 import { getStripe } from '@/app/lib/stripe'
 import {
@@ -7,33 +7,14 @@ import {
   StripeConnectSyncError,
   syncStripeConnectForAnnonceur,
 } from '@/app/lib/stripe-connect'
-import type { Annonceur } from '@/app/types'
 
 export const runtime = 'nodejs'
 
 export async function POST() {
   try {
-    const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('*')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json({ error: 'Profil annonceur introuvable' }, { status: 404 })
-    }
-
-    const annonceur = annonceurData as Annonceur
+    const auth = await requireAdvertiser()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: annonceur } = auth
     const stripe = getStripe()
     let snapshot = buildStoredStripeConnectSnapshot(annonceur)
 

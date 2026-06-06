@@ -13,7 +13,11 @@
       "Bash(git rm *)",
       "Bash(npx jest *)",
       "Bash(npm run *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(sed -n '1,20p' app/api/admin/opportunites/route.ts)",
+      "Bash(sed -n '1,20p' app/api/admin/stats/route.ts)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"=== tsc exit: $? ===\")"
     ],
     "deny": [],
     "ask": []

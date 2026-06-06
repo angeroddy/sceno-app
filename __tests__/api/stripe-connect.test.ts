@@ -163,7 +163,7 @@ describe('API Stripe Connect', () => {
       const response = await postAccount()
 
       expect(response.status).toBe(401)
-      await expect(response.json()).resolves.toEqual({ error: 'Non authentifie' })
+      await expect(response.json()).resolves.toEqual({ error: 'Non authentifié' })
       expect(syncStripeConnectForAnnonceur).not.toHaveBeenCalled()
     })
 
@@ -312,7 +312,7 @@ describe('API Stripe Connect', () => {
       } as any)
 
       expect(response.status).toBe(401)
-      await expect(response.json()).resolves.toEqual({ error: 'Non authentifie' })
+      await expect(response.json()).resolves.toEqual({ error: 'Non authentifié' })
     })
 
     it('retourne le snapshot déconnecté si aucun compte Stripe n’existe', async () => {
@@ -472,7 +472,7 @@ describe('API Stripe Connect', () => {
       } as any)
 
       expect(response.status).toBe(401)
-      await expect(response.json()).resolves.toEqual({ error: 'Non authentifie' })
+      await expect(response.json()).resolves.toEqual({ error: 'Non authentifié' })
     })
 
     it('crée un lien d’onboarding avec les chemins personnalisés', async () => {

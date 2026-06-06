@@ -1,37 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireComedian } from '@/app/server/auth'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { getStripe } from '@/app/lib/stripe'
-import type { Achat, Comedien } from '@/app/types'
+import type { Achat } from '@/app/types'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    const { data: comedienData, error: comedienError } = await supabase
-      .from('comediens')
-      .select('id, compte_supprime')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    const comedienRecord = comedienData as (Pick<Comedien, 'id'> & { compte_supprime?: boolean }) | null
-
-    if (comedienError || !comedienRecord) {
-      return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
-    }
-    if (comedienRecord.compte_supprime) {
-      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
-    }
-    const comedien = comedienRecord as Pick<Comedien, 'id'>
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedien } = auth
 
     const achatId = request.nextUrl.searchParams.get('achatId')
     let achatsQuery = supabase
