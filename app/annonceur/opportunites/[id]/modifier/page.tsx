@@ -8,16 +8,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AppModal } from "@/components/ui/app-modal"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Crop, RotateCcw, RotateCw, RefreshCcw, Lock, Trash2 } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ChevronLeft, Lock, Trash2 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import Image from "next/image"
 import type { OpportunityType, OpportunityModel, Opportunite, Annonceur } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_MODEL_LABELS } from "@/app/types"
-import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
 import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
-import { OpportunityBodyContent } from "@/components/opportunity-body-content"
 import { getWebsiteInputWithoutWww, normalizeWebsiteUrlWithWwwPrefix } from "@/app/lib/signup-validation"
+import { OpportunityImageCropper } from "./_components/opportunity-image-cropper"
+import {
+  OpportunityPreviewCard,
+  OpportunityPreviewDetail,
+  type OpportunityPreviewData,
+} from "./_components/opportunity-preview"
 
 interface FormData {
   type: OpportunityType | ""
@@ -593,132 +597,20 @@ export default function ModifierOpportunitePage() {
   const previewPlaces = formData.nombre_places ? Number(formData.nombre_places) : 0
   const previewResume = sanitizeOpportunityHtml(formData.resume) || "<p>La description apparaîtra ici.</p>"
 
-  const renderPreviewCard = () => (
-    <Card className="overflow-hidden">
-      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
-        {previewImage ? (
-          <img src={previewImage} alt="Preview carte" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
-            <Calendar className="w-10 h-10 text-gray-400" />
-          </div>
-        )}
-        {previewDiscount > 0 && (
-          <div className="absolute top-3 left-3 z-10">
-            <span className="text-white text-xs font-bold bg-[#E63832] px-2 py-1 rounded">
-              -{previewDiscount}%
-            </span>
-          </div>
-        )}
-      </div>
-      <CardContent className="p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center rounded-full bg-[#E6DAD0] px-2 py-0.5 font-medium">
-            {previewCategory}
-          </span>
-          <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 font-medium">
-            {previewModel}
-          </span>
-        </div>
-        <h3 className="font-bold text-lg line-clamp-2">{previewTitle}</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            <span>France</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            <span>{previewDateLabel}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Tag className="w-4 h-4 text-gray-500" />
-          {previewDiscount > 0 ? (
-            <div className="flex items-baseline gap-2">
-              <span className="font-semibold text-[#E63832]">{previewReducedPrice || previewPrice}€</span>
-              <span className="text-xs line-through text-gray-400">{previewPrice || 0}€</span>
-            </div>
-          ) : (
-            <span className="font-semibold text-gray-900">{previewPrice || 0}€</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Users className="w-4 h-4" />
-          <span>{previewPlaces || 0} place(s)</span>
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  const renderPreviewDetail = () => (
-    <Card className="overflow-hidden">
-      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
-        {previewImage ? (
-          <img src={previewImage} alt="Preview détail" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#E6DAD0] to-[#F5F0EB]">
-            <Calendar className="w-12 h-12 text-gray-400" />
-          </div>
-        )}
-        {previewDiscount > 0 && (
-          <div className="absolute top-4 left-4 z-10">
-            <span className="text-white text-sm font-bold bg-[#E63832] px-3 py-1 rounded">
-              -{previewDiscount}% de réduction
-            </span>
-          </div>
-        )}
-      </div>
-      <CardContent className="p-5 space-y-4">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <span className="rounded-full bg-[#E6DAD0] px-2 py-0.5">{previewCategory}</span>
-          <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5">{previewModel}</span>
-        </div>
-        <h3 className="text-xl font-bold">{previewTitle}</h3>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Building2 className="w-4 h-4" />
-          <span>{previewOrganizer}</span>
-        </div>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <span>{previewDateLabel}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-gray-400" />
-            <span>{previewTimeLabel}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-gray-400" />
-            <span>{previewPlaces || 0} place(s)</span>
-          </div>
-        </div>
-        <div className="border-y border-gray-200 py-3">
-          {previewDiscount > 0 ? (
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-[#E63832]">{previewReducedPrice || previewPrice}€</span>
-              <span className="text-sm text-gray-400 line-through">{previewPrice || 0}€</span>
-            </div>
-          ) : (
-            <span className="text-2xl font-bold text-gray-900">{previewPrice || 0}€</span>
-          )}
-        </div>
-        <OpportunityBodyContent
-          title={previewTitle}
-          resume={previewResume}
-          bodyImageUrl={null}
-          contentMode="text"
-          className="prose max-w-none text-gray-700"
-        />
-        <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
-          <Button size="sm" variant="outline" className="w-full sm:w-auto">
-            <ExternalLink className="w-4 h-4 mr-1" />
-            Voir le site
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
+  const preview: OpportunityPreviewData = {
+    image: previewImage,
+    discount: previewDiscount,
+    category: previewCategory,
+    model: previewModel,
+    title: previewTitle,
+    organizer: previewOrganizer,
+    dateLabel: previewDateLabel,
+    timeLabel: previewTimeLabel,
+    price: previewPrice,
+    reducedPrice: previewReducedPrice,
+    places: previewPlaces,
+    resume: previewResume,
+  }
 
   if (viewMode === "preview") {
     return (
@@ -735,11 +627,11 @@ export default function ModifierOpportunitePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode vignette</h2>
-            {renderPreviewCard()}
+            <OpportunityPreviewCard preview={preview} />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode détails</h2>
-            {renderPreviewDetail()}
+            <OpportunityPreviewDetail preview={preview} />
           </div>
         </div>
 
@@ -1154,112 +1046,21 @@ export default function ModifierOpportunitePage() {
           }
         />
 
-        {isCropping && rawImageSrc && (
-          <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
-            <div className="w-full max-w-3xl max-h-[85vh] sm:max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                  Recadrer l&apos;image
-                  </h3>
-                  <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
-                    16:9
-                  </span>
-                </div>
-                <Button type="button" variant="outline" onClick={resetCropper}>
-                  Fermer
-                </Button>
-              </div>
-
-              <div className="p-5 space-y-4">
-                <div
-                  ref={cropperContainerRef}
-                  className="relative w-full max-w-2xl mx-auto rounded-md overflow-hidden border bg-black"
-                  style={{ aspectRatio: "16 / 9" }}
-                >
-                  <Cropper
-                    image={rawImageSrc}
-                    crop={crop}
-                    zoom={zoom}
-                    rotation={rotation}
-                    aspect={cropAspect}
-                    cropShape="rect"
-                    showGrid={true}
-                    onCropChange={setCrop}
-                    onCropComplete={onCropComplete}
-                    onZoomChange={setZoom}
-                    onRotationChange={setRotation}
-                    objectFit="horizontal-cover"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Zoom</Label>
-                      <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={1}
-                      max={3}
-                      step={0.01}
-                      value={zoom}
-                      onChange={(e) => setZoom(Number(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button type="button" variant="outline" onClick={() => setZoom(1)}>
-                        <RefreshCcw className="w-4 h-4 mr-2" />
-                        Reset zoom
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Rotation</Label>
-                      <span className="text-xs text-gray-500">{rotation}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={-180}
-                      max={180}
-                      step={1}
-                      value={rotation}
-                      onChange={(e) => setRotation(Number(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button type="button" variant="outline" onClick={() => setRotation((r) => r - 90)}>
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        -90°
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => setRotation((r) => r + 90)}>
-                        <RotateCw className="w-4 h-4 mr-2" />
-                        +90°
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => setRotation(0)}>
-                        <RefreshCcw className="w-4 h-4 mr-2" />
-                        Reset
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border-t flex flex-wrap justify-end gap-3">
-                <Button type="button" variant="outline" onClick={resetCropper}>
-                  Annuler
-                </Button>
-                <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>
-                  <Crop className="w-4 h-4 mr-2" />
-                  Appliquer le recadrage
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <OpportunityImageCropper
+          open={isCropping}
+          rawImageSrc={rawImageSrc}
+          crop={crop}
+          zoom={zoom}
+          rotation={rotation}
+          cropAspect={cropAspect}
+          cropperContainerRef={cropperContainerRef}
+          setCrop={setCrop}
+          setZoom={setZoom}
+          setRotation={setRotation}
+          onCropComplete={onCropComplete}
+          applyCrop={applyCrop}
+          resetCropper={resetCropper}
+        />
       </div>
     </div>
   )
