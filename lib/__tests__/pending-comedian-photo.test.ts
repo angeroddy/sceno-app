@@ -24,7 +24,7 @@ describe('pending-comedian-photo helpers', () => {
       }
     }
 
-    ;(global as any).FileReader = MockFileReader
+    global.FileReader = MockFileReader as unknown as typeof FileReader
 
     try {
       const saved = await savePendingComedianSignupPhoto(
@@ -35,7 +35,7 @@ describe('pending-comedian-photo helpers', () => {
       expect(saved).toBe(true)
       expect(window.localStorage.getItem('pending_comedian_signup_photo')).toContain('"userId":"user-1"')
     } finally {
-      ;(global as any).FileReader = OriginalFileReader
+      global.FileReader = OriginalFileReader
     }
   })
 

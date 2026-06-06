@@ -186,13 +186,17 @@ describe('useAuth', () => {
 
   describe('Changements d\'état d\'authentification', () => {
     it('devrait réagir aux changements d\'état d\'authentification', async () => {
-      let authStateCallback: any
+      type AuthStateCallback = (
+        event: string,
+        session: { user: { id: string; email: string } } | null
+      ) => void
+      let authStateCallback: AuthStateCallback
 
       mockSupabase.auth.getSession.mockResolvedValue({
         data: { session: null },
       })
 
-      mockSupabase.auth.onAuthStateChange.mockImplementation((callback) => {
+      mockSupabase.auth.onAuthStateChange.mockImplementation((callback: AuthStateCallback) => {
         authStateCallback = callback
         return {
           data: { subscription: { unsubscribe: jest.fn() } },

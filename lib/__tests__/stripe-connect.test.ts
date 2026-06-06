@@ -8,6 +8,7 @@ import {
   syncStripeConnectForAnnonceur,
   syncExpressAccountForAnnonceur,
   toStripeCountryCode,
+  type StripeAnnonceurUpdater,
 } from '@/lib/stripe-connect'
 import type { Annonceur } from '@/types'
 
@@ -90,7 +91,7 @@ describe('stripe-connect helpers', () => {
       const listPersons = jest.fn().mockResolvedValue({ data: [] })
       const createPerson = jest.fn().mockResolvedValue({ id: 'person_1' })
       const retrieve = jest.fn().mockResolvedValue(createStripeAccount({ id: 'acct_new' }))
-      const stripe = { accounts: { create, listPersons, createPerson, retrieve } } as any
+      const stripe = { accounts: { create, listPersons, createPerson, retrieve } } as unknown as Stripe
 
       await createExpressAccountForAnnonceur(stripe, annonceur)
 
@@ -130,7 +131,7 @@ describe('stripe-connect helpers', () => {
       const listPersons = jest.fn().mockResolvedValue({ data: [] })
       const createPerson = jest.fn().mockResolvedValue({ id: 'person_1' })
       const retrieve = jest.fn().mockResolvedValue(createStripeAccount({ id: 'acct_new' }))
-      const stripe = { accounts: { create, listPersons, createPerson, retrieve } } as any
+      const stripe = { accounts: { create, listPersons, createPerson, retrieve } } as unknown as Stripe
 
       await createExpressAccountForAnnonceur(stripe, annonceur)
 
@@ -150,10 +151,10 @@ describe('stripe-connect helpers', () => {
         new Stripe.errors.StripeError({
           message: 'Representative sync failed',
           type: 'invalid_request_error',
-        } as any)
+        })
       )
       const retrieve = jest.fn().mockResolvedValue(createStripeAccount({ id: 'acct_new' }))
-      const stripe = { accounts: { create, listPersons, createPerson, retrieve } } as any
+      const stripe = { accounts: { create, listPersons, createPerson, retrieve } } as unknown as Stripe
 
       await expect(createExpressAccountForAnnonceur(stripe, annonceur)).resolves.toMatchObject({
         id: 'acct_new',
@@ -167,7 +168,7 @@ describe('stripe-connect helpers', () => {
       const annonceur = createBaseAnnonceur()
       const update = jest.fn().mockResolvedValue({ id: 'acct_existing' })
       const retrieve = jest.fn().mockResolvedValue(createStripeAccount({ id: 'acct_existing' }))
-      const stripe = { accounts: { update, retrieve } } as any
+      const stripe = { accounts: { update, retrieve } } as unknown as Stripe
 
       await syncExpressAccountForAnnonceur(stripe, 'acct_existing', annonceur, {
         syncKycPrefill: false,
@@ -201,7 +202,7 @@ describe('stripe-connect helpers', () => {
         details_submitted: false,
         metadata: { scenio_onboarding_started: 'false' },
       }))
-      const stripe = { accounts: { update, listPersons, createPerson, retrieve } } as any
+      const stripe = { accounts: { update, listPersons, createPerson, retrieve } } as unknown as Stripe
 
       await syncExpressAccountForAnnonceur(stripe, 'acct_existing', annonceur, {
         syncKycPrefill: true,
@@ -240,7 +241,7 @@ describe('stripe-connect helpers', () => {
             message: "This application is not authorized to edit the parameter 'email'.",
             type: 'invalid_request_error',
             param: 'email',
-          } as any)
+          })
         )
         .mockResolvedValueOnce({ id: 'acct_existing' })
       const retrieve = jest.fn().mockResolvedValue(createStripeAccount({
@@ -248,7 +249,7 @@ describe('stripe-connect helpers', () => {
         details_submitted: false,
         metadata: { scenio_onboarding_started: 'false' },
       }))
-      const stripe = { accounts: { update, retrieve } } as any
+      const stripe = { accounts: { update, retrieve } } as unknown as Stripe
 
       await syncExpressAccountForAnnonceur(stripe, 'acct_existing', annonceur, {
         syncKycPrefill: false,
@@ -358,8 +359,8 @@ describe('stripe-connect helpers', () => {
       const retrieve = jest.fn()
 
       const result = await syncStripeConnectForAnnonceur(
-        {} as any,
-        { accounts: { create, update, retrieve } } as any,
+        {} as unknown as StripeAnnonceurUpdater,
+        { accounts: { create, update, retrieve } } as unknown as Stripe,
         annonceur,
         { allowCreate: false, persist: false }
       )
@@ -387,11 +388,11 @@ describe('stripe-connect helpers', () => {
             eq: persistedEq,
           })),
         })),
-      } as any
+      } as unknown as StripeAnnonceurUpdater
 
       const result = await syncStripeConnectForAnnonceur(
         supabase,
-        { accounts: { create, listPersons, createPerson, retrieve } } as any,
+        { accounts: { create, listPersons, createPerson, retrieve } } as unknown as Stripe,
         annonceur,
         { allowCreate: true, persist: true }
       )
@@ -419,11 +420,11 @@ describe('stripe-connect helpers', () => {
             eq: jest.fn().mockResolvedValue({ error: null }),
           })),
         })),
-      } as any
+      } as unknown as StripeAnnonceurUpdater
 
       const result = await syncStripeConnectForAnnonceur(
         supabase,
-        { accounts: { update, retrieve } } as any,
+        { accounts: { update, retrieve } } as unknown as Stripe,
         annonceur,
         { allowCreate: true, persist: true }
       )
@@ -440,7 +441,7 @@ describe('stripe-connect helpers', () => {
         message: 'No such account',
         type: 'invalid_request_error',
         code: 'resource_missing',
-      } as any)
+      })
 
       const annonceur = createBaseAnnonceur({ stripe_account_id: 'acct_missing' })
       const retrieve = jest.fn()
@@ -469,7 +470,7 @@ describe('stripe-connect helpers', () => {
             eq: persistedEq,
           })),
         })),
-      } as any
+      } as unknown as StripeAnnonceurUpdater
 
       const result = await syncStripeConnectForAnnonceur(
         supabase,
@@ -480,7 +481,7 @@ describe('stripe-connect helpers', () => {
             createPerson,
             listPersons: jest.fn().mockResolvedValue({ data: [] }),
           },
-        } as any,
+        } as unknown as Stripe,
         annonceur,
         { allowCreate: true, persist: true }
       )
@@ -497,7 +498,7 @@ describe('stripe-connect helpers', () => {
       const missingError = new Stripe.errors.StripeError({
         message: 'No such account',
         type: 'invalid_request_error',
-      } as any)
+      })
 
       const annonceur = createBaseAnnonceur({ stripe_account_id: 'acct_missing' })
       const retrieve = jest.fn()
@@ -526,7 +527,7 @@ describe('stripe-connect helpers', () => {
             eq: persistedEq,
           })),
         })),
-      } as any
+      } as unknown as StripeAnnonceurUpdater
 
       const result = await syncStripeConnectForAnnonceur(
         supabase,
@@ -537,7 +538,7 @@ describe('stripe-connect helpers', () => {
             createPerson,
             listPersons: jest.fn().mockResolvedValue({ data: [] }),
           },
-        } as any,
+        } as unknown as Stripe,
         annonceur,
         { allowCreate: true, persist: true }
       )
@@ -555,7 +556,7 @@ describe('stripe-connect helpers', () => {
         message: 'No such account',
         type: 'invalid_request_error',
         code: 'resource_missing',
-      } as any)
+      })
 
       const annonceur = createBaseAnnonceur({ stripe_account_id: 'acct_missing' })
       const retrieve = jest.fn().mockRejectedValue(missingError)
@@ -568,8 +569,8 @@ describe('stripe-connect helpers', () => {
                 eq: jest.fn(),
               })),
             })),
-          } as any,
-          { accounts: { retrieve } } as any,
+          } as unknown as StripeAnnonceurUpdater,
+          { accounts: { retrieve } } as unknown as Stripe,
           annonceur,
           { allowCreate: false, persist: true }
         )
@@ -587,11 +588,11 @@ describe('stripe-connect helpers', () => {
             eq,
           })),
         })),
-      } as any
+      } as unknown as StripeAnnonceurUpdater
 
       const result = await syncStripeConnectForAnnonceur(
         supabase,
-        { accounts: { update, retrieve } } as any,
+        { accounts: { update, retrieve } } as unknown as Stripe,
         annonceur,
         { allowCreate: false, persist: false }
       )
@@ -612,7 +613,7 @@ describe('stripe-connect helpers', () => {
             }),
           })),
         })),
-      } as any
+      } as unknown as StripeAnnonceurUpdater
 
       await expect(
         persistStripeConnectSnapshot(supabase, 'ann_1', {
