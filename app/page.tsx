@@ -33,7 +33,7 @@ export default function Home() {
           signInText={isAuthenticated ? "Retourner sur mon espace" : "Se connecter"}
           signInHref={
             isAuthenticated
-              ? (userType === 'admin' ? '/admin' : userType === 'comedian' ? '/dashboard' : '/annonceur')
+              ? (userType === 'admin' ? '/admin' : userType === 'comedian' ? '/comedien' : '/annonceur')
               : '/connexion'
           }
           hideHamburger={true}

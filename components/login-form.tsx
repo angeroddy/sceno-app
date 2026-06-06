@@ -96,7 +96,7 @@ export function LoginForm({
 
       if (userType === 'comedian') {
         setIsLoading(false)
-        router.push('/dashboard')
+        router.push('/comedien')
         return
       }
 

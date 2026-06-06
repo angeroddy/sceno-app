@@ -98,7 +98,7 @@ describe('DashboardPage', () => {
 
     expect(screen.getByRole('link', { name: /Voir l'annonce/i })).toHaveAttribute(
       'href',
-      '/dashboard/opportunites/opp-1'
+      '/comedien/opportunites/opp-1'
     )
     expect(screen.queryByText(/Reçu du/i)).not.toBeInTheDocument()
   })

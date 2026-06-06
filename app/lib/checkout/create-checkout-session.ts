@@ -242,8 +242,8 @@ export async function createCheckoutSession({
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       client_reference_id: achat.id,
-      success_url: `${baseUrl}/dashboard?checkout=success&achat=${achat.id}`,
-      cancel_url: `${baseUrl}/dashboard/opportunites/${opportunite.id}?checkout=cancel`,
+      success_url: `${baseUrl}/comedien?checkout=success&achat=${achat.id}`,
+      cancel_url: `${baseUrl}/comedien/opportunites/${opportunite.id}?checkout=cancel`,
       line_items: [
         {
           price_data: {

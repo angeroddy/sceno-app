@@ -610,8 +610,8 @@ describe('POST /api/checkout/session', () => {
     expect(stripeMock.checkout.sessions.create).toHaveBeenCalledWith(
       expect.objectContaining({
         client_reference_id: 'achat-1',
-        success_url: 'http://localhost:3000/dashboard?checkout=success&achat=achat-1',
-        cancel_url: 'http://localhost:3000/dashboard/opportunites/opp-1?checkout=cancel',
+        success_url: 'http://localhost:3000/comedien?checkout=success&achat=achat-1',
+        cancel_url: 'http://localhost:3000/comedien/opportunites/opp-1?checkout=cancel',
         payment_intent_data: expect.objectContaining({
           application_fee_amount: 250,
           transfer_data: { destination: 'acct_1' },

@@ -56,7 +56,7 @@ export function OpportunityCard({
   return (
     <Card
       className="overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => { window.location.href = `/dashboard/opportunites/${opportunity.id}` }}
+      onClick={() => { window.location.href = `/comedien/opportunites/${opportunity.id}` }}
     >
       <div className="relative">
         <div className="absolute top-4 left-4 z-10 bg-white rounded-lg p-2 shadow-md">
@@ -210,7 +210,7 @@ export function OpportunityCard({
         </div>
 
         <div className="grid grid-cols-2 gap-2 pt-2">
-          <Link href={`/dashboard/opportunites/${opportunity.id}`} onClick={(e) => e.stopPropagation()}>
+          <Link href={`/comedien/opportunites/${opportunity.id}`} onClick={(e) => e.stopPropagation()}>
             <Button variant="outline" className="w-full">
               Voir détails
             </Button>

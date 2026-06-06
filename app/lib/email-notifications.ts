@@ -344,7 +344,7 @@ export async function sendAdvertiserValidatedEmail(advertiser: AdvertiserEmailDa
 
 export async function sendOpportunityAlertEmail(to: string, opportunity: OpportunityEmailData) {
   const siteUrl = getSiteUrl()
-  const opportunityUrl = `${siteUrl}/dashboard/opportunites/${opportunity.id}`
+  const opportunityUrl = `${siteUrl}/comedien/opportunites/${opportunity.id}`
   const subject = buildOpportunityAlertSubject(opportunity)
   const dateLabel = formatDateTime(opportunity.date_evenement)
 

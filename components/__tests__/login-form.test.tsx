@@ -164,7 +164,7 @@ describe('LoginForm', () => {
         })
       })
 
-      expect(mockRouter.push).toHaveBeenCalledWith('/dashboard')
+      expect(mockRouter.push).toHaveBeenCalledWith('/comedien')
     })
 
     it('devrait afficher une erreur pour des identifiants incorrects', async () => {

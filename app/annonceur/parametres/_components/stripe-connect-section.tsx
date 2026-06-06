@@ -19,7 +19,7 @@ interface StripeConnectSectionProps {
 
 /**
  * Carte de gestion du compte Stripe Connect de l'annonceur (statut + actions
- * onboarding/dashboard). Présentationnel : l'état Stripe et les handlers restent
+ * onboarding/comedien). Présentationnel : l'état Stripe et les handlers restent
  * dans la page paramètres.
  */
 export function StripeConnectSection({

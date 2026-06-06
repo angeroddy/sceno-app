@@ -96,7 +96,7 @@ function getDashboardHref(userType: UserType, opportunityId: string) {
     case 'advertiser':
       return '/annonceur'
     case 'comedian':
-      return `/dashboard/opportunites/${opportunityId}`
+      return `/comedien/opportunites/${opportunityId}`
     default:
       return '/connexion'
   }

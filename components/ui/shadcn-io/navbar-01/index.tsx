@@ -299,7 +299,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                       variant="ghost"
                       size="sm"
                       className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
-                      onClick={() => router.push('/dashboard/profil')}
+                      onClick={() => router.push('/comedien/profil')}
                     >
                       Mon profil
                     </Button>
@@ -307,7 +307,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                       variant="ghost"
                       size="sm"
                       className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
-                      onClick={() => router.push('/dashboard/preferences')}
+                      onClick={() => router.push('/comedien/preferences')}
                     >
                       Préférences
                     </Button>

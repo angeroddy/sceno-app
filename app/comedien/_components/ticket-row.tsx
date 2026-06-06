@@ -86,7 +86,7 @@ export function TicketRow({ ticket }: { ticket: PurchasedTicket }) {
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             {ticket.opportunityId && (
-              <Link href={`/dashboard/opportunites/${ticket.opportunityId}`} className="inline-flex">
+              <Link href={`/comedien/opportunites/${ticket.opportunityId}`} className="inline-flex">
                 <Button type="button" variant="outline" className="w-full sm:w-auto">
                   <ExternalLink className="mr-2 h-4 w-4" />
                   Voir l&apos;annonce

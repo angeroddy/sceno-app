@@ -170,7 +170,7 @@ export default function PreferencesPage() {
         <Button
           variant="ghost"
           className="mb-6 flex items-center gap-2"
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push('/comedien')}
         >
           <ArrowLeft className="w-4 h-4" />
           Retour au tableau de bord
@@ -282,7 +282,7 @@ export default function PreferencesPage() {
                 <Button
                   variant="outline"
                   className="w-full md:w-auto"
-                  onClick={() => router.push('/dashboard')}
+                  onClick={() => router.push('/comedien')}
                   disabled={saving}
                 >
                   Annuler

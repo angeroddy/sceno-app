@@ -26,7 +26,9 @@
       "Bash(sed -n '1474,1568p' app/annonceur/publier/page.tsx)",
       "Bash(echo \"tsc exit: $?\")",
       "Bash(grep -nE \"^import |^interface |^type |^export default|useState|=> \\\\{$|const handle|const fetch|const poll|\\\\.map\\\\\\(|TabsContent|return \\\\\\(|\\\\\\(\\\\\\(\\\\\\) => \\\\{\" app/dashboard/page.tsx)",
-      "Bash(awk 'NR>=545 && NR<=560' app/dashboard/page.tsx)"
+      "Bash(awk 'NR>=545 && NR<=560' app/dashboard/page.tsx)",
+      "Bash(git mv *)",
+      "Bash(xargs perl -i -pe 's{/dashboard\\(?![-\\\\w]\\)}{/comedien}g')"
     ],
     "deny": [],
     "ask": []

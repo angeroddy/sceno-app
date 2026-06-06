@@ -46,7 +46,7 @@ export async function proxy(request: NextRequest) {
   // ============================================
   // ROUTES PROTÉGÉES - COMÉDIENS
   // ============================================
-  if (pathname.startsWith('/dashboard')) {
+  if (pathname.startsWith('/comedien')) {
     if (!user) {
       return NextResponse.redirect(new URL('/connexion', request.url))
     }
@@ -95,7 +95,7 @@ export async function proxy(request: NextRequest) {
     if (user) {
       // Déterminer où rediriger selon le type d'utilisateur
       if (userType === 'comedian') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        return NextResponse.redirect(new URL('/comedien', request.url))
       }
 
       if (userType === 'advertiser') {
@@ -116,7 +116,7 @@ export async function proxy(request: NextRequest) {
 // ============================================
 export const config = {
   matcher: [
-    '/dashboard/:path*',
+    '/comedien/:path*',
     '/annonceur/:path*',
     '/admin/:path*',
     '/connexion',

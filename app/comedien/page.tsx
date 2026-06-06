@@ -459,7 +459,7 @@ export default function DashboardPage() {
                       Configurez vos préférences pour personnaliser vos opportunités.
                     </p>
                   </div>
-                  <Link href="/dashboard/preferences">
+                  <Link href="/comedien/preferences">
                     <Button size="sm" className="bg-[#E63832] hover:bg-[#E63832]/90 whitespace-nowrap">
                       Configurer
                     </Button>

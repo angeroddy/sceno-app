@@ -14,7 +14,7 @@ function ConfirmContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
-  const [redirectPath, setRedirectPath] = useState('/dashboard')
+  const [redirectPath, setRedirectPath] = useState('/comedien')
 
   useEffect(() => {
     const checkStatus = () => {
@@ -33,7 +33,7 @@ function ConfirmContent() {
         setMessage('Votre e-mail a été confirmé avec succès !')
 
         // Déterminer la redirection selon le type d'utilisateur
-        let path = '/dashboard' // Par défaut pour les comédiens
+        let path = '/comedien' // Par défaut pour les comédiens
         if (userType === 'admin') {
           path = '/admin'
         } else if (userType === 'advertiser') {

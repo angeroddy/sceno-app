@@ -449,7 +449,7 @@ export default function ProfilPage() {
         <Button
           variant="ghost"
           className="mb-6 flex items-center gap-2"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/comedien")}
         >
           <ArrowLeft className="h-4 w-4" />
           Retour au tableau de bord
@@ -485,7 +485,7 @@ export default function ProfilPage() {
               onPhotoChange={handlePhotoChange}
               onFieldChange={updateProfileField}
               onSave={handleSave}
-              onCancel={() => router.push("/dashboard")}
+              onCancel={() => router.push("/comedien")}
             />
 
             <Card>

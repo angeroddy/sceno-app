@@ -217,7 +217,7 @@ export default function OpportuniteDetailsPage() {
             </div>
             <Button
               className="mt-4 bg-[#E63832] hover:bg-[#E63832]/90"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/comedien')}
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
               Retour aux opportunités
@@ -254,7 +254,7 @@ export default function OpportuniteDetailsPage() {
         <Button
           variant="ghost"
           className="mb-6 hover:bg-[#E6DAD0]"
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push('/comedien')}
         >
           <ChevronLeft className="w-4 h-4 mr-2" />
           Retour aux opportunités
