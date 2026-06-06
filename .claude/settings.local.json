@@ -24,7 +24,9 @@
       "Bash(echo \"tsc exit $?\")",
       "Bash(sed -n '1157,1262p' \"app/annonceur/opportunites/[id]/modifier/page.tsx\")",
       "Bash(sed -n '1474,1568p' app/annonceur/publier/page.tsx)",
-      "Bash(echo \"tsc exit: $?\")"
+      "Bash(echo \"tsc exit: $?\")",
+      "Bash(grep -nE \"^import |^interface |^type |^export default|useState|=> \\\\{$|const handle|const fetch|const poll|\\\\.map\\\\\\(|TabsContent|return \\\\\\(|\\\\\\(\\\\\\(\\\\\\) => \\\\{\" app/dashboard/page.tsx)",
+      "Bash(awk 'NR>=545 && NR<=560' app/dashboard/page.tsx)"
     ],
     "deny": [],
     "ask": []

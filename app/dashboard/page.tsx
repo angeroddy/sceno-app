@@ -5,76 +5,24 @@ import { useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { AppModal } from "@/components/ui/app-modal"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Calendar,
   Ticket,
-  MapPin,
-  Tag,
-  Users,
-  Clock,
-  Phone,
-  ExternalLink,
   Loader2,
   AlertCircle,
-  Ban,
-  MoreHorizontal
 } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { deriveOpportunityStatus } from "@/app/lib/opportunity-status"
-import { ShareOpportunityUrlButton } from "@/components/share-opportunity-url-button"
 import {
   OpportuniteWithAnnonceur,
   OPPORTUNITY_TYPE_LABELS,
-  OPPORTUNITY_MODEL_LABELS,
   OpportunityType,
   OpportunityModel,
-  OpportunityStatus,
 } from "@/app/types"
-
-interface DisplayOpportunity {
-  id: string
-  annonceurId: string
-  type: string
-  model: OpportunityModel
-  title: string
-  organizer: string
-  location: string
-  date: string
-  dateDay: string
-  dateMonth: string
-  time: string
-  price: number
-  reducedPrice: number
-  discount: number
-  placesLeft: number
-  image: string | null
-  category: string
-  lienInfos: string
-  contactEmail: string
-  status: OpportunityStatus
-}
-
-interface PurchasedTicket {
-  id: string
-  opportunityId: string
-  receiptReference: string
-  title: string
-  organizer: string
-  image: string | null
-  date: string
-  dateDay: string
-  dateMonth: string
-  time: string
-  location: string
-  price: string
-  contactEmail: string
-  contactPhone: string
-  status: "confirmee" | "remboursee"
-}
+import type { DisplayOpportunity, PurchasedTicket } from "./_lib/types"
+import { OpportunityCard } from "./_components/opportunity-card"
+import { TicketRow } from "./_components/ticket-row"
 
 const TICKET_TIME_ZONE = "Europe/Paris"
 
@@ -524,221 +472,17 @@ export default function DashboardPage() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {opportunities.map((opportunity) => (
-                    <Card
+                    <OpportunityCard
                       key={opportunity.id}
-                      className="overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => { window.location.href = `/dashboard/opportunites/${opportunity.id}` }}
-                    >
-                      {(() => {
-                        const isExpired = opportunity.status === "expiree"
-                        const isComplete = opportunity.status === "complete"
-                        const isRemoved = opportunity.status === "supprimee"
-                        const hasUnavailableVisual = isExpired || isComplete || isRemoved
-                        const unavailableLabel = isRemoved
-                          ? "Supprimée"
-                          : isExpired
-                            ? "Expirée"
-                            : isComplete
-                              ? "Complet"
-                              : null
-                        const bookingDisabled = isExpired || isComplete || isRemoved
-                        const bookingLabel = bookingDisabled
-                          ? "Indisponible"
-                          : confirmedOpportunityIds.has(opportunity.id)
-                                ? "Déjà réservé"
-                                : bookingOpportunityId === opportunity.id
-                                  ? "Paiement..."
-                                  : "Réserver"
-
-                        return (
-                          <>
-                      <div className="relative">
-                        <div className="absolute top-4 left-4 z-10 bg-white rounded-lg p-2 shadow-md">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-gray-900">{opportunity.dateDay}</div>
-                            <div className="text-xs font-medium text-[#E63832]">{opportunity.dateMonth}</div>
-                          </div>
-                        </div>
-
-                        <div className="relative overflow-hidden bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
-                          {opportunity.image && !imageErrors.has(opportunity.id) ? (
-                            <Image
-                              src={opportunity.image}
-                              alt={opportunity.title}
-                              fill
-                              className={
-                                `object-cover transition-transform duration-300 cursor-pointer ${
-                                  hasUnavailableVisual
-                                    ? "scale-105 blur-[2px] grayscale brightness-[0.72]"
-                                    : "group-hover:scale-105"
-                                }`
-                              }
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              onError={() => handleImageError(opportunity.id)}
-                            />
-                          ) : (
-                            <div
-                              className={`w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB] ${
-                                hasUnavailableVisual ? "grayscale brightness-[0.85]" : ""
-                              }`}
-                            >
-                              <Calendar className="w-16 h-16 text-gray-400" />
-                            </div>
-                          )}
-
-                          {unavailableLabel && (
-                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/15 px-6">
-                              <span className="text-center text-3xl font-normal italic text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] md:text-4xl">
-                                {unavailableLabel}
-                              </span>
-                            </div>
-                          )}
-
-                          {!hasUnavailableVisual && (
-                            <div className="absolute bottom-4 left-4 z-10">
-                              <span className="text-white text-sm font-medium bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
-                                {`${opportunity.placesLeft} place${opportunity.placesLeft > 1 ? "s" : ""} restante${opportunity.placesLeft > 1 ? "s" : ""}`}
-                              </span>
-                            </div>
-                          )}
-
-                          {opportunity.discount > 0 && (
-                            <div className="absolute top-4 right-4 z-10">
-                              <span className="text-white text-xs font-bold bg-[#E63832] px-2 py-1 rounded">
-                                -{Math.floor(opportunity.discount)}%
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge className="bg-[#E6DAD0] text-gray-900 hover:bg-[#E6DAD0]">
-                            {opportunity.category}
-                          </Badge>
-                          <Badge
-                            className={
-                              opportunity.model === "derniere_minute"
-                                ? "bg-[#E63832] text-white hover:bg-[#E63832]"
-                                : "bg-green-100 text-green-700 hover:bg-green-100"
-                            }
-                          >
-                            {OPPORTUNITY_MODEL_LABELS[opportunity.model]}
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-start justify-between gap-3">
-                          <h3 className="min-h-14 flex-1 font-bold text-lg line-clamp-2">
-                            {opportunity.title}
-                          </h3>
-                          <Popover>
-                            <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                className="shrink-0 text-gray-500 hover:text-gray-900"
-                                aria-label={`Actions pour ${opportunity.organizer}`}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="end"
-                              className="w-56 p-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
-                                disabled={blockingAnnonceurId === opportunity.annonceurId}
-                                onClick={() => void handleBlockAnnonceur(opportunity.annonceurId)}
-                              >
-                                {blockingAnnonceurId === opportunity.annonceurId ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Blocage...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Ban className="h-4 w-4" />
-                                    <span>Bloquer cet organisme</span>
-                                  </>
-                                )}
-                              </button>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-
-                        <div className="space-y-2 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 shrink-0" />
-                            <span className="truncate">{opportunity.location}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 shrink-0" />
-                            <span className="truncate">{opportunity.date}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 shrink-0" />
-                            <span>{opportunity.time}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Tag className="w-4 h-4 shrink-0" />
-                            <div className="flex flex-col">
-                              {opportunity.discount > 0 ? (
-                                <>
-                                  <span className="font-semibold text-[#E63832]">{opportunity.reducedPrice}€</span>
-                                  <span className="text-xs line-through text-gray-400">{opportunity.price}€</span>
-                                </>
-                              ) : (
-                                <span className="font-semibold text-gray-900">{opportunity.price}€</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 shrink-0" />
-                            <span className="text-xs truncate">Par {opportunity.organizer}</span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 pt-2">
-                          <Link href={`/dashboard/opportunites/${opportunity.id}`} onClick={(e) => e.stopPropagation()}>
-                            <Button variant="outline" className="w-full">
-                              Voir détails
-                            </Button>
-                          </Link>
-                          {isRemoved ? (
-                            <Button variant="outline" className="w-full" disabled>
-                              Partager
-                            </Button>
-                          ) : (
-                            <ShareOpportunityUrlButton
-                              opportunityId={opportunity.id}
-                              title={opportunity.title}
-                              text={`Découvre cette opportunité sur formations-artistiques.fr: ${opportunity.title}`}
-                              className="w-full"
-                              onClick={(event) => event.stopPropagation()}
-                            />
-                          )}
-                          <Button
-                            className="col-span-2 bg-[#E63832] hover:bg-[#E63832]/90"
-                            disabled={bookingDisabled || bookingOpportunityId === opportunity.id || confirmedOpportunityIds.has(opportunity.id)}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (bookingDisabled || confirmedOpportunityIds.has(opportunity.id)) return
-                              void handleCheckout(opportunity.id)
-                            }}
-                          >
-                            {bookingLabel}
-                          </Button>
-                        </div>
-                      </CardContent>
-                          </>
-                        )
-                      })()}
-                    </Card>
+                      opportunity={opportunity}
+                      imageHasError={imageErrors.has(opportunity.id)}
+                      onImageError={handleImageError}
+                      isConfirmed={confirmedOpportunityIds.has(opportunity.id)}
+                      isBooking={bookingOpportunityId === opportunity.id}
+                      isBlocking={blockingAnnonceurId === opportunity.annonceurId}
+                      onBlock={handleBlockAnnonceur}
+                      onCheckout={handleCheckout}
+                    />
                   ))}
                 </div>
 
@@ -777,103 +521,7 @@ export default function DashboardPage() {
                   <>
                     <div className="space-y-4">
                       {purchasedTickets.map((ticket) => (
-                        <div
-                          key={ticket.id}
-                          className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-linear-to-r from-[#E6DAD0]/10 to-white md:p-6"
-                        >
-                          <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
-                            <div className="relative h-40 w-full overflow-hidden rounded-md bg-[#E6DAD0] md:h-auto md:w-48 lg:w-56">
-                              {ticket.image ? (
-                                <Image
-                                  src={ticket.image}
-                                  alt={ticket.title}
-                                  fill
-                                  className="object-cover"
-                                  sizes="(max-width: 768px) 100vw, 224px"
-                                />
-                              ) : (
-                                <div className="flex h-full min-h-40 items-center justify-center">
-                                  <Ticket className="h-12 w-12 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-1 flex-col gap-4">
-                              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant="outline" className="border-[#E63832]/30 text-[#E63832]">
-                                      Ticket {ticket.receiptReference}
-                                    </Badge>
-                                    <Badge
-                                      className={
-                                        ticket.status === "confirmee"
-                                          ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                          : "bg-gray-100 text-gray-700 hover:bg-gray-100"
-                                      }
-                                    >
-                                      {ticket.status === "confirmee" ? "Confirmée" : "Remboursée"}
-                                    </Badge>
-                                  </div>
-                                  <h3 className="font-bold text-lg">{ticket.title}</h3>
-                                  <p className="text-sm text-gray-600">{ticket.organizer}</p>
-                                </div>
-                                <div className="shrink-0 text-2xl font-bold text-[#E63832]">{ticket.price}</div>
-                              </div>
-
-                              <div className="flex flex-col gap-3 text-sm text-gray-600">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{ticket.date}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4" />
-                                  <span>{ticket.time}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="w-4 h-4" />
-                                  <span>{ticket.location}</span>
-                                </div>
-                              </div>
-
-                              {ticket.contactEmail && (
-                                <div className="text-sm text-gray-600">
-                                  E-mail:{" "}
-                                  <a href={`mailto:${ticket.contactEmail}`} className="text-[#E63832] hover:underline">
-                                    {ticket.contactEmail}
-                                  </a>
-                                </div>
-                              )}
-
-                              {ticket.contactPhone && (
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                  <Phone className="h-4 w-4 shrink-0" />
-                                  <a href={`tel:${ticket.contactPhone}`} className="text-[#E63832] hover:underline">
-                                    {ticket.contactPhone}
-                                  </a>
-                                </div>
-                              )}
-
-                              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-                                {ticket.opportunityId && (
-                                  <Link href={`/dashboard/opportunites/${ticket.opportunityId}`} className="inline-flex">
-                                    <Button type="button" variant="outline" className="w-full sm:w-auto">
-                                      <ExternalLink className="mr-2 h-4 w-4" />
-                                      Voir l&apos;annonce
-                                    </Button>
-                                  </Link>
-                                )}
-
-                                <a
-                                  href={`/api/comedien/achats/${ticket.id}/receipt`}
-                                  className="inline-flex items-center justify-center rounded-md bg-[#E63832] px-4 py-2 text-sm font-medium text-white hover:bg-[#E63832]/90"
-                                >
-                                  Télécharger le reçu PDF
-                                </a>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <TicketRow key={ticket.id} ticket={ticket} />
                       ))}
                     </div>
 
