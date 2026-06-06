@@ -9,16 +9,29 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Crop, RotateCcw, RotateCw, RefreshCcw, Calendar, MapPin, Tag, Users, ExternalLink, Info, Building2, Clock3, ChevronLeft, ChevronRight, Percent } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Calendar, Info, Clock3, ChevronLeft, ChevronRight } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import type { OpportunityType, OpportunityModel } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
-import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
+import { OpportunityImageCropper } from "./_components/opportunity-image-cropper"
+import { PublishingPrinciplesModal } from "./_components/publishing-principles-modal"
+import {
+  OpportunityPreviewCard,
+  OpportunityPreviewDetail,
+  type OpportunityPreviewData,
+} from "./_components/opportunity-preview"
 import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
-import { OpportunityBodyContent } from "@/components/opportunity-body-content"
 import { getWebsiteInputWithoutWww, normalizeWebsiteUrlWithWwwPrefix } from "@/app/lib/signup-validation"
 import { cn } from "@/lib/utils"
+import {
+  FRENCH_WEEKDAYS,
+  OPPORTUNITY_DATE_MODEL_ERROR,
+  combineLocalDateTime,
+  formatDateInputValue,
+  getCalendarGrid,
+  getOpportunityModelForDate,
+} from "./_lib/date-helpers"
 
 interface FormData {
   type: OpportunityType | ""
@@ -45,61 +58,6 @@ interface PublishingEligibility {
   stripe_account_id: string | null
   stripe_charges_enabled: boolean
   stripe_payouts_enabled: boolean
-}
-
-const OPPORTUNITY_DATE_MODEL_ERROR =
-  "La date de l'événement doit être soit dans 72h (Dernière minute), soit à au moins 1 mois (Prévente)."
-
-const FRENCH_WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
-function padTimeUnit(value: number) {
-  return String(value).padStart(2, "0")
-}
-
-function formatDateInputValue(date: Date) {
-  return `${date.getFullYear()}-${padTimeUnit(date.getMonth() + 1)}-${padTimeUnit(date.getDate())}`
-}
-
-function combineLocalDateTime(datePart: string, timePart: string) {
-  if (!datePart) return ""
-  return `${datePart}T${timePart || "19:00"}`
-}
-
-function getOpportunityModelForDate(dateValue: string): OpportunityModel | null {
-  const eventDate = new Date(dateValue)
-  const diffDays = (eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-
-  if (diffDays <= 3) {
-    return "derniere_minute"
-  }
-
-  if (diffDays >= 28) {
-    return "pre_vente"
-  }
-
-  return null
-}
-
-function getCalendarGrid(month: Date) {
-  const year = month.getFullYear()
-  const monthIndex = month.getMonth()
-  const firstDayOfMonth = new Date(year, monthIndex, 1)
-  const startOffset = (firstDayOfMonth.getDay() + 6) % 7
-  const gridStartDate = new Date(year, monthIndex, 1 - startOffset)
-  const rawDays = Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(gridStartDate)
-    date.setDate(gridStartDate.getDate() + index)
-    return date
-  })
-
-  // Trim completely out-of-month trailing weeks to keep the popover compact.
-  while (
-    rawDays.length > 35 &&
-    rawDays.slice(-7).every((day) => day.getMonth() !== monthIndex)
-  ) {
-    rawDays.splice(-7, 7)
-  }
-
-  return rawDays
 }
 
 export default function PublierOpportunitePage() {
@@ -169,30 +127,6 @@ export default function PublierOpportunitePage() {
     setShowPublishingPrinciplesModal(false)
   }
 
-  const publishingPrinciples = [
-    {
-      title: "Prévente",
-      icon: Calendar,
-      copy: "Vos places doivent être vendues au moins 1 mois avant l'événement.",
-      hint: "Idéal pour remplir tôt une formation déjà planifiée.",
-    },
-    {
-      title: "Dernière minute",
-      icon: Clock3,
-      copy: "Vos places doivent être vendues au maximum 3 jours avant l'événement.",
-      hint: "Parfait pour compléter une session imminente.",
-    },
-    {
-      title: "Réduction",
-      icon: Percent,
-      copy: "Dans les deux cas, le prix réduit doit être au moins 25 % moins cher.",
-      hint: "C'est ce qui rend l'offre vraiment attractive pour les comédiens.",
-    },
-  ]
-
-  const activePublishingPrinciple = publishingPrinciples[publishingPrincipleStep]
-  const ActivePublishingPrincipleIcon = activePublishingPrinciple.icon
-  const isLastPublishingPrincipleStep = publishingPrincipleStep === publishingPrinciples.length - 1
 
   useEffect(() => {
     if (!showPublishingPrinciplesModal) return
@@ -406,143 +340,19 @@ export default function PublierOpportunitePage() {
     handleInputChange("date_evenement", combineLocalDateTime(selectedDatePart, timePart))
   }
 
-  const renderPreviewCard = () => (
-    <Card className="overflow-hidden">
-      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
-        {previewImage ? (
-          <Image
-            src={previewImage}
-            alt="Preview carte"
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 384px"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
-            <Calendar className="w-10 h-10 text-gray-400" />
-          </div>
-        )}
-        {previewDiscount > 0 && (
-          <div className="absolute top-3 left-3 z-10">
-            <span className="text-white text-xs font-bold bg-[#E63832] px-2 py-1 rounded">
-              -{previewDiscount}%
-            </span>
-          </div>
-        )}
-      </div>
-      <CardContent className="p-4 space-y-3">
-        <div className="inline-flex items-center rounded-full bg-[#E6DAD0] px-2 py-0.5 text-xs font-medium">
-          {previewCategory}
-        </div>
-        <h3 className="font-bold text-lg line-clamp-2">{previewTitle}</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            <span>France</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            <span>{previewDateLabel}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Tag className="w-4 h-4 text-gray-500" />
-          {previewDiscount > 0 ? (
-            <div className="flex items-baseline gap-2">
-              <span className="font-semibold text-[#E63832]">{previewReducedPrice || previewPrice}€</span>
-              <span className="text-xs line-through text-gray-400">{previewPrice || 0}€</span>
-            </div>
-          ) : (
-            <span className="font-semibold text-gray-900">{previewPrice || 0}€</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Users className="w-4 h-4" />
-          <span>{previewPlaces || 0} place(s)</span>
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  const renderPreviewDetail = () => (
-    <Card className="overflow-hidden">
-      <div className="relative w-full bg-gray-200" style={{ aspectRatio: "16 / 9" }}>
-        {previewImage ? (
-          <Image
-            src={previewImage}
-            alt="Preview détail"
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
-            <Calendar className="w-12 h-12 text-gray-400" />
-          </div>
-        )}
-        {previewDiscount > 0 && (
-          <div className="absolute top-4 left-4 z-10">
-            <span className="text-white text-sm font-bold bg-[#E63832] px-3 py-1 rounded">
-              -{previewDiscount}% de réduction
-            </span>
-          </div>
-        )}
-      </div>
-      <CardContent className="p-5 space-y-4">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <span className="rounded-full bg-[#E6DAD0] px-2 py-0.5">{previewCategory}</span>
-          <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5">Aperçu</span>
-        </div>
-        <h3 className="text-xl font-bold">{previewTitle}</h3>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Building2 className="w-4 h-4" />
-          <span>{previewOrganizer}</span>
-        </div>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <span>{previewDateLabel}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-gray-400" />
-            <span>{previewTimeLabel}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-gray-400" />
-            <span>{previewPlaces || 0} place(s)</span>
-          </div>
-        </div>
-
-        <div className="border-y border-gray-200 py-3">
-          {previewDiscount > 0 ? (
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-[#E63832]">{previewReducedPrice || previewPrice}€</span>
-              <span className="text-sm text-gray-400 line-through">{previewPrice || 0}€</span>
-            </div>
-          ) : (
-            <span className="text-2xl font-bold text-gray-900">{previewPrice || 0}€</span>
-          )}
-        </div>
-
-        <OpportunityBodyContent
-          title={previewTitle}
-          resume={previewResume}
-          bodyImageUrl={null}
-          contentMode="text"
-          className="prose max-w-none text-gray-700"
-        />
-
-        <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
-          <Button size="sm" variant="outline" className="w-full sm:w-auto">
-            <ExternalLink className="w-4 h-4 mr-1" />
-            Voir le site
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
+  const preview: OpportunityPreviewData = {
+    image: previewImage,
+    discount: previewDiscount,
+    category: previewCategory,
+    title: previewTitle,
+    organizer: previewOrganizer,
+    dateLabel: previewDateLabel,
+    timeLabel: previewTimeLabel,
+    price: previewPrice,
+    reducedPrice: previewReducedPrice,
+    places: previewPlaces,
+    resume: previewResume,
+  }
 
   const resetCropper = () => {
     setRawImageSrc("")
@@ -981,11 +791,11 @@ export default function PublierOpportunitePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode vignette</h2>
-            {renderPreviewCard()}
+            <OpportunityPreviewCard preview={preview} />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode détails</h2>
-            {renderPreviewDetail()}
+            <OpportunityPreviewDetail preview={preview} />
           </div>
         </div>
 
@@ -1018,131 +828,12 @@ export default function PublierOpportunitePage() {
   }
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 ">
-      {showPublishingPrinciplesModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="publishing-principles-title"
-        >
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#E6DAD0] bg-white shadow-2xl">
-            <div className="grid gap-6 p-6 sm:grid-cols-[220px_1fr] sm:p-8">
-              <div className="flex items-center justify-center rounded-xl bg-[#F5F0EB] p-5">
-                <svg
-                  viewBox="0 0 220 220"
-                  className="h-44 w-44"
-                  aria-hidden="true"
-                >
-                  <circle cx="110" cy="110" r="82" fill="#fff" stroke="#E6DAD0" strokeWidth="3" />
-                  <circle cx="110" cy="110" r="68" fill="none" stroke="#E63832" strokeWidth="4" strokeLinecap="round" strokeDasharray="28 18">
-                    <animateTransform
-                      attributeName="transform"
-                      type="rotate"
-                      from="0 110 110"
-                      to="360 110 110"
-                      dur="9s"
-                      repeatCount="indefinite"
-                    />
-                  </circle>
-                  <path d="M72 138 C88 112 100 128 112 100 C124 72 145 79 152 58" fill="none" stroke="#111827" strokeWidth="6" strokeLinecap="round">
-                    <animate
-                      attributeName="stroke-dasharray"
-                      values="0 180;180 0;180 0"
-                      dur="3.2s"
-                      repeatCount="indefinite"
-                    />
-                  </path>
-                  <circle cx="72" cy="138" r="7" fill="#E63832">
-                    <animate attributeName="r" values="6;9;6" dur="1.8s" repeatCount="indefinite" />
-                  </circle>
-                  <circle cx="112" cy="100" r="7" fill="#E63832">
-                    <animate attributeName="r" values="7;10;7" dur="1.8s" begin=".35s" repeatCount="indefinite" />
-                  </circle>
-                  <circle cx="152" cy="58" r="7" fill="#E63832">
-                    <animate attributeName="r" values="6;9;6" dur="1.8s" begin=".7s" repeatCount="indefinite" />
-                  </circle>
-                  <rect x="70" y="150" width="80" height="16" rx="8" fill="#E6DAD0" />
-                  <rect x="84" y="172" width="52" height="10" rx="5" fill="#E63832">
-                    <animate attributeName="width" values="30;68;30" dur="2.4s" repeatCount="indefinite" />
-                  </rect>
-                </svg>
-              </div>
-
-              <div className="flex min-h-[340px] flex-col">
-                <div className="mb-5 flex items-center gap-2">
-                  {publishingPrinciples.map((principle, index) => (
-                    <button
-                      key={principle.title}
-                      type="button"
-                      className={cn(
-                        "h-2.5 rounded-full transition-all",
-                        index === publishingPrincipleStep
-                          ? "w-8 bg-[#E63832]"
-                          : "w-2.5 bg-[#E6DAD0] hover:bg-[#E63832]/50"
-                      )}
-                      aria-label={`Voir l'étape ${index + 1}`}
-                      onClick={() => setPublishingPrincipleStep(index)}
-                    />
-                  ))}
-                </div>
-
-                <div className="mb-6">
-                  <p className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-[#E63832]">
-                    Étape {publishingPrincipleStep + 1} sur {publishingPrinciples.length}
-                  </p>
-                  <h2 id="publishing-principles-title" className="text-2xl font-bold text-gray-950 sm:text-3xl">
-                    Avant de publier
-                  </h2>
-                </div>
-
-                <div className="flex flex-1 flex-col justify-center rounded-xl border border-[#E6DAD0] bg-[#F5F0EB] p-5">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-                    <ActivePublishingPrincipleIcon className="h-6 w-6 text-[#E63832]" />
-                  </div>
-                  <h3 className="mb-3 text-xl font-bold text-gray-950">
-                    {activePublishingPrinciple.title}
-                  </h3>
-                  <p className="text-base leading-7 text-gray-800">
-                    {activePublishingPrinciple.copy}
-                  </p>
-                  <p className="mt-4 rounded-lg border border-[#E63832]/20 bg-white/70 p-3 text-sm font-medium text-gray-900">
-                    {activePublishingPrinciple.hint}
-                  </p>
-                </div>
-
-                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    onClick={() => setPublishingPrincipleStep((step) => Math.max(step - 1, 0))}
-                    disabled={publishingPrincipleStep === 0}
-                  >
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Précédent
-                  </Button>
-
-                  <Button
-                    type="button"
-                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90 sm:w-auto"
-                    onClick={() => {
-                      if (isLastPublishingPrincipleStep) {
-                        acceptPublishingPrinciples()
-                        return
-                      }
-
-                      setPublishingPrincipleStep((step) => Math.min(step + 1, publishingPrinciples.length - 1))
-                    }}
-                  >
-                    {isLastPublishingPrincipleStep ? "J'ai compris !" : "Suivant"}
-                    {!isLastPublishingPrincipleStep && <ChevronRight className="ml-2 h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <PublishingPrinciplesModal
+        open={showPublishingPrinciplesModal}
+        step={publishingPrincipleStep}
+        onStepChange={setPublishingPrincipleStep}
+        onAccept={acceptPublishingPrinciples}
+      />
 
       <div className="mb-8">
         <div className="mb-2 flex items-center gap-3">
@@ -1471,101 +1162,27 @@ export default function PublierOpportunitePage() {
           </Card>
         </div>
       </form>
-      {isCropping && rawImageSrc && (
-        <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
-          <div className="w-full max-w-3xl max-h-[85vh] sm:max-h-[88vh] bg-white rounded-lg overflow-y-auto shadow-lg">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Recadrer l&apos;image
-                </h2>
-                <span className="text-xs font-medium bg-[#E6DAD0] text-gray-900 px-2 py-1 rounded-full">
-                  16:9
-                </span>
-              </div>
-              <Button type="button" variant="outline" onClick={resetCropper}>
-                Fermer
-              </Button>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div
-                ref={cropperContainerRef}
-                className="relative w-full max-w-2xl mx-auto rounded-md overflow-hidden border bg-black"
-                style={{ aspectRatio: "16 / 9" }}
-              >
-                <Cropper
-                  image={rawImageSrc}
-                  crop={crop}
-                  zoom={zoom}
-                  rotation={rotation}
-                  aspect={cropAspect}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={onCropComplete}
-                  objectFit="horizontal-cover"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-gray-600">Zoom</label>
-                    <input
-                      type="range"
-                      min={1}
-                      max={3}
-                      step={0.1}
-                      value={zoom}
-                      onChange={(e) => setZoom(Number(e.target.value))}
-                      className="w-40"
-                    />
-                    <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-gray-600">Rotation</label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev - 90)}>
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => setRotation((prev) => prev + 90)}>
-                        <RotateCw className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <input
-                      type="range"
-                      min={-45}
-                      max={45}
-                      step={1}
-                      value={rotation}
-                      onChange={(e) => setRotation(Number(e.target.value))}
-                      className="w-40"
-                    />
-                    <span className="text-xs text-gray-500">{rotation}°</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>
-                  <Crop className="w-4 h-4 mr-2" />
-                  Appliquer le recadrage
-                </Button>
-                <Button type="button" variant="outline" onClick={() => {
-                  setCrop({ x: 0, y: 0 })
-                  setZoom(1)
-                  setRotation(0)
-                  setAutoZoomed(false)
-                }}>
-                  <RefreshCcw className="w-4 h-4 mr-2" />
-                  Réinitialiser
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <OpportunityImageCropper
+        open={isCropping}
+        rawImageSrc={rawImageSrc}
+        crop={crop}
+        zoom={zoom}
+        rotation={rotation}
+        cropAspect={cropAspect}
+        cropperContainerRef={cropperContainerRef}
+        setCrop={setCrop}
+        setZoom={setZoom}
+        setRotation={setRotation}
+        onCropComplete={onCropComplete}
+        applyCrop={applyCrop}
+        resetCropper={resetCropper}
+        onResetAdjustments={() => {
+          setCrop({ x: 0, y: 0 })
+          setZoom(1)
+          setRotation(0)
+          setAutoZoomed(false)
+        }}
+      />
     </div>
   )
 }

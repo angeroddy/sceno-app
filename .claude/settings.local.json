@@ -21,7 +21,10 @@
       "Bash(sed -n '105,145p' app/lib/opportunity-validation.ts)",
       "Bash(sed -n '110,130p' app/lib/email-notifications.ts)",
       "Bash(sed -n '190,215p' app/api/checkout/session/route.ts)",
-      "Bash(echo \"tsc exit $?\")"
+      "Bash(echo \"tsc exit $?\")",
+      "Bash(sed -n '1157,1262p' \"app/annonceur/opportunites/[id]/modifier/page.tsx\")",
+      "Bash(sed -n '1474,1568p' app/annonceur/publier/page.tsx)",
+      "Bash(echo \"tsc exit: $?\")"
     ],
     "deny": [],
     "ask": []
