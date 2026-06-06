@@ -60,7 +60,15 @@
       "Bash(git --no-pager log --oneline -1 main)",
       "Bash(echo \"commit exit $?\")",
       "Bash(git merge *)",
-      "Bash(echo \"merge exit $?\")"
+      "Bash(echo \"merge exit $?\")",
+      "Bash(git --no-pager log --oneline origin/main..main)",
+      "Bash(grep -nA2 -iE 'STRIPE_WEBHOOK_SECRET|STRIPE_SECRET|RESEND' README.md)",
+      "Bash(node --env-file=.env.local scripts/diag-webhook.mjs)",
+      "Bash(stripe --version)",
+      "Bash(python3 -)",
+      "Bash(git restore *)",
+      "Bash(node -e \"console.log\\('node', process.version\\)\")",
+      "Bash(node scripts/_create-admin-tmp.mjs)"
     ],
     "deny": [],
     "ask": []

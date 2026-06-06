@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireComedian } from '@/server/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase-admin'
 import { getStripe } from '@/lib/stripe'
+import { sendPurchaseConfirmationEmail } from '@/lib/stripe-webhooks/purchase-confirmation-email'
 import type { Achat } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -97,6 +98,16 @@ export async function GET(request: NextRequest) {
               ...achat,
               statut: 'confirmee',
               stripe_payment_intent_id: paymentIntentId,
+            }
+
+            // Filet de sécurité : si le webhook Stripe n'a pas confirmé l'achat,
+            // c'est ce polling qui l'a fait. On envoie donc ici les emails de
+            // confirmation (comédien + annonceur). Idempotent : confirm_checkout_purchase
+            // ne renvoie success=true qu'une seule fois, donc pas de double envoi.
+            try {
+              await sendPurchaseConfirmationEmail(adminSupabase, achat.id)
+            } catch (mailError) {
+              console.warn('Emails de confirmation (polling) non envoyés:', mailError)
             }
           } else if (
             confirmationResult &&

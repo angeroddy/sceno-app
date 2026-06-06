@@ -1,3 +1,4 @@
+import { createAdminSupabaseClient } from "@/lib/supabase-admin"
 import { sendMail } from "@/lib/mailer"
 import { calculateRoundedDiscountPercent } from "@/lib/pricing"
 import {
@@ -51,8 +52,39 @@ export function getSiteUrl(): string {
   ).replace(/\/$/, "")
 }
 
-function getAdminNotificationEmail(): string | null {
-  return process.env.ADMIN_NOTIFICATION_EMAIL || null
+/**
+ * Récupère la liste des destinataires des notifications admin :
+ * tous les admins enregistrés dans la table `admins`, plus l'éventuelle
+ * adresse partagée définie via ADMIN_NOTIFICATION_EMAIL. Dédupliquée
+ * (insensible à la casse) en conservant la première occurrence.
+ */
+async function getAdminNotificationEmails(): Promise<string[]> {
+  const seen = new Set<string>()
+  const emails: string[] = []
+  const add = (email?: string | null) => {
+    if (!email) return
+    const key = email.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    emails.push(email)
+  }
+
+  // Tous les admins de la base
+  try {
+    const supabase = createAdminSupabaseClient()
+    const { data } = await supabase
+      .from("admins")
+      .select("email")
+      .returns<{ email: string | null }[]>()
+    for (const row of data ?? []) add(row.email)
+  } catch {
+    // Service Role non configurée : on retombe sur l'adresse d'environnement
+  }
+
+  // Boîte de notification partagée éventuelle
+  add(process.env.ADMIN_NOTIFICATION_EMAIL)
+
+  return emails
 }
 
 // ---------------------------------------------------------------------------
@@ -302,69 +334,69 @@ export function buildOpportunityAlertSubject(opportunity: OpportunityEmailData):
 // ---------------------------------------------------------------------------
 
 export async function notifyAdminAdvertiserPending(advertiser: AdvertiserEmailData) {
-  const adminEmail = getAdminNotificationEmail()
-  if (!adminEmail) return
+  const adminEmails = await getAdminNotificationEmails()
+  if (adminEmails.length === 0) return
 
   const siteUrl = getSiteUrl()
   const advertiserName = advertiser.nom_formation || advertiser.nom_entreprise || advertiser.email
   const adminUrl = `${siteUrl}/admin/annonceurs/${advertiser.id}`
 
-  await sendMail({
-    to: adminEmail,
-    subject: `Annonceur en attente de validation - ${advertiserName}`,
-    html: buildEmailShell({
-      preheader: `${advertiserName} attend la validation de son compte annonceur.`,
-      bannerTitle: "Action requise",
-      bannerSubtitle: "Un annonceur attend votre validation.",
-      heading: "Annonceur en attente de validation",
-      signature: false,
-      body: `
-        ${p("Un annonceur vient de confirmer son adresse e-mail et attend une validation de l'équipe.")}
-        ${buildInfoCard(
-          [
-            { label: "Annonceur", value: escapeHtml(advertiserName) },
-            { label: "E-mail", value: escapeHtml(advertiser.email) },
-          ],
-          { title: "Compte concerné" }
-        )}
-        ${buildButton(adminUrl, "Voir l'annonceur")}
-      `,
-    }),
-    text: `Annonceur en attente de validation\n${advertiserName}\n${advertiser.email}\n${adminUrl}`,
+  const subject = `Annonceur en attente de validation - ${advertiserName}`
+  const html = buildEmailShell({
+    preheader: `${advertiserName} attend la validation de son compte annonceur.`,
+    bannerTitle: "Action requise",
+    bannerSubtitle: "Un annonceur attend votre validation.",
+    heading: "Annonceur en attente de validation",
+    signature: false,
+    body: `
+      ${p("Un annonceur vient de confirmer son adresse e-mail et attend une validation de l'équipe.")}
+      ${buildInfoCard(
+        [
+          { label: "Annonceur", value: escapeHtml(advertiserName) },
+          { label: "E-mail", value: escapeHtml(advertiser.email) },
+        ],
+        { title: "Compte concerné" }
+      )}
+      ${buildButton(adminUrl, "Voir l'annonceur")}
+    `,
   })
+  const text = `Annonceur en attente de validation\n${advertiserName}\n${advertiser.email}\n${adminUrl}`
+
+  // Un mail par admin : chaque destinataire ne voit que sa propre adresse
+  await Promise.all(adminEmails.map((to) => sendMail({ to, subject, html, text })))
 }
 
 export async function notifyAdminOpportunityPending(opportunity: OpportunityEmailData) {
-  const adminEmail = getAdminNotificationEmail()
-  if (!adminEmail) return
+  const adminEmails = await getAdminNotificationEmails()
+  if (adminEmails.length === 0) return
 
   const siteUrl = getSiteUrl()
   const adminUrl = `${siteUrl}/admin/opportunites/${opportunity.id}`
 
-  await sendMail({
-    to: adminEmail,
-    subject: `Opportunité en attente de validation - ${opportunity.titre}`,
-    html: buildEmailShell({
-      preheader: `« ${opportunity.titre} » attend la validation.`,
-      bannerTitle: "Action requise",
-      bannerSubtitle: "Une opportunité attend votre validation.",
-      heading: "Opportunité en attente de validation",
-      signature: false,
-      body: `
-        ${p("Une nouvelle opportunité a été publiée et attend une validation de l'équipe avant diffusion.")}
-        ${buildInfoCard(
-          [
-            { label: "Titre", value: escapeHtml(opportunity.titre) },
-            { label: "Type", value: escapeHtml(OPPORTUNITY_TYPE_LABELS[opportunity.type]) },
-            { label: "Modèle", value: escapeHtml(OPPORTUNITY_MODEL_LABELS[opportunity.modele]) },
-          ],
-          { title: "Opportunité concernée" }
-        )}
-        ${buildButton(adminUrl, "Voir l'opportunité")}
-      `,
-    }),
-    text: `Opportunité en attente de validation\n${opportunity.titre}\n${adminUrl}`,
+  const subject = `Opportunité en attente de validation - ${opportunity.titre}`
+  const html = buildEmailShell({
+    preheader: `« ${opportunity.titre} » attend la validation.`,
+    bannerTitle: "Action requise",
+    bannerSubtitle: "Une opportunité attend votre validation.",
+    heading: "Opportunité en attente de validation",
+    signature: false,
+    body: `
+      ${p("Une nouvelle opportunité a été publiée et attend une validation de l'équipe avant diffusion.")}
+      ${buildInfoCard(
+        [
+          { label: "Titre", value: escapeHtml(opportunity.titre) },
+          { label: "Type", value: escapeHtml(OPPORTUNITY_TYPE_LABELS[opportunity.type]) },
+          { label: "Modèle", value: escapeHtml(OPPORTUNITY_MODEL_LABELS[opportunity.modele]) },
+        ],
+        { title: "Opportunité concernée" }
+      )}
+      ${buildButton(adminUrl, "Voir l'opportunité")}
+    `,
   })
+  const text = `Opportunité en attente de validation\n${opportunity.titre}\n${adminUrl}`
+
+  // Un mail par admin : chaque destinataire ne voit que sa propre adresse
+  await Promise.all(adminEmails.map((to) => sendMail({ to, subject, html, text })))
 }
 
 // ---------------------------------------------------------------------------
