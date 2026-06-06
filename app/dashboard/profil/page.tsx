@@ -7,8 +7,6 @@ import {
   CheckCircle,
   Loader2,
   Trash2,
-  Upload,
-  User,
 } from "lucide-react"
 
 import { useAuth } from "../../hooks/useAuth"
@@ -22,12 +20,12 @@ import {
   isValidUrl,
   normalizeText,
 } from "@/app/lib/signup-validation"
-import { AppModal } from "@/components/ui/app-modal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { PasswordStrengthPanel } from "@/components/ui/password-strength-panel"
+import { ProfileEditCard } from "./_components/profile-edit-card"
+import { PasswordChangeModal } from "./_components/password-change-modal"
+import { DeleteAccountModal } from "./_components/delete-account-modal"
+import type { EditableProfile } from "./_lib/types"
 
 type ComedienProfile = {
   prenom: string | null
@@ -37,16 +35,6 @@ type ComedienProfile = {
   lien_demo: string | null
   date_naissance: string | null
   genre: "masculin" | "feminin" | "non_genre" | null
-}
-
-type EditableProfile = {
-  firstName: string
-  lastName: string
-  email: string
-  photoUrl: string
-  demoUrl: string
-  birthDate: string
-  gender: "" | "masculin" | "feminin" | "non_genre"
 }
 
 const PHOTO_RELOAD_PARAM = "photo_reload"
@@ -484,173 +472,21 @@ export default function ProfilPage() {
           </Card>
         ) : (
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Modification du Profil</CardTitle>
-                <CardDescription>
-                  Photo, identité, date de naissance, genre, e-mail et lien de démo.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {error && (
-                  <div className="rounded-md border border-red-200 bg-red-50 p-4">
-                    <p className="text-sm text-red-800">{error}</p>
-                  </div>
-                )}
-
-                {successMessage && (
-                  <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-4">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <p className="text-sm text-green-800">{successMessage}</p>
-                  </div>
-                )}
-
-                <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="photoInput">Photo de profil</Label>
-                      <div className="mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-3xl border border-[#E6DAD0] bg-[#F5F0EB] shadow-sm lg:mx-0">
-                        {currentPhotoSrc && !photoLoadFailed ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={renderablePhotoSrc}
-                            alt="Photo de profil"
-                            className="h-full w-full object-cover"
-                            onLoad={() => setPhotoLoadFailed(false)}
-                            onError={handlePhotoLoadError}
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <User className="h-20 w-20 text-gray-500" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <input
-                        type="file"
-                        id="photoInput"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="flex w-full items-center justify-center gap-2 sm:w-auto"
-                        onClick={() => document.getElementById("photoInput")?.click()}
-                      >
-                        <Upload className="h-4 w-4" />
-                        Télécharger une photo
-                      </Button>
-                      <p className="text-sm text-gray-500">
-                        Format carré recommandé. La nouvelle photo sera enregistrée avec vos modifications.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">Prénom</Label>
-                        <Input
-                          id="firstName"
-                          value={profile.firstName}
-                          onChange={(event) => updateProfileField("firstName", event.target.value)}
-                          placeholder="Votre prénom"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Nom</Label>
-                        <Input
-                          id="lastName"
-                          value={profile.lastName}
-                          onChange={(event) => updateProfileField("lastName", event.target.value)}
-                          placeholder="Votre nom"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="birthDate">Date de naissance</Label>
-                        <Input
-                          id="birthDate"
-                          type="date"
-                          value={profile.birthDate}
-                          onChange={(event) => updateProfileField("birthDate", event.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="gender">Genre</Label>
-                        <select
-                          id="gender"
-                          value={profile.gender}
-                          onChange={(event) => updateProfileField("gender", event.target.value as EditableProfile["gender"])}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background outline-none"
-                        >
-                          <option value="">Non renseigné</option>
-                          <option value="masculin">Masculin</option>
-                          <option value="feminin">Féminin</option>
-                          <option value="non_genre">Non genré / autre</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Adresse e-mail</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        disabled
-                        value={profile.email}
-                        placeholder="votre.email@example.com"
-                      />
-                      <p className="text-sm text-gray-500">
-                        L&apos;adresse e-mail du compte n&apos;est pas modifiable depuis cet espace.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="demoUrl">Lien vers votre démo</Label>
-                      <Input
-                        id="demoUrl"
-                        value={profile.demoUrl}
-                        onChange={(event) => updateProfileField("demoUrl", event.target.value)}
-                        placeholder="https://youtube.com/..."
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 pt-4 md:flex-row">
-                  <Button
-                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90 md:w-auto"
-                    onClick={handleSave}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Enregistrement...
-                      </>
-                    ) : (
-                      "Enregistrer les modifications"
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="w-full md:w-auto"
-                    onClick={() => router.push("/dashboard")}
-                    disabled={saving}
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ProfileEditCard
+              error={error}
+              successMessage={successMessage}
+              profile={profile}
+              photoSrc={currentPhotoSrc}
+              renderablePhotoSrc={renderablePhotoSrc}
+              photoLoadFailed={photoLoadFailed}
+              saving={saving}
+              onPhotoLoad={() => setPhotoLoadFailed(false)}
+              onPhotoError={handlePhotoLoadError}
+              onPhotoChange={handlePhotoChange}
+              onFieldChange={updateProfileField}
+              onSave={handleSave}
+              onCancel={() => router.push("/dashboard")}
+            />
 
             <Card>
               <CardHeader>
@@ -716,131 +552,34 @@ export default function ProfilPage() {
         )}
       </div>
 
-      <AppModal
+      <PasswordChangeModal
         open={passwordModalOpen}
-        onClose={handleClosePasswordModal}
-        title="Changer votre mot de passe"
-        description="Entrez d'abord votre mot de passe actuel, puis choisissez le nouveau."
-        tone="info"
-        showCloseButton={!passwordSaving}
-        footer={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClosePasswordModal}
-              disabled={passwordSaving}
-            >
-              Annuler
-            </Button>
-            <Button
-              type="button"
-              className="bg-[#E63832] text-white hover:bg-[#E63832]/90"
-              onClick={() => void handlePasswordSave()}
-              disabled={passwordSaving}
-            >
-              {passwordSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Mise à jour...
-                </>
-              ) : (
-                "Mettre à jour"
-              )}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4 text-left">
-          {passwordError && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-4">
-              <p className="text-sm text-red-800">{passwordError}</p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Mot de passe actuel</Label>
-            <Input
-              id="currentPassword"
-              type="password"
-              value={currentPassword}
-              onChange={(event) => {
-                setCurrentPassword(event.target.value)
-                setPasswordError("")
-              }}
-              placeholder="••••••••"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(event) => {
-                setNewPassword(event.target.value)
-                setPasswordError("")
-              }}
-              placeholder="••••••••"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => {
-                setConfirmPassword(event.target.value)
-                setPasswordError("")
-              }}
-              placeholder="••••••••"
-            />
-          </div>
-
-          <PasswordStrengthPanel password={newPassword} />
-        </div>
-      </AppModal>
-
-      <AppModal
-        open={deleteModalOpen}
-        onClose={() => {
-          if (deletingAccount) return
-          setDeleteModalOpen(false)
+        saving={passwordSaving}
+        error={passwordError}
+        currentPassword={currentPassword}
+        newPassword={newPassword}
+        confirmPassword={confirmPassword}
+        onCurrentPasswordChange={(value) => {
+          setCurrentPassword(value)
+          setPasswordError("")
         }}
-        title="Supprimer définitivement votre compte ?"
-        description="Cette suppression est irréversible. Toutes vos données comédien seront retirées de l'application."
-        tone="warning"
-        showCloseButton={!deletingAccount}
-        footer={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setDeleteModalOpen(false)}
-              disabled={deletingAccount}
-            >
-              Annuler
-            </Button>
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700"
-              onClick={() => void handleDeleteAccount()}
-              disabled={deletingAccount}
-            >
-              {deletingAccount ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer définitivement"
-              )}
-            </Button>
-          </>
-        }
+        onNewPasswordChange={(value) => {
+          setNewPassword(value)
+          setPasswordError("")
+        }}
+        onConfirmPasswordChange={(value) => {
+          setConfirmPassword(value)
+          setPasswordError("")
+        }}
+        onClose={handleClosePasswordModal}
+        onSave={() => void handlePasswordSave()}
+      />
+
+      <DeleteAccountModal
+        open={deleteModalOpen}
+        deleting={deletingAccount}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={() => void handleDeleteAccount()}
       />
     </div>
   )
