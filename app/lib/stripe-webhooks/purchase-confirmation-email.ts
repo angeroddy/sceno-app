@@ -1,5 +1,7 @@
-import { sendMail } from '@/app/lib/mailer'
-import { sendAdvertiserPurchaseEmail } from '@/app/lib/email-notifications'
+import {
+  sendAdvertiserPurchaseEmail,
+  sendComedianPurchaseEmail,
+} from '@/app/lib/email-notifications'
 import type { SupabaseAdmin } from './events'
 
 function formatReceiptReference(achatId: string): string {
@@ -61,48 +63,21 @@ export async function sendPurchaseConfirmationEmail(
     return
   }
 
-  const eventDate = new Date(achat.opportunite.date_evenement)
-  const bookingDate = new Date(achat.created_at)
   const receiptReference = formatReceiptReference(achat.id)
   const organizer = achat.opportunite.annonceur?.nom_formation || 'Organisme'
   const comedianName = [achat.comedien.prenom, achat.comedien.nom].filter(Boolean).join(' ').trim()
 
-  const subject = `Votre ticket formations-artistiques.fr - ${achat.opportunite.titre}`
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
-      <h1 style="font-size:20px;margin-bottom:16px">Reservation confirmee</h1>
-      <p>Bonjour ${comedianName || '},'}</p>
-      <p>Votre reservation a bien ete confirmee sur formations-artistiques.fr.</p>
-      <div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:20px 0">
-        <p style="margin:0 0 8px"><strong>Ticket / recu :</strong> ${receiptReference}</p>
-        <p style="margin:0 0 8px"><strong>Opportunite :</strong> ${achat.opportunite.titre}</p>
-        <p style="margin:0 0 8px"><strong>Organisme :</strong> ${organizer}</p>
-        <p style="margin:0 0 8px"><strong>Date :</strong> ${eventDate.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-        <p style="margin:0 0 8px"><strong>Heure :</strong> ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-        <p style="margin:0 0 8px"><strong>Montant paye :</strong> ${achat.prix_paye.toFixed(2)} EUR</p>
-        <p style="margin:0 0 8px"><strong>Date d'achat :</strong> ${bookingDate.toLocaleDateString('fr-FR')} ${bookingDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-        <p style="margin:0"><strong>Contact :</strong> ${achat.opportunite.contact_email}</p>
-      </div>
-      <p>Vous retrouvez egalement ce ticket dans votre espace comedien, onglet Mes Places.</p>
-    </div>
-  `
-
-  const text = [
-    'Reservation confirmee',
-    `Ticket / recu : ${receiptReference}`,
-    `Opportunite : ${achat.opportunite.titre}`,
-    `Organisme : ${organizer}`,
-    `Date : ${eventDate.toLocaleDateString('fr-FR')} ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
-    `Montant paye : ${achat.prix_paye.toFixed(2)} EUR`,
-    `Contact : ${achat.opportunite.contact_email}`,
-  ].join('\n')
-
   try {
-    await sendMail({
+    await sendComedianPurchaseEmail({
       to: achat.comedien.email,
-      subject,
-      html,
-      text,
+      comedianName,
+      receiptReference,
+      opportunityTitle: achat.opportunite.titre,
+      organizer,
+      eventDate: achat.opportunite.date_evenement,
+      paidPrice: achat.prix_paye,
+      purchaseDate: achat.created_at,
+      contactEmail: achat.opportunite.contact_email,
     })
   } catch (mailError) {
     console.warn('Email de confirmation achat comédien non envoyé:', mailError)

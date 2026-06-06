@@ -168,7 +168,7 @@ describe('POST /api/stripe', () => {
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'jean@example.com',
-        subject: expect.stringContaining('formations-artistiques.fr'),
+        subject: expect.stringContaining('Votre place est confirmée'),
       })
     )
   })
