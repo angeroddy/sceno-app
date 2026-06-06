@@ -1,4 +1,5 @@
 import { sendMail } from "@/app/lib/mailer"
+import { calculateRoundedDiscountPercent } from "@/app/lib/pricing"
 import {
   OPPORTUNITY_MODEL_LABELS,
   OPPORTUNITY_TYPE_LABELS,
@@ -118,8 +119,8 @@ export function buildOpportunityAlertSubject(opportunity: OpportunityEmailData):
   const typeLabel = getOpportunityAlertTypeLabel(opportunity.type)
   const reduction = typeof opportunity.reduction_pourcentage === "number"
     ? opportunity.reduction_pourcentage
-    : typeof opportunity.prix_base === "number" && typeof opportunity.prix_reduit === "number" && opportunity.prix_base > 0
-      ? Math.round(((opportunity.prix_base - opportunity.prix_reduit) / opportunity.prix_base) * 100)
+    : typeof opportunity.prix_base === "number" && typeof opportunity.prix_reduit === "number"
+      ? calculateRoundedDiscountPercent(opportunity.prix_base, opportunity.prix_reduit)
       : null
   const modelWithDiscount = reduction ? `${modelLabel} à - ${reduction} %` : modelLabel
 

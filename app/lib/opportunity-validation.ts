@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { sanitizeOpportunityHtml } from "./opportunity-html"
+import { calculateDiscountPercent } from "./pricing"
 
 const opportunityTypeSchema = z.enum([
   "stages_ateliers",
@@ -113,7 +114,7 @@ export const createOpportunitySchema = z
       })
     }
 
-    const reduction = ((value.prix_base - value.prix_reduit) / value.prix_base) * 100
+    const reduction = calculateDiscountPercent(value.prix_base, value.prix_reduit)
     if (reduction < 25) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

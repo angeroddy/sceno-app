@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { getStripe } from '@/app/lib/stripe'
 import { deriveOpportunityStatus, isOpportunityReservableByComedian, isOpportunityVisibleToComedian } from '@/app/lib/opportunity-status'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { toStripeCents, calculatePlatformFee } from '@/app/lib/pricing'
 import type { Achat, Annonceur, Comedien, Opportunite } from '@/app/types'
 
 export const runtime = 'nodejs'
@@ -196,13 +197,13 @@ export async function POST(request: NextRequest) {
     }
 
     const prixEuros = opportunite.prix_reduit > 0 ? opportunite.prix_reduit : opportunite.prix_base
-    const amount = Math.round(prixEuros * 100)
+    const amount = toStripeCents(prixEuros)
     if (amount <= 0) {
       return NextResponse.json({ error: 'Montant invalide pour cette opportunite' }, { status: 400 })
     }
 
     const commissionPercent = getPlatformFeePercent()
-    const applicationFeeAmount = Math.round((amount * commissionPercent) / 100)
+    const applicationFeeAmount = calculatePlatformFee(amount, commissionPercent)
 
     const recyclablePurchaseResult = await supabase
       .from('achats')

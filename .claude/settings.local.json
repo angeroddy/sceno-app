@@ -17,7 +17,11 @@
       "Bash(sed -n '1,20p' app/api/admin/opportunites/route.ts)",
       "Bash(sed -n '1,20p' app/api/admin/stats/route.ts)",
       "Bash(npx tsc *)",
-      "Bash(echo \"=== tsc exit: $? ===\")"
+      "Bash(echo \"=== tsc exit: $? ===\")",
+      "Bash(sed -n '105,145p' app/lib/opportunity-validation.ts)",
+      "Bash(sed -n '110,130p' app/lib/email-notifications.ts)",
+      "Bash(sed -n '190,215p' app/api/checkout/session/route.ts)",
+      "Bash(echo \"tsc exit $?\")"
     ],
     "deny": [],
     "ask": []

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdvertiser } from '@/app/server/auth'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 import { countOpportunityViews } from '@/app/lib/opportunity-views'
+import { fromStripeCents } from '@/app/lib/pricing'
 import { Achat, Opportunite } from '@/app/types'
 
 export async function GET(
@@ -61,7 +62,7 @@ export async function GET(
       vues,
       reservations: achats?.length || 0,
       revenu: achats?.reduce(
-        (sum, achat) => sum + achat.prix_paye - ((achat.application_fee_amount || 0) / 100),
+        (sum, achat) => sum + achat.prix_paye - fromStripeCents(achat.application_fee_amount || 0),
         0
       ) || 0
     }
