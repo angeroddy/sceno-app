@@ -28,7 +28,7 @@ import {
   Eye,
   TrendingUp,
 } from "lucide-react"
-import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
+import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/types"
 import { OpportunityBodyContent } from "@/components/opportunity-body-content"
 import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/lib/renderable-image"
 

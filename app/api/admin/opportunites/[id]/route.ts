@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
 import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import { countOpportunityViews } from '@/lib/opportunity-views'
-import { Achat } from '@/app/types'
+import { Achat } from '@/types'
 
 export async function GET(
   request: NextRequest,

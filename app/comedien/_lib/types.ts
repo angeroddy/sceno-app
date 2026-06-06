@@ -1,4 +1,4 @@
-import type { OpportunityModel, OpportunityStatus } from "@/app/types"
+import type { OpportunityModel, OpportunityStatus } from "@/types"
 
 export interface DisplayOpportunity {
   id: string

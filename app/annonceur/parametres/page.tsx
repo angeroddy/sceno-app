@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { AppModal } from "@/components/ui/app-modal"
 import { Loader2, Save, CheckCircle2, Trash2 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/lib/supabase-client"
-import type { Annonceur } from "@/app/types"
+import type { Annonceur } from "@/types"
 import {
   getAgeFromDate,
   isValidBic,

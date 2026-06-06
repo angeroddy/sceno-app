@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { ServerSupabaseClient } from '@/app/server/auth'
+import type { ServerSupabaseClient } from '@/server/auth'
 import {
   deriveOpportunityStatus,
   isOpportunityReservableByComedian,
@@ -7,7 +7,7 @@ import {
 } from '@/lib/opportunity-status'
 import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import { toStripeCents, calculatePlatformFee } from '@/lib/pricing'
-import type { Achat, Annonceur, Opportunite } from '@/app/types'
+import type { Achat, Annonceur, Opportunite } from '@/types'
 
 export interface CreateCheckoutSessionParams {
   supabase: ServerSupabaseClient

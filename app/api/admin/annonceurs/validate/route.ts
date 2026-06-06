@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
 import { sendAdvertiserValidatedEmail } from '@/lib/email-notifications'
-import type { Annonceur, Admin } from '@/app/types'
+import type { Annonceur, Admin } from '@/types'
 
 export async function POST(request: Request) {
   try {

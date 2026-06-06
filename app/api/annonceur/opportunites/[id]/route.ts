@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdvertiser } from '@/app/server/auth'
+import { requireAdvertiser } from '@/server/auth'
 import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import { countOpportunityViews } from '@/lib/opportunity-views'
 import { fromStripeCents } from '@/lib/pricing'
-import { Achat, Opportunite } from '@/app/types'
+import { Achat, Opportunite } from '@/types'
 
 export async function GET(
   request: NextRequest,

@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { Annonceur } from '@/app/types'
+import type { Annonceur } from '@/types'
 
 export const STRIPE_ONBOARDING_STARTED_METADATA_KEY = 'scenio_onboarding_started'
 export const EVENT_TICKETING_MCC = '7922'

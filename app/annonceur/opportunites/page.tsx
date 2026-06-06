@@ -18,8 +18,8 @@ import {
   Trash2,
   Pencil
 } from "lucide-react"
-import type { Opportunite } from "@/app/types"
-import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
+import type { Opportunite } from "@/types"
+import { OPPORTUNITY_TYPE_LABELS } from "@/types"
 import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/lib/renderable-image"
 
 function formatPlacesLabel(remaining: number, total: number) {

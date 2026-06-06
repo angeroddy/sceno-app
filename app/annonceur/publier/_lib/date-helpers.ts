@@ -1,4 +1,4 @@
-import type { OpportunityModel } from "@/app/types"
+import type { OpportunityModel } from "@/types"
 
 export const OPPORTUNITY_DATE_MODEL_ERROR =
   "La date de l'événement doit être soit dans 72h (Dernière minute), soit à au moins 1 mois (Prévente)."

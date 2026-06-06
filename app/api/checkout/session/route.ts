@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireComedian } from '@/app/server/auth'
+import { requireComedian } from '@/server/auth'
 import { getStripe } from '@/lib/stripe'
 import { createCheckoutSession } from '@/lib/checkout/create-checkout-session'
 

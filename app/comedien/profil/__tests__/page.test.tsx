@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ProfilPage from '../page'
-import { useAuth } from '@/app/hooks/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { PENDING_COMEDIAN_SIGNUP_PHOTO_SYNCED_EVENT } from '@/lib/pending-comedian-photo'
 
-jest.mock('@/app/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: jest.fn(),
 }))
 

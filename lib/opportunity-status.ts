@@ -1,4 +1,4 @@
-import type { OpportunityStatus } from '@/app/types'
+import type { OpportunityStatus } from '@/types'
 
 type OpportunityStatusInput = {
   statut: OpportunityStatus

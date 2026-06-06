@@ -32,7 +32,7 @@ import {
   OPPORTUNITY_MODEL_LABELS,
   OPPORTUNITY_TYPE_LABELS,
   OpportunityType,
-} from '@/app/types'
+} from '@/types'
 import { OpportunityBodyContent } from '@/components/opportunity-body-content'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

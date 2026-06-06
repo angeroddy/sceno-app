@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAdminProfile, getUser } from '@/lib/supabase'
-import type { OpportunityType } from '@/app/types'
-import { OPPORTUNITY_TYPE_LABELS } from '@/app/types'
+import type { OpportunityType } from '@/types'
+import { OPPORTUNITY_TYPE_LABELS } from '@/types'
 
 type ComedienPreferenceRow = {
   preferences_opportunites: OpportunityType[] | null

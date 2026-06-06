@@ -12,7 +12,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react"
-import { Opportunite } from "@/app/types"
+import { Opportunite } from "@/types"
 import { AppModal } from "@/components/ui/app-modal"
 import { OpportuniteDetailTabs } from "./_components/opportunite-detail-tabs"
 import { AdminOpportuniteSidebar } from "./_components/admin-opportunite-sidebar"

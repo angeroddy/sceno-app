@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireComedian } from '@/app/server/auth'
+import { requireComedian } from '@/server/auth'
 import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import {
   deriveOpportunityStatus,

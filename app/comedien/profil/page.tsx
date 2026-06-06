@@ -9,7 +9,7 @@ import {
   Trash2,
 } from "lucide-react"
 
-import { useAuth } from "../../hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth"
 import { translateAuthErrorMessage } from "@/lib/auth-error-message"
 import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import { PENDING_COMEDIAN_SIGNUP_PHOTO_SYNCED_EVENT } from "@/lib/pending-comedian-photo"

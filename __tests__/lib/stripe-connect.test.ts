@@ -9,7 +9,7 @@ import {
   syncExpressAccountForAnnonceur,
   toStripeCountryCode,
 } from '@/lib/stripe-connect'
-import type { Annonceur } from '@/app/types'
+import type { Annonceur } from '@/types'
 
 function createBaseAnnonceur(overrides: Partial<Annonceur> = {}): Annonceur {
   return {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdvertiser } from '@/app/server/auth'
+import { requireAdvertiser } from '@/server/auth'
 import { getReadableStripeError, getStripeErrorParam, getStripeErrorStatus } from '@/lib/stripe-error-message'
 import { getStripe } from '@/lib/stripe'
 import {

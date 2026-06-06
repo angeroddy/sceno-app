@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import DashboardLayout from '../layout'
-import { useAuth } from '@/app/hooks/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 
 // Mock du hook useAuth
-jest.mock('@/app/hooks/useAuth', () => ({
+jest.mock('@/hooks/useAuth', () => ({
   useAuth: jest.fn(),
 }))
 

@@ -9,7 +9,7 @@ import { ImageCarousel } from "@/components/ImageCarousel";
 import { ChevronRight } from "lucide-react"
 import { Footer } from "@/components/Footer"
 import Link from 'next/link'
-import { useAuth } from "./hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
   const { isAuthenticated, userType, loading, logout } = useAuth();

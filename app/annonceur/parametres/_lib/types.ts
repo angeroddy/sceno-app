@@ -1,4 +1,4 @@
-import type { TypeJuridique } from "@/app/types"
+import type { TypeJuridique } from "@/types"
 
 export type AnnonceurSettingsForm = {
   nom_formation: string

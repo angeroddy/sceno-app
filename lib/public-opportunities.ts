@@ -1,6 +1,6 @@
 import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import { deriveOpportunityStatus } from '@/lib/opportunity-status'
-import type { Annonceur, Opportunite } from '@/app/types'
+import type { Annonceur, Opportunite } from '@/types'
 
 export type PublicOpportunityDetails = Opportunite & {
   annonceur: Pick<Annonceur, 'nom_formation' | 'email'> | null

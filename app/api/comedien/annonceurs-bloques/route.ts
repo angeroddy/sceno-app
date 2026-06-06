@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireComedian } from "@/app/server/auth"
+import { requireComedian } from "@/server/auth"
 
 export async function GET() {
   try {

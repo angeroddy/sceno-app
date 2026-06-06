@@ -1,6 +1,6 @@
 import type {
   InscriptionAnnonceurForm,
-} from "@/app/types"
+} from "@/types"
 
 export const isDevMode = process.env.NODE_ENV !== "production"
 

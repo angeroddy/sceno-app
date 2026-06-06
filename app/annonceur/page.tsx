@@ -16,7 +16,7 @@ import {
 import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import { countOpportunityViewsForIds } from "@/lib/opportunity-views"
 import { useRouter } from "next/navigation"
-import type { Opportunite, Annonceur, Achat } from "@/app/types"
+import type { Opportunite, Annonceur, Achat } from "@/types"
 
 interface Stats {
   totalOpportunites: number

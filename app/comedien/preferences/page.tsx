@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Bell, ArrowLeft, Loader2, CheckCircle, ShieldOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { createBrowserSupabaseClient } from "@/lib/supabase-client";
-import type { OpportunityType } from "@/app/types";
-import { OPPORTUNITY_TYPE_LABELS } from "@/app/types";
+import type { OpportunityType } from "@/types";
+import { OPPORTUNITY_TYPE_LABELS } from "@/types";
 
 export default function PreferencesPage() {
   const router = useRouter();

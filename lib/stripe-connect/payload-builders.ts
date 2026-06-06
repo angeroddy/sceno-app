@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import type { Annonceur } from '@/app/types'
+import type { Annonceur } from '@/types'
 import {
   isValidFrenchBusinessId,
   normalizeBusinessId,

@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { Annonceur } from '@/app/types'
+import type { Annonceur } from '@/types'
 import {
   StripeConnectSyncError,
   type StripeAccountRequirementsSummary,

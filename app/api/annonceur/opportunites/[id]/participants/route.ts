@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { requireAdvertiser } from "@/app/server/auth"
+import { requireAdvertiser } from "@/server/auth"
 import { createAdminSupabaseClient } from "@/lib/supabase-admin"
-import type { Comedien } from "@/app/types"
+import type { Comedien } from "@/types"
 
 type ParticipantRow = {
   id: string

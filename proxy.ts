@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import type { Database } from '@/app/types'
+import type { Database } from '@/types'
 import { resolveUserTypeForAuthUser } from '@/lib/supabase'
 
 export async function proxy(request: NextRequest) {

@@ -14,7 +14,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react"
-import { OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS } from "@/app/types"
+import { OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS } from "@/types"
 
 interface OpportuniteLite {
   id: string

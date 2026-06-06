@@ -24,8 +24,8 @@ import type {
   Database,
   InscriptionAnnonceurForm,
   TypeJuridique,
-} from "@/app/types"
-import { TYPE_JURIDIQUE_LABELS } from "@/app/types"
+} from "@/types"
+import { TYPE_JURIDIQUE_LABELS } from "@/types"
 import {
   getAgeFromDate,
   isStrongEnoughPassword,

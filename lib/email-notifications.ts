@@ -5,7 +5,7 @@ import {
   OPPORTUNITY_TYPE_LABELS,
   type OpportunityModel,
   type OpportunityType,
-} from "@/app/types"
+} from "@/types"
 
 type OpportunityEmailData = {
   id: string

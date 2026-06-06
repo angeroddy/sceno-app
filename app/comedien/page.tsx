@@ -19,7 +19,7 @@ import {
   OPPORTUNITY_TYPE_LABELS,
   OpportunityType,
   OpportunityModel,
-} from "@/app/types"
+} from "@/types"
 import type { DisplayOpportunity, PurchasedTicket } from "./_lib/types"
 import { OpportunityCard } from "./_components/opportunity-card"
 import { TicketRow } from "./_components/ticket-row"

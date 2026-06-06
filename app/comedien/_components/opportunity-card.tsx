@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Ban, Calendar, Clock, Loader2, MapPin, MoreHorizontal, Tag, Users } from "lucide-react"
-import { OPPORTUNITY_MODEL_LABELS } from "@/app/types"
+import { OPPORTUNITY_MODEL_LABELS } from "@/types"
 import { ShareOpportunityUrlButton } from "@/components/share-opportunity-url-button"
 import type { DisplayOpportunity } from "../_lib/types"
 

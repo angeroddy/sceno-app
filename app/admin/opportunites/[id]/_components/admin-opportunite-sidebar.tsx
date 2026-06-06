@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, CheckCircle, Clock, ExternalLink, Info, Loader2, Users, XCircle } from "lucide-react"
-import { OPPORTUNITY_TYPE_LABELS, type Opportunite, type OpportunityType } from "@/app/types"
+import { OPPORTUNITY_TYPE_LABELS, type Opportunite, type OpportunityType } from "@/types"
 
 interface AdminOpportuniteSidebarProps {
   opportunite: Opportunite

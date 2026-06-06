@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import type { Database } from '@/app/types'
+import type { Database } from '@/types'
 import type { User } from '@supabase/supabase-js'
 import {
   resolveUserTypeForAuthUser,

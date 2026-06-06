@@ -1,4 +1,4 @@
-import { OPPORTUNITY_STATUS_LABELS, type OpportunityStatus } from "@/app/types"
+import { OPPORTUNITY_STATUS_LABELS, type OpportunityStatus } from "@/types"
 import { cn } from "@/lib/utils"
 
 const statusStyles: Record<OpportunityStatus, { body: string; fold: string }> = {

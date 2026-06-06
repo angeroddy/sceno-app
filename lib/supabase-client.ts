@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
-import type { Database } from '@/app/types'
+import type { Database } from '@/types'
 
 // ============================================
 // CLIENT SUPABASE - CÔTÉ NAVIGATEUR

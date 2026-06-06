@@ -19,8 +19,8 @@ import {
   Loader2,
   Building2,
 } from "lucide-react"
-import type { Opportunite, Annonceur } from "@/app/types"
-import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_STATUS_LABELS } from "@/app/types"
+import type { Opportunite, Annonceur } from "@/types"
+import { OPPORTUNITY_TYPE_LABELS, OPPORTUNITY_STATUS_LABELS } from "@/types"
 
 interface OpportuniteWithAnnonceur extends Opportunite {
   annonceur: {

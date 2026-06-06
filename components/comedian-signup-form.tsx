@@ -28,7 +28,7 @@ import {
   savePendingComedianSignupPhoto,
 } from "@/lib/pending-comedian-photo"
 import Cropper from "react-easy-crop"
-import type { OpportunityType, ComedianGender } from "@/app/types"
+import type { OpportunityType, ComedianGender } from "@/types"
 import { getCroppedImage } from "@/lib/crop-image"
 import {
   getAgeFromDate,

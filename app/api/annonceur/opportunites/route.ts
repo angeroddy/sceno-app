@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdvertiser } from '@/app/server/auth'
+import { requireAdvertiser } from '@/server/auth'
 import { createAdminSupabaseClient } from '@/lib/supabase-admin'
 import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import { notifyAdminOpportunityPending } from '@/lib/email-notifications'
-import type { Database } from '@/app/types'
+import type { Database } from '@/types'
 import { createOpportunitySchema } from '@/lib/opportunity-validation'
 
 type OpportunitesTableInsert = {

@@ -20,7 +20,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react"
-import type { Annonceur } from "@/app/types"
+import type { Annonceur } from "@/types"
 
 interface AnnonceurDetails extends Annonceur {
   opportunites?: { id: string; titre: string; statut: string; created_at: string }[]

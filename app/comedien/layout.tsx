@@ -2,7 +2,7 @@
 
 import { Navbar01 } from "@/components/ui/shadcn-io/navbar-01";
 import { Footer } from "@/components/Footer";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

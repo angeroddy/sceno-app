@@ -20,7 +20,7 @@ import {
   Loader2,
   Eye,
 } from "lucide-react"
-import type { Annonceur } from "@/app/types"
+import type { Annonceur } from "@/types"
 
 interface AnnonceurWithStats extends Annonceur {
   opportunites?: { id: string }[]

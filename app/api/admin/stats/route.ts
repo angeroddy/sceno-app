@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
-import type { Annonceur, Opportunite, Achat } from '@/app/types'
+import type { Annonceur, Opportunite, Achat } from '@/types'
 
 export async function GET() {
   try {
