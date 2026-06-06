@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireComedian } from '@/app/server/auth'
 import { getStripe } from '@/app/lib/stripe'
-import { deriveOpportunityStatus, isOpportunityReservableByComedian, isOpportunityVisibleToComedian } from '@/app/lib/opportunity-status'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { toStripeCents, calculatePlatformFee } from '@/app/lib/pricing'
-import type { Achat, Annonceur, Comedien, Opportunite } from '@/app/types'
+import { createCheckoutSession } from '@/app/lib/checkout/create-checkout-session'
 
 export const runtime = 'nodejs'
 
@@ -25,9 +22,6 @@ function getPlatformFeePercent(): number {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createServerSupabaseClient()
-  const stripe = getStripe()
-
   try {
     const body = await request.json() as { opportuniteId?: string }
     const opportuniteId = body.opportuniteId
@@ -35,294 +29,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'opportuniteId est requis' }, { status: 400 })
     }
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const auth = await requireComedian()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: comedien } = auth
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    const { data: comedienData, error: comedienError } = await supabase
-      .from('comediens')
-      .select('id, compte_supprime')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    const comedienRecord = comedienData as (Pick<Comedien, 'id'> & { compte_supprime?: boolean }) | null
-
-    if (comedienError || !comedienRecord) {
-      return NextResponse.json({ error: 'Profil comedien introuvable' }, { status: 404 })
-    }
-    if (comedienRecord.compte_supprime) {
-      return NextResponse.json({ error: 'Compte supprimé' }, { status: 403 })
-    }
-    const comedien = comedienRecord as Pick<Comedien, 'id'>
-
-    const { data: opportuniteData, error: opportuniteError } = await supabase
-      .from('opportunites')
-      .select('id, annonceur_id, titre, prix_reduit, prix_base, places_restantes, date_evenement, statut')
-      .eq('id', opportuniteId)
-      .single()
-
-    if (opportuniteError || !opportuniteData) {
-      return NextResponse.json({ error: 'Opportunite indisponible' }, { status: 404 })
-    }
-
-    const opportunite = opportuniteData as Pick<
-      Opportunite,
-      'id' | 'annonceur_id' | 'titre' | 'prix_reduit' | 'prix_base' | 'places_restantes' | 'date_evenement' | 'statut'
-    >
-
-    const { data: blockedAnnonceur } = await supabase
-      .from('annonceurs_bloques')
-      .select('annonceur_id')
-      .eq('comedien_id', comedien.id)
-      .eq('annonceur_id', opportunite.annonceur_id)
-      .maybeSingle()
-
-    if (blockedAnnonceur) {
-      return NextResponse.json({ error: 'Opportunite indisponible' }, { status: 404 })
-    }
-
-    if (!isOpportunityVisibleToComedian(opportunite.statut)) {
-      return NextResponse.json({ error: 'Opportunite indisponible' }, { status: 404 })
-    }
-
-    const reconciledOpportunity = await reconcileOpportunityPlaces(supabase as never, opportunite.id)
-    if (reconciledOpportunity) {
-      opportunite.places_restantes = reconciledOpportunity.places_restantes
-    }
-
-    const derivedStatus = deriveOpportunityStatus({
-      statut: opportunite.statut,
-      date_evenement: opportunite.date_evenement,
-      places_restantes: opportunite.places_restantes,
+    const result = await createCheckoutSession({
+      supabase,
+      stripe: getStripe(),
+      comedienId: comedien.id,
+      opportuniteId,
+      baseUrl: getBaseUrl(request),
+      platformFeePercent: getPlatformFeePercent(),
     })
 
-    if (!isOpportunityReservableByComedian(derivedStatus)) {
-      if (derivedStatus === 'supprimee') {
-        return NextResponse.json({ error: 'Opportunité indisponible' }, { status: 404 })
-      }
-      if (derivedStatus === 'complete') {
-        return NextResponse.json({ error: 'Cette opportunité est complète' }, { status: 409 })
-      }
-      if (derivedStatus === 'expiree') {
-        return NextResponse.json({ error: 'Cette opportunité est expirée' }, { status: 409 })
-      }
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
-    if (opportunite.places_restantes <= 0) {
-      return NextResponse.json({ error: 'Cette opportunité est complète' }, { status: 409 })
-    }
-    if (new Date(opportunite.date_evenement) <= new Date()) {
-      return NextResponse.json({ error: 'Cette opportunité est expirée' }, { status: 409 })
-    }
-
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('id, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
-      .eq('id', opportunite.annonceur_id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json({ error: 'Annonceur introuvable' }, { status: 404 })
-    }
-
-    const annonceur = annonceurData as Pick<
-      Annonceur,
-      'id' | 'stripe_account_id' | 'stripe_charges_enabled' | 'stripe_payouts_enabled'
-    >
-
-    if (!annonceur.stripe_account_id) {
-      return NextResponse.json(
-        { error: "L'annonceur n'a pas encore activé Stripe Connect" },
-        { status: 409 }
-      )
-    }
-    if (!annonceur.stripe_charges_enabled || !annonceur.stripe_payouts_enabled) {
-      return NextResponse.json(
-        { error: "Le compte Stripe de l'annonceur n'est pas encore prêt" },
-        { status: 409 }
-      )
-    }
-
-    const { data: confirmedPurchase } = await supabase
-      .from('achats')
-      .select('id')
-      .eq('comedien_id', comedien.id)
-      .eq('opportunite_id', opportunite.id)
-      .eq('statut', 'confirmee')
-      .maybeSingle()
-
-    if (confirmedPurchase) {
-      return NextResponse.json({ error: 'Vous avez déjà réservé cette opportunité' }, { status: 409 })
-    }
-
-    const { data: pendingPurchases } = await supabase
-      .from('achats')
-      .select('id, stripe_checkout_session_id, statut')
-      .eq('comedien_id', comedien.id)
-      .eq('opportunite_id', opportunite.id)
-      .eq('statut', 'en_attente')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    for (const pending of pendingPurchases || []) {
-      const pendingAchat = pending as Pick<Achat, 'id' | 'stripe_checkout_session_id' | 'statut'>
-      if (!pendingAchat.stripe_checkout_session_id) {
-        await supabase
-          .from('achats')
-          .update({ statut: 'annulee' } as unknown as never)
-          .eq('id', pendingAchat.id)
-          .eq('statut', 'en_attente')
-        continue
-      }
-
-      try {
-        const existingSession = await stripe.checkout.sessions.retrieve(pendingAchat.stripe_checkout_session_id)
-        if (existingSession.status === 'open' && existingSession.url) {
-          return NextResponse.json({ url: existingSession.url, achatId: pendingAchat.id }, { status: 200 })
-        }
-      } catch (sessionError) {
-        console.warn('Session Stripe introuvable/expirée, achat annulé:', sessionError)
-      }
-
-      await supabase
-        .from('achats')
-        .update({ statut: 'annulee' } as unknown as never)
-        .eq('id', pendingAchat.id)
-        .eq('statut', 'en_attente')
-    }
-
-    const prixEuros = opportunite.prix_reduit > 0 ? opportunite.prix_reduit : opportunite.prix_base
-    const amount = toStripeCents(prixEuros)
-    if (amount <= 0) {
-      return NextResponse.json({ error: 'Montant invalide pour cette opportunite' }, { status: 400 })
-    }
-
-    const commissionPercent = getPlatformFeePercent()
-    const applicationFeeAmount = calculatePlatformFee(amount, commissionPercent)
-
-    const recyclablePurchaseResult = await supabase
-      .from('achats')
-      .select('id, statut')
-      .eq('comedien_id', comedien.id)
-      .eq('opportunite_id', opportunite.id)
-      .in('statut', ['remboursee', 'annulee'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    const recyclablePurchase = recyclablePurchaseResult.data as Pick<Achat, 'id' | 'statut'> | null
-
-    let achatData: { id: string } | null = null
-    let achatError: { message?: string } | null = null
-
-    if (recyclablePurchase?.id) {
-      const { data: updatedPurchase, error: updatedPurchaseError } = await supabase
-        .from('achats')
-        .update({
-          prix_paye: prixEuros,
-          statut: 'en_attente',
-          stripe_payment_id: null,
-          stripe_checkout_session_id: null,
-          stripe_payment_intent_id: null,
-          stripe_refund_id: null,
-          application_fee_amount: applicationFeeAmount,
-          transfer_destination: annonceur.stripe_account_id,
-          last_stripe_event_id: null,
-        } as unknown as never)
-        .eq('id', recyclablePurchase.id)
-        .select('id')
-        .single()
-
-      achatData = updatedPurchase as { id: string } | null
-      achatError = updatedPurchaseError as { message?: string } | null
-    } else {
-      const { data: insertedPurchase, error: insertedPurchaseError } = await supabase
-        .from('achats')
-        .insert({
-          comedien_id: comedien.id,
-          opportunite_id: opportunite.id,
-          prix_paye: prixEuros,
-          statut: 'en_attente',
-          stripe_payment_id: null,
-          stripe_checkout_session_id: null,
-          stripe_payment_intent_id: null,
-          stripe_refund_id: null,
-          application_fee_amount: applicationFeeAmount,
-          transfer_destination: annonceur.stripe_account_id,
-          last_stripe_event_id: null,
-        } as unknown as never)
-        .select('id')
-        .single()
-
-      achatData = insertedPurchase as { id: string } | null
-      achatError = insertedPurchaseError as { message?: string } | null
-    }
-
-    if (achatError || !achatData) {
-      console.error('Erreur creation achat:', achatError)
-      return NextResponse.json({ error: "Impossible d'initialiser la reservation" }, { status: 500 })
-    }
-
-    const achat = achatData as Pick<Achat, 'id'>
-    const baseUrl = getBaseUrl(request)
-
-    try {
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        client_reference_id: achat.id,
-        success_url: `${baseUrl}/dashboard?checkout=success&achat=${achat.id}`,
-        cancel_url: `${baseUrl}/dashboard/opportunites/${opportunite.id}?checkout=cancel`,
-        line_items: [
-          {
-            price_data: {
-              currency: 'eur',
-              product_data: {
-                name: opportunite.titre,
-              },
-              unit_amount: amount,
-            },
-            quantity: 1,
-          },
-        ],
-        metadata: {
-          achat_id: achat.id,
-          opportunite_id: opportunite.id,
-          comedien_id: comedien.id,
-        },
-        payment_intent_data: {
-          application_fee_amount: applicationFeeAmount,
-          transfer_data: {
-            destination: annonceur.stripe_account_id,
-          },
-          metadata: {
-            achat_id: achat.id,
-            opportunite_id: opportunite.id,
-            comedien_id: comedien.id,
-          },
-        },
-      })
-
-      await supabase
-        .from('achats')
-        .update({
-          stripe_checkout_session_id: session.id,
-        } as unknown as never)
-        .eq('id', achat.id)
-
-      return NextResponse.json({ url: session.url, achatId: achat.id }, { status: 200 })
-    } catch (stripeError) {
-      await supabase
-        .from('achats')
-        .update({ statut: 'annulee' } as unknown as never)
-        .eq('id', achat.id)
-        .eq('statut', 'en_attente')
-
-      throw stripeError
-    }
+    return NextResponse.json({ url: result.url, achatId: result.achatId }, { status: 200 })
   } catch (error) {
     console.error('Erreur checkout session:', error)
     return NextResponse.json({ error: 'Erreur serveur interne' }, { status: 500 })

@@ -52,7 +52,7 @@ describe('POST /api/checkout/session', () => {
     const response = await POST(createRequest({ opportuniteId: 'opp-1' }))
 
     expect(response.status).toBe(401)
-    await expect(response.json()).resolves.toEqual({ error: 'Non authentifie' })
+    await expect(response.json()).resolves.toEqual({ error: 'Non authentifié' })
   })
 
   it('retourne 403 si le compte comédien est supprimé', async () => {
