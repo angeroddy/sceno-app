@@ -5,10 +5,106 @@ import {
   syncEmailVerificationForAuthUser,
   type AuthProfileSupabase,
 } from '@/app/lib/auth-profile'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import {
+  notifyAdminAdvertiserPending,
+  sendAdvertiserWelcomeEmail,
+  sendComedianWelcomeEmail,
+} from '@/app/lib/email-notifications'
+
+type EmailVerificationAdvertiser = {
+  id: string
+  email: string
+  nom_formation: string | null
+  nom_entreprise: string | null
+  email_verifie: boolean
+}
+
+type EmailVerificationComedian = {
+  id: string
+  email: string
+  prenom: string | null
+  nom: string | null
+  email_verifie: boolean
+}
+
+async function createCallbackSupabaseClient() {
+  const cookieStore = await cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
+}
+
+async function sendFirstEmailVerificationNotifications(userId: string) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return
+  }
+
+  try {
+    const adminSupabase = createAdminSupabaseClient()
+
+    const { data: advertiserData } = await adminSupabase
+      .from('annonceurs')
+      .select('id, email, nom_formation, nom_entreprise, email_verifie')
+      .eq('auth_user_id', userId)
+      .maybeSingle()
+    const advertiser = advertiserData as EmailVerificationAdvertiser | null
+
+    if (advertiser && !advertiser.email_verifie) {
+      await adminSupabase
+        .from('annonceurs')
+        .update({ email_verifie: true } as unknown as never)
+        .eq('id', advertiser.id)
+
+      await sendAdvertiserWelcomeEmail(advertiser)
+      await notifyAdminAdvertiserPending(advertiser)
+      return
+    }
+
+    const { data: comedianData } = await adminSupabase
+      .from('comediens')
+      .select('id, email, prenom, nom, email_verifie')
+      .eq('auth_user_id', userId)
+      .maybeSingle()
+    const comedian = comedianData as EmailVerificationComedian | null
+
+    if (comedian && !comedian.email_verifie) {
+      await adminSupabase
+        .from('comediens')
+        .update({ email_verifie: true } as unknown as never)
+        .eq('id', comedian.id)
+
+      await sendComedianWelcomeEmail(comedian)
+    }
+  } catch (notificationError) {
+    console.error('[AUTH CALLBACK] Erreur notifications email verification:', notificationError)
+  }
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const tokenHash = requestUrl.searchParams.get('token_hash')
   const callbackType = requestUrl.searchParams.get('type')
   const nextPath = requestUrl.searchParams.get('next')
   const isPasswordRecovery =
@@ -16,44 +112,52 @@ export async function GET(request: NextRequest) {
     nextPath === '/mot-de-passe-oublie' ||
     nextPath === '/mot-de-passe-oublie?mode=reset'
 
-  if (code) {
-    const cookieStore = await cookies()
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // The `setAll` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
-          },
-        },
-      }
-    )
-
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+  if (tokenHash) {
+    const supabase = await createCallbackSupabaseClient()
+    const verificationType = isPasswordRecovery ? 'recovery' : 'signup'
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: verificationType,
+    })
 
     if (!error && data.user) {
+      if (isPasswordRecovery) {
+        return NextResponse.redirect(`${requestUrl.origin}/mot-de-passe-oublie?mode=reset`)
+      }
+
+      await sendFirstEmailVerificationNotifications(data.user.id)
+
       const userType =
         (await syncEmailVerificationForAuthUser(
           supabase as unknown as AuthProfileSupabase,
           data.user
         )) ?? 'unknown'
 
+      return NextResponse.redirect(
+        `${requestUrl.origin}/auth/confirm?success=true&userType=${userType}`
+      )
+    }
+
+    console.error('[AUTH CALLBACK] Erreur lors de la vérification du token', error)
+  }
+
+  if (code) {
+    const supabase = await createCallbackSupabaseClient()
+
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error && data.user) {
       if (isPasswordRecovery) {
         return NextResponse.redirect(`${requestUrl.origin}/mot-de-passe-oublie?mode=reset`)
       }
+
+      await sendFirstEmailVerificationNotifications(data.user.id)
+
+      const userType =
+        (await syncEmailVerificationForAuthUser(
+          supabase as unknown as AuthProfileSupabase,
+          data.user
+        )) ?? 'unknown'
 
       // Rediriger vers la page de confirmation avec succès et le type d'utilisateur
       const redirectUrl = `${requestUrl.origin}/auth/confirm?success=true&userType=${userType}`

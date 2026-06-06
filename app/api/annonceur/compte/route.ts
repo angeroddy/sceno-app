@@ -125,6 +125,7 @@ export async function DELETE() {
         adresse_pays: null,
         piece_identite_url: null,
         nom_entreprise: null,
+        site_internet: null,
         numero_legal: null,
         siege_rue: null,
         siege_ville: null,

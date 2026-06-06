@@ -15,7 +15,7 @@ export default function InscriptionReussiePage() {
       <Card className="w-full max-w-xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Image src={logoApp} alt="Scenio Logo" height={100} width={100} />
+            <Image src={logoApp} alt="formations-artistiques.fr Logo" height={34} width={220} className="h-auto" />
           </div>
           <div className="flex justify-center mb-4">
             <div className="relative">
@@ -55,8 +55,8 @@ export default function InscriptionReussiePage() {
 
           <p className="text-center text-sm text-gray-500">
             Besoin d&apos;aide ? Contactez-nous à{" "}
-            <a href="mailto:support@scenio.com" className="text-[#E63832] hover:underline">
-              support@scenio.com
+            <a href="mailto:support@formations-artistiques.fr" className="text-[#E63832] hover:underline">
+              support@formations-artistiques.fr
             </a>
           </p>
         </CardContent>

@@ -90,9 +90,9 @@ function defaultReadySnapshot() {
     stripe_charges_enabled: true,
     stripe_payouts_enabled: true,
     stripe_details_submitted: true,
-    stripe_requirements_currently_due: [],
-    stripe_requirements_pending_verification: [],
-    stripe_requirements_eventually_due: [],
+    stripe_requirements_currently_due: [] as string[],
+    stripe_requirements_pending_verification: [] as string[],
+    stripe_requirements_eventually_due: [] as string[],
     stripe_requirements_disabled_reason: null,
     stripe_has_pending_representative_verification: false,
     stripe_dashboard_ready: true,
@@ -497,12 +497,7 @@ describe('API Stripe Connect', () => {
         url: 'https://stripe.test/onboarding',
         stripe_account_id: 'acct_1',
       })
-      expect(syncStripeConnectForAnnonceur).toHaveBeenCalledWith(
-        expect.any(Object),
-        stripeMock,
-        expect.objectContaining({ id: 'ann-1' }),
-        { allowCreate: true, persist: true }
-      )
+      expect(syncStripeConnectForAnnonceur).not.toHaveBeenCalled()
       expect(markStripeOnboardingStarted).toHaveBeenCalledWith(
         stripeMock,
         'acct_1',
@@ -544,13 +539,13 @@ describe('API Stripe Connect', () => {
       })
     })
 
-    it('retourne une erreur dédiée si la synchro préalable échoue', async () => {
+    it('retourne une erreur dédiée si la création du compte préalable échoue', async () => {
       ;(syncStripeConnectForAnnonceur as jest.Mock).mockRejectedValue(
         new StripeConnectSyncError('stripe_status_persist_failed', 'Impossible de sauvegarder le statut Stripe')
       )
       ;(createServerSupabaseClient as jest.Mock).mockResolvedValue(
         createSupabaseMock({
-          annonceur: { id: 'ann-1', stripe_account_id: 'acct_1' },
+          annonceur: { id: 'ann-1', stripe_account_id: null },
         })
       )
 

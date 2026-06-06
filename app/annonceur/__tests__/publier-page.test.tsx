@@ -56,5 +56,7 @@ describe('PublierOpportunitePage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Vérification du compte requise/i)).toBeInTheDocument()
     })
+    expect(screen.getByText(/Votre compte doit être validé par notre équipe/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Ouvrir mes paramètres/i })).not.toBeInTheDocument()
   })
 })

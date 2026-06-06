@@ -75,18 +75,18 @@ function ForgotPasswordContent() {
     setIsSubmitting(true)
 
     try {
-      const supabase = createBrowserSupabaseClient()
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
+      const response = await fetch("/api/auth/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizeEmail(email),
+          redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
+        }),
       })
+      const data = await response.json().catch(() => null) as { error?: string } | null
 
-      if (resetError) {
-        if (isHandledAuthError(resetError.message)) {
-          console.warn("Erreur demande réinitialisation traitée:", resetError.message)
-        } else {
-          console.error("Erreur demande réinitialisation:", resetError)
-        }
-        setError(translateAuthErrorMessage(resetError.message, "password-reset-request"))
+      if (!response.ok) {
+        setError(data?.error || "Impossible d'envoyer l'email de réinitialisation. Veuillez réessayer.")
         setIsSubmitting(false)
         return
       }

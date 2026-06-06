@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getUser, getAdminProfile } from '@/app/lib/supabase'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { getStripe } from '@/app/lib/stripe'
+import type { Achat } from '@/app/types'
 
 export const runtime = 'nodejs'
-
-function getSupabaseAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Configuration manquante Supabase admin')
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 export async function POST(
   request: NextRequest,
@@ -37,7 +26,7 @@ export async function POST(
       return NextResponse.json({ error: 'Identifiant achat manquant' }, { status: 400 })
     }
 
-    const supabase = getSupabaseAdminClient()
+    const supabase = createAdminSupabaseClient()
     const { data: achatData, error: achatError } = await supabase
       .from('achats')
       .select('id, statut, stripe_payment_intent_id, stripe_payment_id, stripe_refund_id')
@@ -48,14 +37,19 @@ export async function POST(
       return NextResponse.json({ error: 'Achat introuvable' }, { status: 404 })
     }
 
-    if (achatData.statut === 'remboursee') {
+    const achat = achatData as Pick<
+      Achat,
+      'id' | 'statut' | 'stripe_payment_intent_id' | 'stripe_payment_id' | 'stripe_refund_id'
+    >
+
+    if (achat.statut === 'remboursee') {
       return NextResponse.json({ error: 'Achat deja rembourse' }, { status: 409 })
     }
-    if (achatData.statut !== 'confirmee') {
+    if (achat.statut !== 'confirmee') {
       return NextResponse.json({ error: "Seuls les achats confirmes peuvent etre rembourses" }, { status: 409 })
     }
 
-    const paymentIntentId = achatData.stripe_payment_intent_id || achatData.stripe_payment_id
+    const paymentIntentId = achat.stripe_payment_intent_id || achat.stripe_payment_id
     if (!paymentIntentId) {
       return NextResponse.json({ error: 'PaymentIntent introuvable pour cet achat' }, { status: 400 })
     }

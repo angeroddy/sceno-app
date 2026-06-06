@@ -48,6 +48,26 @@ export default function OpportuniteDetailsPage() {
   const [alreadyBooked, setAlreadyBooked] = useState(false)
   const [wasDeleted, setWasDeleted] = useState(false)
 
+  useEffect(() => {
+    const resetCheckoutLoading = () => {
+      setBookingLoading(false)
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        resetCheckoutLoading()
+      }
+    }
+
+    window.addEventListener("pageshow", resetCheckoutLoading)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener("pageshow", resetCheckoutLoading)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [])
+
   // Extraire l'ID des params
   useEffect(() => {
     const extractId = async () => {
@@ -562,7 +582,7 @@ export default function OpportuniteDetailsPage() {
                   <ShareOpportunityUrlButton
                     opportunityId={opportunite.id}
                     title={opportunite.titre}
-                    text={`Découvre cette opportunité sur Scenio: ${opportunite.titre}`}
+                    text={`Découvre cette opportunité sur formations-artistiques.fr: ${opportunite.titre}`}
                     size="lg"
                     className="w-full"
                   />

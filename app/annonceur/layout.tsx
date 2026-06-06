@@ -137,10 +137,10 @@ export default function AnnonceurLayout({
         <div className="flex items-center justify-between">
           <Image
             src={logoApp}
-            alt="Logo"
-            width={50}
-            height={50}
-            className="cursor-pointer"
+            alt="formations-artistiques.fr"
+            width={190}
+            height={30}
+            className="h-auto max-w-[190px] cursor-pointer"
             onClick={() => router.push('/')}
           />
           <Button
@@ -180,10 +180,10 @@ export default function AnnonceurLayout({
             <div className="p-6 border-b border-gray-200">
               <Image
                 src={logoApp}
-                alt="Logo"
-                width={80}
-                height={80}
-                className="cursor-pointer mx-auto"
+                alt="formations-artistiques.fr"
+                width={220}
+                height={34}
+                className="h-auto cursor-pointer mx-auto"
                 onClick={() => router.push('/')}
               />
               <h2 className="text-center mt-4 font-bold text-lg text-gray-900">

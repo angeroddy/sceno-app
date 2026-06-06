@@ -17,7 +17,6 @@ const eslintConfig = defineConfig([
     "app/**/__tests__/**",
     "components/**/__tests__/**",
     "jest.setup.ts",
-    "components/advertiser-signup-form.old.tsx",
   ]),
 ]);
 

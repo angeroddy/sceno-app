@@ -38,7 +38,7 @@ Dans chaque template, cliquez sur **Send test email** pour vérifier l'affichage
 
 ### Changer l'adresse email de support
 
-Remplacez `support@scenio.com` par votre vraie adresse dans tous les templates.
+Remplacez `support@formations-artistiques.fr` par votre vraie adresse dans tous les templates.
 
 ### Ajouter un vrai logo
 
@@ -47,7 +47,7 @@ Remplacez `support@scenio.com` par votre vraie adresse dans tous les templates.
 
 ```html
 <h1 style="margin: 0; color: #ffffff; font-size: 32px;">
-    Scenio
+    formations-artistiques.fr
 </h1>
 ```
 
@@ -55,7 +55,7 @@ Par :
 
 ```html
 <img src="https://VOTRE_CDN/logo.png"
-     alt="Scenio"
+     alt="formations-artistiques.fr"
      width="120"
      style="display: block; margin: 0 auto;">
 ```

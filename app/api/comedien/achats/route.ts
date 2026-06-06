@@ -1,21 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { getStripe } from '@/app/lib/stripe'
 import type { Achat, Comedien } from '@/app/types'
-
-function getSupabaseAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Configuration manquante Supabase admin')
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -103,7 +90,7 @@ export async function GET(request: NextRequest) {
     if (achatId && achat?.statut === 'en_attente' && achat.stripe_checkout_session_id) {
       try {
         const stripe = getStripe()
-        const adminSupabase = getSupabaseAdminClient()
+        const adminSupabase = createAdminSupabaseClient()
         const session = await stripe.checkout.sessions.retrieve(achat.stripe_checkout_session_id)
         const paymentIntentId = typeof session.payment_intent === 'string'
           ? session.payment_intent
@@ -111,13 +98,13 @@ export async function GET(request: NextRequest) {
 
         if (session.payment_status === 'paid') {
           const { data: confirmationData, error: confirmationError } = await adminSupabase.rpc(
-            'confirm_checkout_purchase',
+            'confirm_checkout_purchase' as never,
             {
               p_achat_id: achat.id,
               p_checkout_session_id: session.id,
               p_payment_intent_id: paymentIntentId,
               p_last_event_id: `polling_recovery:${session.id}`,
-            }
+            } as never
           )
 
           if (confirmationError) {
@@ -173,13 +160,17 @@ export async function GET(request: NextRequest) {
               .select('statut, stripe_payment_intent_id, stripe_refund_id')
               .eq('id', achat.id)
               .maybeSingle()
+            const refreshedAchatRecord = refreshedAchat as Pick<
+              Achat,
+              'statut' | 'stripe_payment_intent_id' | 'stripe_refund_id'
+            > | null
 
-            if (refreshedAchat) {
+            if (refreshedAchatRecord) {
               achat = {
                 ...achat,
-                statut: refreshedAchat.statut,
-                stripe_payment_intent_id: refreshedAchat.stripe_payment_intent_id,
-                stripe_refund_id: refreshedAchat.stripe_refund_id,
+                statut: refreshedAchatRecord.statut,
+                stripe_payment_intent_id: refreshedAchatRecord.stripe_payment_intent_id,
+                stripe_refund_id: refreshedAchatRecord.stripe_refund_id,
               }
             }
           }

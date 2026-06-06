@@ -1,29 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import type Stripe from 'stripe'
 import { getStripe } from '@/app/lib/stripe'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import {
   buildStripeConnectSnapshot,
   persistStripeConnectSnapshot,
 } from '@/app/lib/stripe-connect'
 import { sendMail } from '@/app/lib/mailer'
+import { sendAdvertiserPurchaseEmail } from '@/app/lib/email-notifications'
 
 export const runtime = 'nodejs'
 
-type SupabaseAdmin = ReturnType<typeof createClient>
-
-function getSupabaseAdminClient(): SupabaseAdmin {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Configuration manquante Supabase admin')
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
+type SupabaseAdmin = ReturnType<typeof createAdminSupabaseClient>
 
 async function registerStripeEvent(
   supabase: SupabaseAdmin,
@@ -93,7 +81,7 @@ async function sendPurchaseConfirmationEmail(
         titre,
         date_evenement,
         contact_email,
-        annonceur:annonceurs(nom_formation)
+        annonceur:annonceurs(nom_formation, email)
       ),
       comedien:comediens(
         prenom,
@@ -117,7 +105,7 @@ async function sendPurchaseConfirmationEmail(
       titre: string
       date_evenement: string
       contact_email: string
-      annonceur: { nom_formation: string } | null
+      annonceur: { nom_formation: string; email: string } | null
     } | null
     comedien: {
       prenom: string
@@ -136,12 +124,12 @@ async function sendPurchaseConfirmationEmail(
   const organizer = achat.opportunite.annonceur?.nom_formation || 'Organisme'
   const comedianName = [achat.comedien.prenom, achat.comedien.nom].filter(Boolean).join(' ').trim()
 
-  const subject = `Votre ticket Scenio - ${achat.opportunite.titre}`
+  const subject = `Votre ticket formations-artistiques.fr - ${achat.opportunite.titre}`
   const html = `
     <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
       <h1 style="font-size:20px;margin-bottom:16px">Reservation confirmee</h1>
       <p>Bonjour ${comedianName || '},'}</p>
-      <p>Votre reservation a bien ete confirmee sur Scenio.</p>
+      <p>Votre reservation a bien ete confirmee sur formations-artistiques.fr.</p>
       <div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:20px 0">
         <p style="margin:0 0 8px"><strong>Ticket / recu :</strong> ${receiptReference}</p>
         <p style="margin:0 0 8px"><strong>Opportunite :</strong> ${achat.opportunite.titre}</p>
@@ -174,7 +162,22 @@ async function sendPurchaseConfirmationEmail(
       text,
     })
   } catch (mailError) {
-    console.warn('Email de confirmation achat non envoye:', mailError)
+    console.warn('Email de confirmation achat comédien non envoyé:', mailError)
+  }
+
+  try {
+    if (achat.opportunite.annonceur?.email) {
+      await sendAdvertiserPurchaseEmail({
+        advertiserEmail: achat.opportunite.annonceur.email,
+        advertiserName: organizer,
+        opportunityTitle: achat.opportunite.titre,
+        comedianName: comedianName || 'Un comédien',
+        paidPrice: achat.prix_paye,
+        purchaseDate: achat.created_at,
+      })
+    }
+  } catch (mailError) {
+    console.warn('Email achat annonceur non envoyé:', mailError)
   }
 }
 
@@ -347,7 +350,7 @@ async function handleAccountUpdated(
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = getSupabaseAdminClient()
+  const supabase = createAdminSupabaseClient()
 
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET

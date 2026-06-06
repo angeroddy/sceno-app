@@ -14,6 +14,8 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
+const getPasswordInput = () => screen.getByLabelText('Mot de passe')
+
 describe('LoginForm', () => {
   const mockRouter = {
     push: jest.fn(),
@@ -42,7 +44,7 @@ describe('LoginForm', () => {
 
       expect(screen.getByText('Connexion')).toBeInTheDocument()
       expect(screen.getByLabelText(/Adresse e-mail/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Mot de passe/i)).toBeInTheDocument()
+      expect(getPasswordInput()).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Se connecter/i })).toBeInTheDocument()
       expect(screen.getByText(/Pas encore de compte/i)).toBeInTheDocument()
       expect(screen.getByText(/Mot de passe oublié/i)).toBeInTheDocument()
@@ -148,7 +150,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')
@@ -175,7 +177,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')
@@ -199,7 +201,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')
@@ -256,7 +258,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       await user.type(screen.getByLabelText(/Adresse e-mail/i), 'deleted@example.com')
-      await user.type(screen.getByLabelText(/Mot de passe/i), 'password123')
+      await user.type(getPasswordInput(), 'password123')
       await user.click(screen.getByRole('button', { name: /Se connecter/i }))
 
       await waitFor(() => {
@@ -276,7 +278,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')
@@ -295,7 +297,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i) as HTMLInputElement
-      const passwordInput = screen.getByLabelText(/Mot de passe/i) as HTMLInputElement
+      const passwordInput = getPasswordInput() as HTMLInputElement
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')
@@ -316,7 +318,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')
@@ -338,7 +340,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const submitButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'test@example.com')

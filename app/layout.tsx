@@ -102,8 +102,8 @@ const ttFirsNeue = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Scenio — Préventes et dernières minutes pour comédiens",
-    template: "%s | Scenio",
+    default: "formations-artistiques.fr — Préventes et dernières minutes pour comédiens",
+    template: "%s | formations-artistiques.fr",
   },
   description:
     "Découvrez des offres exclusives sur les stages, ateliers, formations et sessions pour comédiens. Préventes et dernières minutes à prix réduits (-25% minimum).",
@@ -117,22 +117,22 @@ export const metadata: Metadata = {
     "prévente",
     "dernière minute",
     "réduction",
-    "Scenio",
+    "formations-artistiques.fr",
   ],
-  authors: [{ name: "Scenio" }],
-  creator: "Scenio",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://scenio.fr"),
+  authors: [{ name: "formations-artistiques.fr" }],
+  creator: "formations-artistiques.fr",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://formations-artistiques.fr"),
   openGraph: {
     type: "website",
     locale: "fr_FR",
-    siteName: "Scenio",
-    title: "Scenio — Préventes et dernières minutes pour comédiens",
+    siteName: "formations-artistiques.fr",
+    title: "formations-artistiques.fr — Préventes et dernières minutes pour comédiens",
     description:
       "Offres exclusives sur les stages, ateliers et formations pour comédiens. Prix réduits (-25% minimum).",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Scenio — Préventes et dernières minutes pour comédiens",
+    title: "formations-artistiques.fr — Préventes et dernières minutes pour comédiens",
     description:
       "Offres exclusives sur les stages, ateliers et formations pour comédiens. Prix réduits (-25% minimum).",
   },
@@ -159,8 +159,8 @@ export default function RootLayout({
           data={{
             "@context": "https://schema.org",
             "@type": "Organization",
-            name: "Scenio",
-            url: process.env.NEXT_PUBLIC_SITE_URL || "https://scenio.fr",
+            name: "formations-artistiques.fr",
+            url: process.env.NEXT_PUBLIC_SITE_URL || "https://formations-artistiques.fr",
             description:
               "Préventes et dernières minutes de stages, ateliers et formations pour comédiens.",
           }}

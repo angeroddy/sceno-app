@@ -115,7 +115,7 @@ describe('POST /api/stripe', () => {
                       titre: 'Formation',
                       date_evenement: '2099-06-01T14:30:00.000Z',
                       contact_email: 'orga@example.com',
-                      annonceur: { nom_formation: 'Scenio Org' },
+                      annonceur: { nom_formation: 'formations-artistiques.fr Org' },
                     },
                     comedien: {
                       prenom: 'Jean',
@@ -168,7 +168,7 @@ describe('POST /api/stripe', () => {
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'jean@example.com',
-        subject: expect.stringContaining('Scenio'),
+        subject: expect.stringContaining('formations-artistiques.fr'),
       })
     )
   })

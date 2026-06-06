@@ -82,6 +82,10 @@ describe('ComedianSignupForm', () => {
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
     mockSupabase.from.mockImplementation(createComedianFromMock())
+    ;(global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, userId: 'test-user-id' }),
+    })
 
     // window.location.origin is set in jest.setup.ts
   })
@@ -379,27 +383,6 @@ describe('ComedianSignupForm', () => {
 
   describe('Soumission du formulaire', () => {
     it('devrait créer un compte avec succès', async () => {
-      const mockUser = {
-        id: 'test-user-id',
-        email: 'test@example.com',
-      }
-
-      mockSupabase.auth.signUp.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
-
-      mockSupabase.from.mockImplementation(
-        createComedianFromMock(
-          jest.fn().mockReturnValue({
-            select: jest.fn().mockResolvedValue({
-              data: [{ id: 1, auth_user_id: 'test-user-id' }],
-              error: null,
-            }),
-          })
-        )
-      )
-
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
 
@@ -435,17 +418,28 @@ describe('ComedianSignupForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
-          email: 'test@example.com',
-          password: 'Password1234!',
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-            data: {
-              genre: 'masculin',
-            },
-          },
-        })
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/auth/signup',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"role":"comedian"'),
+          })
+        )
       })
+
+      const signupBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+      expect(signupBody).toEqual(expect.objectContaining({
+        email: 'test@example.com',
+        password: 'Password1234!',
+        redirectTo: `${window.location.origin}/auth/callback`,
+        metadata: { genre: 'masculin' },
+      }))
+      expect(signupBody.profile).toEqual(expect.objectContaining({
+        nom: 'Dupont',
+        prenom: 'Jean',
+        preferences_opportunites: expect.arrayContaining(['stages_ateliers']),
+        genre: 'masculin',
+      }))
 
       await waitFor(() => {
         expect(screen.getByText(/Compte créé avec succès/i)).toBeInTheDocument()
@@ -453,9 +447,9 @@ describe('ComedianSignupForm', () => {
     })
 
     it('devrait afficher une erreur en cas d\'échec de création de compte', async () => {
-      mockSupabase.auth.signUp.mockResolvedValue({
-        data: { user: null },
-        error: { message: 'User already registered' },
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Un compte existe déjà avec cet email.' }),
       })
 
       render(<ComedianSignupForm />)
@@ -535,8 +529,11 @@ describe('ComedianSignupForm', () => {
     })
 
     it('devrait afficher un loader pendant la soumission', async () => {
-      mockSupabase.auth.signUp.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: { user: null }, error: null }), 100))
+      ;(global.fetch as jest.Mock).mockImplementationOnce(
+        () => new Promise((resolve) => setTimeout(() => resolve({
+          ok: true,
+          json: async () => ({ success: true, userId: 'test-user-id' }),
+        }), 100))
       )
 
       render(<ComedianSignupForm />)
@@ -568,16 +565,6 @@ describe('ComedianSignupForm', () => {
 
   describe('Gestion des préférences multiples', () => {
     it('devrait permettre de sélectionner plusieurs préférences', async () => {
-      const mockUser = {
-        id: 'test-user-id',
-        email: 'test@example.com',
-      }
-
-      mockSupabase.auth.signUp.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
-
       const mockInsert = jest.fn().mockReturnValue({
         select: jest.fn().mockResolvedValue({
           data: [{ id: 1, auth_user_id: 'test-user-id' }],
@@ -611,12 +598,14 @@ describe('ComedianSignupForm', () => {
       await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))
 
       await waitFor(() => {
-        expect(mockInsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            preferences_opportunites: expect.arrayContaining(['stages_ateliers', 'coachs_independants']),
-          })
-        )
+        expect(global.fetch).toHaveBeenCalled()
       })
+
+      const signupBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+      expect(signupBody.profile).toEqual(expect.objectContaining({
+        preferences_opportunites: expect.arrayContaining(['stages_ateliers', 'coachs_independants']),
+      }))
+      expect(mockInsert).not.toHaveBeenCalled()
     })
   })
 })

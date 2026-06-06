@@ -3,7 +3,7 @@ import { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Inscription Annonceur",
   description:
-    "Créez votre compte annonceur sur Scenio et publiez vos offres de stages, ateliers et formations à destination des comédiens.",
+    "Créez votre compte annonceur sur formations-artistiques.fr et publiez vos offres de stages, ateliers et formations à destination des comédiens.",
   alternates: { canonical: "/inscription/annonceur" },
 }
 

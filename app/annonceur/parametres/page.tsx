@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AppModal } from "@/components/ui/app-modal"
-import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle, Trash2 } from "lucide-react"
+import { Loader2, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle, Trash2, Info } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
 import {
   TYPE_JURIDIQUE_LABELS,
@@ -21,6 +21,7 @@ import {
   isValidIban,
   isValidPhone,
   isValidPostalCode,
+  isValidWebsiteUrl,
   normalizeBic,
   normalizeBusinessId,
   normalizeCountry,
@@ -30,6 +31,7 @@ import {
   normalizePhone,
   normalizePostalCode,
   normalizeText,
+  normalizeWebsiteUrl,
 } from "@/app/lib/signup-validation"
 
 interface StripeConnectStatus {
@@ -59,6 +61,7 @@ type AnnonceurSettingsForm = {
   bic_swift: string
   telephone: string
   nom_entreprise: string
+  site_internet: string
   type_juridique: TypeJuridique | ""
   pays_entreprise: string
   numero_legal: string
@@ -84,6 +87,7 @@ const EMPTY_FORM_DATA: AnnonceurSettingsForm = {
   bic_swift: "",
   telephone: "",
   nom_entreprise: "",
+  site_internet: "",
   type_juridique: "",
   pays_entreprise: "France",
   numero_legal: "",
@@ -101,6 +105,16 @@ const EMPTY_FORM_DATA: AnnonceurSettingsForm = {
   representant_adresse_pays: "France",
 }
 
+const WEBSITE_PREFIX = "www."
+
+function formatWebsiteInput(value: string | null | undefined): string {
+  const raw = normalizeText(value)
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+
+  return raw ? `${WEBSITE_PREFIX}${raw}` : ""
+}
+
 function toFormData(annonceur: Annonceur): AnnonceurSettingsForm {
   return {
     nom_formation: annonceur.nom_formation || "",
@@ -110,6 +124,7 @@ function toFormData(annonceur: Annonceur): AnnonceurSettingsForm {
     bic_swift: normalizeBic(annonceur.bic_swift || ""),
     telephone: annonceur.telephone || "",
     nom_entreprise: annonceur.nom_entreprise || "",
+    site_internet: formatWebsiteInput(annonceur.site_internet),
     type_juridique: annonceur.type_juridique || "",
     pays_entreprise: annonceur.pays_entreprise || "France",
     numero_legal: annonceur.numero_legal || "",
@@ -155,7 +170,7 @@ export default function ParametresPage() {
   const [showIban, setShowIban] = useState(false)
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null)
   const [stripeLoading, setStripeLoading] = useState(true)
-  const [stripeActionLoading, setStripeActionLoading] = useState(false)
+  const [stripeAction, setStripeAction] = useState<"onboarding" | "dashboard" | null>(null)
   const [stripeError, setStripeError] = useState("")
   const [formData, setFormData] = useState<AnnonceurSettingsForm>(EMPTY_FORM_DATA)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -169,8 +184,10 @@ export default function ParametresPage() {
     const initialize = async () => {
       await Promise.all([
         fetchAnnonceurData(),
-        fetchStripeStatus(true),
+        fetchStripeStatus(false),
       ])
+
+      void fetchStripeStatus(true, { showLoading: false })
     }
 
     void initialize()
@@ -219,16 +236,23 @@ export default function ParametresPage() {
     }
   }
 
-  const fetchStripeStatus = async (refresh: boolean) => {
+  const fetchStripeStatus = async (
+    refresh: boolean,
+    options: { showLoading?: boolean } = {}
+  ) => {
+    const { showLoading = true } = options
     try {
-      setStripeLoading(true)
+      if (showLoading) {
+        setStripeLoading(true)
+      }
       setStripeError("")
 
       const response = await fetch(`/api/stripe/connect/status?refresh=${refresh ? "true" : "false"}`)
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data?.error || "Impossible de charger le statut Stripe")
+        setStripeError(data?.error || "Impossible de charger le statut Stripe")
+        return
       }
 
       setStripeStatus(data as StripeConnectStatus)
@@ -236,13 +260,15 @@ export default function ParametresPage() {
       console.error("Erreur statut Stripe Connect:", fetchError)
       setStripeError(fetchError instanceof Error ? fetchError.message : "Erreur lors du chargement Stripe")
     } finally {
-      setStripeLoading(false)
+      if (showLoading) {
+        setStripeLoading(false)
+      }
     }
   }
 
   const handleStartStripeOnboarding = async () => {
     try {
-      setStripeActionLoading(true)
+      setStripeAction("onboarding")
       setStripeError("")
 
       const response = await fetch("/api/stripe/connect/onboarding-link", {
@@ -261,20 +287,20 @@ export default function ParametresPage() {
             ? "Stripe refuse le téléphone du représentant légal. Vérifiez le champ « Téléphone du représentant »."
             : data?.error || "Impossible de générer le lien Stripe"
         setStripeError(message)
+        setStripeAction(null)
         return
       }
 
-      window.location.href = data.url as string
+      window.location.assign(data.url as string)
     } catch (actionError) {
       setStripeError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
-    } finally {
-      setStripeActionLoading(false)
+      setStripeAction(null)
     }
   }
 
   const handleOpenStripeDashboard = async () => {
     try {
-      setStripeActionLoading(true)
+      setStripeAction("dashboard")
       setStripeError("")
 
       const response = await fetch("/api/stripe/connect/dashboard-link", {
@@ -286,12 +312,12 @@ export default function ParametresPage() {
         throw new Error(data?.error || "Impossible d’ouvrir le dashboard Stripe")
       }
 
-      window.location.href = data.url as string
+      window.open(data.url as string, "_blank", "noopener,noreferrer")
+      setStripeAction(null)
     } catch (actionError) {
       console.error("Erreur ouverture dashboard Stripe:", actionError)
       setStripeError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
-    } finally {
-      setStripeActionLoading(false)
+      setStripeAction(null)
     }
   }
 
@@ -312,6 +338,10 @@ export default function ParametresPage() {
 
       if (field === "bic_swift" && typeof value === "string") {
         return { ...prev, [field]: normalizeBic(value) }
+      }
+
+      if (field === "site_internet" && typeof value === "string") {
+        return { ...prev, site_internet: formatWebsiteInput(value) }
       }
 
       return { ...prev, [field]: value }
@@ -379,6 +409,10 @@ export default function ParametresPage() {
 
     if (!normalizeText(formData.nom_entreprise)) {
       setError("Le nom légal de l'entreprise est obligatoire")
+      return false
+    }
+    if (normalizeWebsiteUrl(formData.site_internet) && !isValidWebsiteUrl(formData.site_internet)) {
+      setError("Le site internet de l'entreprise n'est pas valide")
       return false
     }
     if (!formData.type_juridique) {
@@ -478,6 +512,7 @@ export default function ParametresPage() {
         adresse_code_postal: null,
         adresse_pays: null,
         nom_entreprise: normalizeHumanText(formData.nom_entreprise) || null,
+        site_internet: normalizeWebsiteUrl(formData.site_internet) || null,
         type_juridique: formData.type_juridique || null,
         pays_entreprise: normalizeCountry(formData.pays_entreprise || "France") || "France",
         numero_legal: normalizeBusinessId(formData.numero_legal) || null,
@@ -591,64 +626,7 @@ export default function ParametresPage() {
     stripeStatus?.stripe_payouts_enabled
   )
   const stripeConnected = Boolean(stripeStatus?.connected)
-
-  const pendingStripeItems = [
-    ...(stripeStatus?.stripe_requirements_currently_due ?? []),
-    ...(stripeStatus?.stripe_requirements_pending_verification ?? []),
-  ]
-
-  const formatStripeRequirement = (value: string) => {
-    const normalized = value.replace(/\[\d+\]/g, "")
-
-    const exactLabels: Record<string, string> = {
-      "representative.first_name": "Prénom du représentant légal",
-      "representative.last_name": "Nom du représentant légal",
-      "representative.phone": "Numéro de téléphone du représentant légal",
-      "representative.email": "Adresse e-mail du représentant légal",
-      "representative.address.line1": "Adresse du représentant légal",
-      "representative.address.city": "Ville du représentant légal",
-      "representative.address.postal_code": "Code postal du représentant légal",
-      "representative.address.country": "Pays du représentant légal",
-      "representative.dob.day": "Jour de naissance du représentant légal",
-      "representative.dob.month": "Mois de naissance du représentant légal",
-      "representative.dob.year": "Année de naissance du représentant légal",
-      "company.name": "Nom légal de l'entreprise",
-      "company.tax_id": "Numéro d'identification de l'entreprise",
-      "company.phone": "Téléphone de l'entreprise",
-      "company.address.line1": "Adresse du siège social",
-      "company.address.city": "Ville du siège social",
-      "company.address.postal_code": "Code postal du siège social",
-      "company.address.country": "Pays du siège social",
-      "business_profile.name": "Nom affiché de l'organisme",
-      "external_account": "Compte bancaire",
-    }
-
-    if (exactLabels[normalized]) {
-      return exactLabels[normalized]
-    }
-
-    if (normalized.startsWith("representative.verification")) {
-      return "Vérifier le représentant de compte"
-    }
-
-    if (normalized.startsWith("person.verification")) {
-      return "Vérifier la personne rattachée au compte"
-    }
-
-    return "Informations complémentaires à fournir dans Stripe"
-  }
-
-  const summarizedPendingStripeItems = Array.from(
-    pendingStripeItems.reduce((accumulator, item) => {
-      const label = formatStripeRequirement(item)
-      accumulator.set(label, (accumulator.get(label) ?? 0) + 1)
-      return accumulator
-    }, new Map<string, number>())
-  ).map(([label, count]) =>
-    count > 1 && label === "Informations complémentaires à fournir dans Stripe"
-      ? `${label} (${count} éléments)`
-      : label
-  )
+  const stripeActionLoading = stripeAction !== null
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
@@ -657,7 +635,7 @@ export default function ParametresPage() {
           Mes informations
         </h1>
         <p className="text-gray-600 text-base sm:text-lg">
-          Gérez les informations juridiques et bancaires utilisées pour Stripe Connect
+          Gérez vos informations juridiques et bancaires
         </p>
       </div>
 
@@ -722,7 +700,7 @@ export default function ParametresPage() {
                 </div>
               ) : (
                 <div className="text-sm text-orange-600">
-                  Compte en cours de vérification par l&apos;équipe Scenio
+                  Compte en cours de vérification par l&apos;équipe formations-artistiques.fr
                 </div>
               )}
             </CardContent>
@@ -743,6 +721,18 @@ export default function ParametresPage() {
                       value={formData.nom_entreprise}
                       onChange={(e) => handleInputChange("nom_entreprise", e.target.value)}
                       placeholder="Nom légal de la société"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="site_internet">Site internet de l&apos;entreprise</Label>
+                    <Input
+                      id="site_internet"
+                      type="text"
+                      value={formData.site_internet}
+                      onChange={(e) => handleInputChange("site_internet", e.target.value)}
+                      onBlur={() => handleInputChange("site_internet", formatWebsiteInput(formData.site_internet))}
+                      placeholder="www.votre-site.fr"
                     />
                   </div>
 
@@ -1019,7 +1009,21 @@ export default function ParametresPage() {
               <Card className="overflow-hidden border-[#635BFF]/30 bg-[linear-gradient(135deg,#F7F5FF_0%,#F6FAFF_45%,#FFFFFF_100%)] shadow-[0_18px_45px_rgba(99,91,255,0.12)]">
                 <CardHeader className="border-b border-[#635BFF]/15 bg-white/60">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <CardTitle className="text-[#0A2540]">Paiements Stripe Connect</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-[#0A2540]">Paiements Stripe Connect</CardTitle>
+                      <div className="group relative inline-flex">
+                        <button
+                          type="button"
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#635BFF]/25 bg-white text-[#635BFF] shadow-sm transition hover:bg-[#F7F5FF]"
+                          aria-label="Pourquoi Stripe est requis"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                        <div className="pointer-events-none absolute left-1/2 top-9 z-20 w-72 -translate-x-1/2 rounded-md border border-[#6dd0ff] bg-white p-3 text-left text-sm text-[#0b4054] opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 sm:left-0 sm:translate-x-0">
+                          Stripe est l&apos;intermédiaire que formations-artistiques.fr utilise pour vendre vos places en ligne et qui vérifie au passage votre bonne identité en tant que professionnel.
+                        </div>
+                      </div>
+                    </div>
                     <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#635BFF] px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
                       <span className="font-bold tracking-normal">stripe</span>
                       <span className="h-4 w-px bg-white/35" />
@@ -1078,8 +1082,17 @@ export default function ParametresPage() {
                             onClick={handleOpenStripeDashboard}
                             disabled={stripeActionLoading}
                           >
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Ouvrir mon dashboard Stripe
+                            {stripeAction === "dashboard" ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Ouverture de Stripe...
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                Ouvrir mon dashboard Stripe
+                              </>
+                            )}
                           </Button>
                         ) : (
                           <Button
@@ -1088,7 +1101,7 @@ export default function ParametresPage() {
                             onClick={handleStartStripeOnboarding}
                             disabled={stripeActionLoading}
                           >
-                            {stripeActionLoading ? (
+                            {stripeAction === "onboarding" ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Redirection vers Stripe...
@@ -1096,7 +1109,7 @@ export default function ParametresPage() {
                             ) : (
                               <>
                                 <ExternalLink className="mr-2 h-4 w-4" />
-                                Configurer mes paiements Stripe
+                                Configurer Stripe
                               </>
                             )}
                           </Button>
@@ -1110,28 +1123,12 @@ export default function ParametresPage() {
                       ) : stripeConnected ? (
                         <div className="space-y-3">
                           <div className="rounded-md border border-[#FFB020]/30 bg-white/80 p-3 text-sm text-[#8A3A00]">
-                            {stripeStatus?.stripe_has_pending_representative_verification
-                              ? "Stripe attend encore la vérification du représentant de compte avant d'activer les paiements."
-                              : "Le compte Stripe est créé, mais il manque encore une validation ou une vérification avant l'activation des paiements."}
+                            Votre compte Stripe est créé mais vous devez renseigner toutes les informations demandées pour terminer sa configuration. Pour ce faire, veuillez cliquer sur le bouton « Configurer Stripe » ci dessus.
                           </div>
-
-                          {summarizedPendingStripeItems.length > 0 && (
-                            <div className="rounded-md border border-[#635BFF]/20 bg-white/80 p-3 text-sm text-[#425466]">
-                              <p className="mb-2 font-semibold text-[#0A2540]">Actions restantes côté Stripe</p>
-                              <p className="mb-3 text-[#697386]">
-                                Stripe demande encore quelques informations avant d&apos;activer complètement le compte.
-                              </p>
-                              <ul className="list-disc pl-5 space-y-1">
-                                {summarizedPendingStripeItems.map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <div className="rounded-md border border-[#635BFF]/20 bg-white/80 p-3 text-sm text-[#425466]">
-                          Aucun compte Stripe Connect n&apos;est encore créé. La configuration Stripe créera le compte puis vous guidera dans l&apos;onboarding.
+                          Aucun compte Stripe n&apos;est encore créé.
                         </div>
                       )}
                     </>
@@ -1162,9 +1159,6 @@ export default function ParametresPage() {
           )}
 
           <Card className="border-red-200">
-            <CardHeader>
-              <CardTitle className="text-red-700">Zone dangereuse</CardTitle>
-            </CardHeader>
             <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="font-medium text-gray-900">Supprimer mon compte annonceur</p>

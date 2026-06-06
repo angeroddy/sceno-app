@@ -58,7 +58,7 @@ export const Footer = ({
       ],
     },
   ],
-  copyright = "© 2026 Scenio. Tous droits réservés.",
+  copyright = "© 2026 formations-artistiques.fr. Tous droits réservés.",
   bottomLinks = [
     { text: "Conditions générales", url: "#" },
     { text: "Politique de confidentialité", url: "#" },
@@ -73,10 +73,10 @@ export const Footer = ({
               <div className="flex items-center gap-2 lg:justify-start">
                 <Image
                   src={logoApp}
-                  alt="Scenio"
-                  width={150}
-                  height={50}
-                  className="object-contain"
+                  alt="formations-artistiques.fr"
+                  width={260}
+                  height={40}
+                  className="h-auto object-contain"
                 />
               </div>
               <p className="mt-4 text-[#E6DAD0] text-lg">{tagline}</p>

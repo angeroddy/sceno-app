@@ -17,6 +17,7 @@ import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
 import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
 import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { getWebsiteInputWithoutWww, normalizeWebsiteUrlWithWwwPrefix } from "@/app/lib/signup-validation"
 
 interface FormData {
   type: OpportunityType | ""
@@ -33,6 +34,10 @@ interface FormData {
   date_evenement: string
   contact_telephone: string
   contact_email: string
+}
+
+type EditableOpportunity = Opportunite & {
+  annonceur?: Pick<Annonceur, "nom_formation"> | null
 }
 
 export default function ModifierOpportunitePage() {
@@ -76,13 +81,12 @@ export default function ModifierOpportunitePage() {
   const maxSize = 1600
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
   const [autoZoomed, setAutoZoomed] = useState(false)
-  const [sizeWarning, setSizeWarning] = useState("")
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
-  const [existingOpportunity, setExistingOpportunity] = useState<Opportunite | null>(null)
+  const [existingOpportunity, setExistingOpportunity] = useState<EditableOpportunity | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -113,7 +117,7 @@ export default function ModifierOpportunitePage() {
       }
 
       const data = await response.json()
-      const opp: Opportunite = data.opportunite
+      const opp: EditableOpportunity = data.opportunite
       setExistingOpportunity(opp)
 
       if (opp.statut === "supprimee") {
@@ -202,7 +206,6 @@ export default function ModifierOpportunitePage() {
         setCrop({ x: 0, y: 0 })
         setCroppedAreaPixels(null)
         setImageInfo(null)
-        setSizeWarning("")
         setAutoZoomed(false)
       }
       reader.readAsDataURL(file)
@@ -247,23 +250,7 @@ export default function ModifierOpportunitePage() {
     setZoom(1)
     setRotation(0)
     setCroppedAreaPixels(null)
-    setSizeWarning("")
   }
-
-  useEffect(() => {
-    if (!cropperContainerRef.current || !imageInfo) return
-    const containerWidth = cropperContainerRef.current.clientWidth
-    const containerHeight = cropperContainerRef.current.clientHeight
-    if (containerWidth === 0 || containerHeight === 0) return
-
-    const minWidth = Math.round(containerWidth * 2)
-    const minHeight = Math.round(containerHeight * 2)
-    if (imageInfo.width < minWidth || imageInfo.height < minHeight) {
-      setSizeWarning("Image un peu petite : le rendu peut paraitre flou sur ecran large.")
-    } else {
-      setSizeWarning("")
-    }
-  }, [imageInfo, isCropping])
 
   const uploadImage = async (file: File, annonceurId: string, folder = "opportunites"): Promise<string | null> => {
     try {
@@ -342,9 +329,10 @@ export default function ModifierOpportunitePage() {
       setError("La description est obligatoire")
       return false
     }
-    if (formData.lien_infos.trim()) {
+    const normalizedInfoLink = normalizeWebsiteUrlWithWwwPrefix(formData.lien_infos)
+    if (normalizedInfoLink) {
       try {
-        new URL(formData.lien_infos)
+        new URL(normalizedInfoLink)
       } catch {
         setError("Le lien fourni n'est pas une URL valide")
         return false
@@ -476,7 +464,7 @@ export default function ModifierOpportunitePage() {
           resume: formData.resume,
           contenu_image_url: null,
           image_url: imageUrl,
-          lien_infos: formData.lien_infos?.trim() || "",
+          lien_infos: normalizeWebsiteUrlWithWwwPrefix(formData.lien_infos),
           prix_base: prixBase,
           prix_reduit: prixReduit,
           nombre_places: nextNombrePlaces,
@@ -584,7 +572,7 @@ export default function ModifierOpportunitePage() {
     : 0
 
   const previewTitle = formData.titre.trim() || "Titre de l'opportunité"
-  const previewOrganizer = "Votre structure"
+  const previewOrganizer = existingOpportunity?.annonceur?.nom_formation?.trim() || "Votre structure"
   const previewCategory = formData.type ? OPPORTUNITY_TYPE_LABELS[formData.type as OpportunityType] : "Catégorie"
   const previewModel = formData.modele ? OPPORTUNITY_MODEL_LABELS[formData.modele as OpportunityModel] : "Modèle"
   const previewImage = imagePreview || ""
@@ -862,13 +850,20 @@ export default function ModifierOpportunitePage() {
 
               <div>
                 <Label htmlFor="lien_infos">Lien vers plus d&apos;informations</Label>
-                <Input
-                  id="lien_infos"
-                  type="url"
-                  value={formData.lien_infos}
-                  onChange={(e) => handleInputChange('lien_infos', e.target.value)}
-                  placeholder="https://votre-site.com/opportunite"
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-[#F5F0EB] px-3 text-sm font-medium text-gray-700">
+                    www.
+                  </span>
+                  <Input
+                    id="lien_infos"
+                    type="text"
+                    inputMode="url"
+                    value={getWebsiteInputWithoutWww(formData.lien_infos)}
+                    onChange={(e) => handleInputChange('lien_infos', e.target.value)}
+                    placeholder="votre-site.com/opportunite"
+                    className="rounded-l-none"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -910,7 +905,6 @@ export default function ModifierOpportunitePage() {
                           setCrop({ x: 0, y: 0 })
                           setCroppedAreaPixels(null)
                           setImageInfo(null)
-                          setSizeWarning("")
                           setAutoZoomed(false)
                         }}
                       >
@@ -1198,12 +1192,6 @@ export default function ModifierOpportunitePage() {
                     objectFit="horizontal-cover"
                   />
                 </div>
-
-                {sizeWarning && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    {sizeWarning}
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">

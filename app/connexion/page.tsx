@@ -14,11 +14,11 @@ export default function ConnexionPage() {
         <div className="flex justify-center gap-2 md:justify-start">
           <Image
             src={logoApp}
-            alt="Scenio — Retour à l'accueil"
-            height={100}
-            width={100}
+            alt="formations-artistiques.fr — Retour à l'accueil"
+            height={34}
+            width={220}
             onClick={() => router.push("/")}
-            className="cursor-pointer"
+            className="h-auto cursor-pointer"
             role="link"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter') router.push("/") }}
@@ -34,8 +34,8 @@ export default function ConnexionPage() {
         <Image
           src={logoApp}
           alt=""
-          width={500}
-          height={500}
+          width={620}
+          height={95}
           priority
           style={{ width: 'auto', height: 'auto' }}
         />

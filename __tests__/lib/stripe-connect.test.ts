@@ -75,7 +75,7 @@ function createStripeAccount(overrides: Record<string, unknown> = {}) {
       disabled_reason: null,
     },
     ...overrides,
-  } as Stripe.Account
+  } as unknown as Stripe.Account
 }
 
 describe('stripe-connect helpers', () => {

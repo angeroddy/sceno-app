@@ -45,6 +45,10 @@ describe('ForgotPasswordPage', () => {
       data: { subscription: { unsubscribe: jest.fn() } },
     })
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    })
   })
 
   it("affiche le formulaire de demande de réinitialisation par défaut", () => {
@@ -56,8 +60,6 @@ describe('ForgotPasswordPage', () => {
   })
 
   it("envoie une demande de réinitialisation avec l'adresse normalisée", async () => {
-    mockSupabase.auth.resetPasswordForEmail.mockResolvedValue({ error: null })
-
     render(<ForgotPasswordPage />)
     const user = userEvent.setup()
 
@@ -65,10 +67,14 @@ describe('ForgotPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: /Envoyer le lien/i }))
 
     await waitFor(() => {
-      expect(mockSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith(
-        'test@example.com',
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/auth/password-reset',
         expect.objectContaining({
-          redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
+          method: 'POST',
+          body: JSON.stringify({
+            email: 'test@example.com',
+            redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
+          }),
         })
       )
     })
@@ -76,9 +82,10 @@ describe('ForgotPasswordPage', () => {
     expect(screen.getByText(/Si un compte existe avec cette adresse e-mail/i)).toBeInTheDocument()
   })
 
-  it("affiche un message clair quand Supabase limite l'envoi des e-mails de réinitialisation", async () => {
-    mockSupabase.auth.resetPasswordForEmail.mockResolvedValue({
-      error: { message: 'email rate limit exceeded' },
+  it("affiche un message clair quand l'envoi de l'e-mail de réinitialisation échoue", async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Impossible d'envoyer l'email de réinitialisation. Veuillez réessayer." }),
     })
 
     render(<ForgotPasswordPage />)
@@ -89,7 +96,7 @@ describe('ForgotPasswordPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Trop d'e-mails de réinitialisation ont été demandés/i)
+        screen.getByText(/Impossible d'envoyer l'email de réinitialisation/i)
       ).toBeInTheDocument()
     })
   })

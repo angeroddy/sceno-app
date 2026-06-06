@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import { sendAdvertiserValidatedEmail } from '@/app/lib/email-notifications'
 import type { Annonceur, Admin } from '@/app/types'
 
 export async function POST(request: Request) {
@@ -84,14 +85,13 @@ export async function POST(request: Request) {
       // On continue même si l'insertion échoue
     }
 
-    // TODO: Envoyer un email de notification à l'annonceur
-    // Pour l'instant, on insère juste dans notifications_email
-    const sujet = action === 'valider'
-      ? 'Votre compte Scenio a été validé !'
-      : 'Votre compte Scenio nécessite une vérification'
-
-    // Note: Cette table nécessite comedien_id et opportunite_id, il faudrait peut-être
-    // créer une nouvelle table pour les notifications génériques ou adapter celle-ci
+    if (action === 'valider') {
+      try {
+        await sendAdvertiserValidatedEmail(annonceur)
+      } catch (emailError) {
+        console.error('Erreur envoi email validation annonceur:', emailError)
+      }
+    }
 
     return NextResponse.json({
       success: true,

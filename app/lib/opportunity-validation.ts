@@ -75,9 +75,7 @@ export const createOpportunitySchema = z
     contact_email: z.email("L'email de contact est invalide").max(255, "L'email est trop long"),
   })
   .superRefine((value, ctx) => {
-    const plainTextLength = value.resume.replace(/<[^>]+>/g, "").trim().length
     const hasText = value.resume.length > 0
-    const hasLongEnoughText = plainTextLength >= 20
     const hasEmbeddedImage = /<img\b/i.test(value.resume)
     const hasBodyImage = Boolean(value.contenu_image_url)
 
@@ -89,14 +87,6 @@ export const createOpportunitySchema = z
           message: "Ajoutez du texte ou une image dans la description",
         })
       }
-    }
-
-    if (!hasEmbeddedImage && !hasBodyImage && hasText && !hasLongEnoughText) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["resume"],
-        message: "La description est trop courte",
-      })
     }
 
     if ((value.contenu_mode === "image" || value.contenu_mode === "text_image" || value.contenu_mode === "image_text") && !hasBodyImage) {

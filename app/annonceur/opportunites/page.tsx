@@ -22,6 +22,13 @@ import type { Opportunite } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
 import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/app/lib/renderable-image"
 
+function formatPlacesLabel(remaining: number, total: number) {
+  const purchased = Math.max(total - remaining, 0)
+  const purchasedLabel = purchased > 1 ? "places achetées" : "place achetée"
+  const totalLabel = total > 1 ? "places" : "place"
+  return `${purchased} ${purchasedLabel} sur ${total} ${totalLabel}`
+}
+
 export default function MesOpportunitesPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -266,14 +273,19 @@ export default function MesOpportunitesPage() {
                 <CardContent className="p-6">
                   <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                     {/* Image */}
-                    <div className="relative w-full sm:w-40 md:w-48 aspect-video rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                    <button
+                      type="button"
+                      className="relative w-full sm:w-40 md:w-48 aspect-video rounded-lg overflow-hidden bg-gray-100 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E63832] focus-visible:ring-offset-2"
+                      onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}`)}
+                      aria-label={`Voir les détails de ${opportunite.titre}`}
+                    >
                       {canRenderImage ? (
                         <Image
                           src={renderableImageSrc}
                           alt={opportunite.titre}
                           fill
                           unoptimized
-                          className="object-cover"
+                          className="object-cover transition-transform duration-200 hover:scale-105"
                           sizes="(max-width: 640px) 100vw, 192px"
                           onLoad={() => handleImageLoad(opportunite.id)}
                           onError={() => handleImageError(opportunite.id, opportunite.image_url || "")}
@@ -283,7 +295,7 @@ export default function MesOpportunitesPage() {
                           {opportunite.titre}
                         </div>
                       )}
-                    </div>
+                    </button>
 
                     {/* Contenu */}
                     <div className="flex-1">
@@ -303,7 +315,7 @@ export default function MesOpportunitesPage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Users className="w-4 h-4 shrink-0" />
-                          <span>{opportunite.places_restantes}/{opportunite.nombre_places} places</span>
+                          <span>{formatPlacesLabel(opportunite.places_restantes, opportunite.nombre_places)}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Euro className="w-4 h-4 shrink-0" />
@@ -315,7 +327,7 @@ export default function MesOpportunitesPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="grid grid-cols-1 sm:flex sm:flex-row sm:flex-wrap gap-2">
+                      <div className="grid grid-cols-1 sm:flex sm:flex-row sm:flex-wrap sm:items-center gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -339,7 +351,7 @@ export default function MesOpportunitesPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full sm:w-auto justify-start sm:justify-center text-red-600 hover:text-red-700"
+                            className="w-full sm:ml-auto sm:w-auto justify-start sm:justify-center text-red-600 hover:text-red-700"
                             onClick={() => setOpportuniteToDelete(opportunite)}
                           >
                             <Trash2 className="w-4 h-4 mr-1" />

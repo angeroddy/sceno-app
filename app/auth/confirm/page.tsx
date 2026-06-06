@@ -66,7 +66,7 @@ function ConfirmContent() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
-          <Image src={logoApp} alt="Scenio Logo" height={80} width={80} />
+          <Image src={logoApp} alt="formations-artistiques.fr Logo" height={34} width={220} className="h-auto" />
         </div>
         <CardTitle className="text-2xl">
           {status === 'loading' && 'Confirmation en cours...'}
@@ -146,7 +146,7 @@ function ConfirmFallback() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
-          <Image src={logoApp} alt="Scenio Logo" height={80} width={80} />
+          <Image src={logoApp} alt="formations-artistiques.fr Logo" height={34} width={220} className="h-auto" />
         </div>
         <CardTitle className="text-2xl">Confirmation en cours...</CardTitle>
         <CardDescription>Veuillez patienter pendant que nous vérifions votre e-mail.</CardDescription>

@@ -39,10 +39,6 @@ import {
   normalizeEmail,
   normalizeText,
 } from "@/app/lib/signup-validation"
-import {
-  isHandledAuthError,
-  translateAuthErrorMessage,
-} from "@/app/lib/auth-error-message"
 import { getDemoComedianData } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = [
@@ -130,7 +126,6 @@ export function ComedianSignupForm({
     y: number
   } | null>(null)
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
-  const [photoSizeWarning, setPhotoSizeWarning] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [photoUploadWarning, setPhotoUploadWarning] = useState(false)
@@ -149,22 +144,6 @@ export function ComedianSignupForm({
         : photoCropAspect / imageAspect
 
     return Math.min(Math.max(nextZoom, 1), 3)
-  }
-
-  const getPhotoSizeWarningMessage = (nextImageInfo: { width: number; height: number }) => {
-    const container = cropperContainerRef.current
-    if (!container) return ""
-
-    const containerWidth = container.clientWidth
-    const containerHeight = container.clientHeight
-    if (containerWidth === 0 || containerHeight === 0) return ""
-
-    const minWidth = Math.round(containerWidth * 2)
-    const minHeight = Math.round(containerHeight * 2)
-
-    return nextImageInfo.width < minWidth || nextImageInfo.height < minHeight
-      ? "Image un peu petite : le rendu peut paraître flou sur certains écrans."
-      : ""
   }
 
   const handlePreferenceChange = (key: keyof OpportunityPreferences) => {
@@ -276,7 +255,6 @@ export function ComedianSignupForm({
     const observer = new ResizeObserver(() => {
       if (!imageInfo) return
       setZoom(getAutoZoomForPhoto(imageInfo))
-      setPhotoSizeWarning(getPhotoSizeWarningMessage(imageInfo))
     })
     observer.observe(cropperContainerRef.current)
     return () => observer.disconnect()
@@ -290,9 +268,6 @@ export function ComedianSignupForm({
       const nextImageInfo = { width: img.width, height: img.height }
       setImageInfo(nextImageInfo)
       setZoom(getAutoZoomForPhoto(nextImageInfo))
-      window.requestAnimationFrame(() => {
-        setPhotoSizeWarning(getPhotoSizeWarningMessage(nextImageInfo))
-      })
     }
     img.src = rawPhotoSrc
   }, [rawPhotoSrc])
@@ -305,7 +280,6 @@ export function ComedianSignupForm({
     setRotation(0)
     setCroppedAreaPixels(null)
     setImageInfo(null)
-    setPhotoSizeWarning("")
   }
 
   const resetPhotoAdjustments = () => {
@@ -326,7 +300,6 @@ export function ComedianSignupForm({
         setCrop({ x: 0, y: 0 })
         setCroppedAreaPixels(null)
         setImageInfo(null)
-        setPhotoSizeWarning("")
         setPhotoUploadWarning(false)
         setPhotoPendingSyncNotice(false)
       }
@@ -447,43 +420,6 @@ export function ComedianSignupForm({
     }
   }
 
-  // Upload de la photo vers Supabase Storage
-  const uploadPhoto = async (file: File, userId: string): Promise<string | null> => {
-    try {
-      const supabase = createBrowserSupabaseClient()
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${userId}-${Date.now()}.${fileExt}`
-      const filePath = `comediens/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-
-      if (uploadError) {
-        console.warn("Upload photo ignoré:", {
-          name: uploadError.name,
-          message: uploadError.message,
-        })
-        // Ne pas bloquer l'inscription si l'upload échoue
-        return null
-      }
-
-      // Récupérer l'URL publique
-      const { data } = supabase.storage
-        .from('photos')
-        .getPublicUrl(filePath)
-
-      return data.publicUrl
-    } catch (error) {
-      console.warn("Upload photo ignoré (exception):", error)
-      // Ne pas bloquer l'inscription si l'upload échoue
-      return null
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -507,103 +443,54 @@ export function ComedianSignupForm({
           return
         }
 
-        // 1. Créer l'utilisateur dans Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: normalizedEmail,
-          password: accountInfo.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-            data: {
-              genre: personalInfo.gender,
-            },
-          }
-        })
-
-        if (authError) {
-          if (isHandledAuthError(authError.message)) {
-            console.warn("Erreur d'authentification comédien traitée:", authError.message)
-          } else {
-            console.error("Erreur d'authentification:", authError)
-          }
-          setError(translateAuthErrorMessage(authError.message, "signup"))
-          setIsLoading(false)
-          return
-        }
-
-        if (!authData.user) {
-          setError("Erreur lors de la création du compte.")
-          setIsLoading(false)
-          return
-        }
-
-        // 2. Upload de la photo si présente.
-        // Quand la confirmation email est activée, Supabase peut ne pas renvoyer de session ici.
-        // Sans session, l'upload Storage côté navigateur échoue souvent (RLS).
-        let photoUrl: string | null = null
-        if (personalInfo.photo) {
-          let pendingSaved = false
-
-          if (authData.session) {
-            photoUrl = await uploadPhoto(personalInfo.photo, authData.user.id)
-          }
-
-          if (!photoUrl) {
-            pendingSaved = await savePendingComedianSignupPhoto(authData.user.id, personalInfo.photo)
-          } else {
-            clearPendingComedianSignupPhoto(authData.user.id)
-          }
-
-          if (pendingSaved) {
-            setPhotoPendingSyncNotice(true)
-          } else if (!photoUrl) {
-            setPhotoUploadWarning(true)
-          }
-        }
-
-        // 3. Créer le profil comédien dans la table
         const profilePayload: Record<string, unknown> = {
-          auth_user_id: authData.user.id,
           nom: normalizeText(personalInfo.lastName),
           prenom: normalizeText(personalInfo.firstName),
           email: normalizedEmail,
-          photo_url: photoUrl,
+          photo_url: null,
           lien_demo: normalizeText(personalInfo.demoLink) || null,
           date_naissance: personalInfo.birthDate,
           preferences_opportunites: mapPreferencesToOpportunityTypes(),
           genre: personalInfo.gender,
         }
 
-        let { error: profileError } = await supabase
-          .from('comediens')
-          .insert(profilePayload as never)
-          .select()
+        const signupResponse = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "comedian",
+            email: normalizedEmail,
+            password: accountInfo.password,
+            redirectTo: `${window.location.origin}/auth/callback`,
+            profile: profilePayload,
+            metadata: {
+              genre: personalInfo.gender,
+            },
+          }),
+        })
+        const signupData = await signupResponse.json().catch(() => null) as {
+          error?: string
+          userId?: string
+        } | null
 
-        if (
-          profileError &&
-          /genre|schema cache|column/i.test(profileError.message)
-        ) {
-          delete profilePayload.genre
-          const retry = await supabase
-            .from('comediens')
-            .insert(profilePayload as never)
-            .select()
-          profileError = retry.error
-        }
-
-        if (profileError) {
-          console.error('Erreur lors de la création du profil:', profileError)
-          // Vérifier si c'est une erreur de duplication dans la table comediens
-          if (profileError.message.toLowerCase().includes('duplicate') ||
-              profileError.message.toLowerCase().includes('unique')) {
-            setError("Un compte existe déjà avec cet email.")
-          } else {
-            setError("Le compte a été créé côté authentification, mais le profil comédien n'a pas pu être finalisé. Contactez le support avant de réessayer.")
-          }
+        if (!signupResponse.ok || !signupData?.userId) {
+          setError(signupData?.error || "Impossible de créer le compte. Veuillez réessayer.")
           setIsLoading(false)
           return
         }
 
-        // 4. Succès !
+        if (personalInfo.photo) {
+          const pendingSaved = await savePendingComedianSignupPhoto(signupData.userId, personalInfo.photo)
+
+          if (pendingSaved) {
+            setPhotoPendingSyncNotice(true)
+          } else {
+            setPhotoUploadWarning(true)
+          }
+        } else {
+          clearPendingComedianSignupPhoto(signupData.userId)
+        }
+
         setIsSuccess(true)
         setIsLoading(false)
 
@@ -1178,12 +1065,6 @@ export function ComedianSignupForm({
                   </div>
                 </div>
               </div>
-
-              {photoSizeWarning && (
-                <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
-                  {photoSizeWarning}
-                </div>
-              )}
 
               <div className="flex gap-3">
                 <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyPhotoCrop}>

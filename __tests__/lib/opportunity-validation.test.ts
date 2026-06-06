@@ -58,4 +58,13 @@ describe('createOpportunitySchema', () => {
 
     expect(result.success).toBe(true)
   })
+
+  it("accepte une description courte", () => {
+    const result = createOpportunitySchema.safeParse({
+      ...basePayload,
+      resume: '<p>Kikoo test 1</p>',
+    })
+
+    expect(result.success).toBe(true)
+  })
 })

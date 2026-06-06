@@ -60,7 +60,7 @@ export async function generateMetadata({
   }
 
   const title = opportunite.titre
-  const description = `${opportunite.titre} — proposée par ${opportunite.annonceur?.nom_formation || 'un organisme partenaire'} sur Scenio. Réservez votre place dès maintenant.`
+  const description = `${opportunite.titre} — proposée par ${opportunite.annonceur?.nom_formation || 'un organisme partenaire'} sur formations-artistiques.fr. Réservez votre place dès maintenant.`
   const publicOpportunityPath = buildPublicOpportunityPath(opportunite.titre, opportunite.id)
 
   return {
@@ -151,7 +151,7 @@ export default async function OpportunitePage({
   const isExpired = opportunite.statut === 'expiree'
   const isUnavailable = isSoldOut || isExpired
   const hasDiscount = opportunite.prix_reduit < opportunite.prix_base
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://scenio.fr'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://formations-artistiques.fr'
   const publicOpportunityPath = buildPublicOpportunityPath(opportunite.titre, opportunite.id)
   const publicOpportunityUrl = `${siteUrl}${publicOpportunityPath}`
   const primaryHref = userType ? dashboardHref : `/inscription?next=${encodeURIComponent(publicOpportunityPath)}`
@@ -213,10 +213,10 @@ export default async function OpportunitePage({
           <Link href="/" className="flex items-center gap-3">
             <Image
               src={logoApp}
-              alt="Scenio"
-              width={130}
-              height={40}
-              className="h-auto w-[130px]"
+              alt="formations-artistiques.fr"
+              width={220}
+              height={34}
+              className="h-auto w-[220px] max-w-full"
               priority
             />
           </Link>
@@ -344,7 +344,7 @@ export default async function OpportunitePage({
                         <Tag className="h-5 w-5 text-[#E63832]" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Tarif Scenio</p>
+                        <p className="text-sm text-gray-500">Tarif formations-artistiques.fr</p>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-semibold text-gray-900">
                             {formatCurrency(opportunite.prix_reduit)}
@@ -444,7 +444,7 @@ export default async function OpportunitePage({
 
                 {!isUnavailable && (
                   <div className="rounded-2xl bg-green-50 p-4 text-sm text-green-900">
-                    {`${opportunite.places_restantes} place(s) restante(s) à réserver via votre espace Scenio.`}
+                    {`${opportunite.places_restantes} place(s) restante(s) à réserver via votre espace formations-artistiques.fr.`}
                   </div>
                 )}
 

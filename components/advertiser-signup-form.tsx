@@ -35,6 +35,7 @@ import {
   isValidIban,
   isValidPhone,
   isValidPostalCode,
+  isValidWebsiteUrl,
   normalizeBic,
   normalizeBusinessId,
   normalizeCountry,
@@ -44,11 +45,8 @@ import {
   normalizePhone,
   normalizePostalCode,
   normalizeText,
+  normalizeWebsiteUrl,
 } from "@/app/lib/signup-validation"
-import {
-  isHandledAuthError,
-  translateAuthErrorMessage,
-} from "@/app/lib/auth-error-message"
 import { getDemoAdvertiserData } from "@/app/lib/dev-signup-fixtures"
 
 const STEPS = ["Informations entreprise", "Compte et paiement"]
@@ -57,6 +55,7 @@ type AdvertiserField =
   | "telephone"
   | "nom_formation"
   | "nom_entreprise"
+  | "site_internet"
   | "type_juridique"
   | "numero_legal"
   | "siege_rue"
@@ -94,6 +93,7 @@ function withFinalPeriods(errors: AdvertiserErrors): AdvertiserErrors {
 const ENTERPRISE_STEP_FIELDS: AdvertiserField[] = [
   "nom_formation",
   "nom_entreprise",
+  "site_internet",
   "type_juridique",
   "numero_legal",
   "siege_rue",
@@ -118,6 +118,34 @@ const ACCOUNT_STEP_FIELDS: AdvertiserField[] = [
   "bic_swift",
 ]
 
+const FRENCH_PHONE_PREFIX = "+33"
+const WEBSITE_PREFIX = "www."
+
+function formatFrenchPhoneInput(value: string | null | undefined): string {
+  const raw = normalizeText(value)
+  const withoutPrefix = raw
+    .replace(/^\+33\s*/, "")
+    .replace(/^0033\s*/, "")
+    .replace(/^33\s*/, "")
+  const digits = withoutPrefix.replace(/\D/g, "").replace(/^0/, "")
+  const groupedDigits = digits.match(/.{1,2}/g)?.join(" ") || ""
+
+  return groupedDigits ? `${FRENCH_PHONE_PREFIX} ${groupedDigits}` : `${FRENCH_PHONE_PREFIX} `
+}
+
+function hasEnteredPhoneNumber(value: string | null | undefined): boolean {
+  const normalized = normalizePhone(value)
+  return normalized !== "" && normalized !== FRENCH_PHONE_PREFIX
+}
+
+function formatWebsiteInput(value: string | null | undefined): string {
+  const raw = normalizeText(value)
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+
+  return raw ? `${WEBSITE_PREFIX}${raw}` : ""
+}
+
 export function AdvertiserSignupForm({
   className,
   ...props
@@ -129,6 +157,9 @@ export function AdvertiserSignupForm({
     pays_entreprise: "France",
     siege_pays: "France",
     representant_adresse_pays: "France",
+    telephone: `${FRENCH_PHONE_PREFIX} `,
+    representant_telephone: `${FRENCH_PHONE_PREFIX} `,
+    site_internet: "",
     confirmPassword: "",
   })
   const [error, setError] = useState("")
@@ -146,11 +177,22 @@ export function AdvertiserSignupForm({
     setError("")
   }
 
+  const updatePhoneField = (field: "telephone" | "representant_telephone", value: string) => {
+    updateFormData({ [field]: formatFrenchPhoneInput(value) })
+  }
+
+  const updateWebsiteField = (value: string) => {
+    updateFormData({ site_internet: formatWebsiteInput(value) })
+  }
+
   const getAdvertiserErrors = (data: Partial<InscriptionAnnonceurForm>): AdvertiserErrors => {
     const errors: AdvertiserErrors = {}
 
     if (!normalizeText(data.nom_formation)) errors.nom_formation = "Le nom de l'organisme est obligatoire"
     if (!normalizeText(data.nom_entreprise)) errors.nom_entreprise = "Le nom de l'entreprise est obligatoire"
+    if (normalizeWebsiteUrl(data.site_internet) && !isValidWebsiteUrl(data.site_internet)) {
+      errors.site_internet = "Le site internet de l'entreprise n'est pas valide"
+    }
     if (!data.type_juridique) errors.type_juridique = "Veuillez sélectionner le statut juridique"
 
     if (!normalizeText(data.numero_legal)) {
@@ -168,7 +210,7 @@ export function AdvertiserSignupForm({
       errors.siege_code_postal = "Le code postal du siège social n'est pas valide"
     }
 
-    if (!normalizeText(data.telephone)) {
+    if (!hasEnteredPhoneNumber(data.telephone)) {
       errors.telephone = "Le numéro de téléphone de l'organisme est obligatoire"
     } else if (!isValidPhone(data.telephone)) {
       errors.telephone = "Le numéro de téléphone de l'organisme n'est pas valide"
@@ -180,7 +222,7 @@ export function AdvertiserSignupForm({
     if (!normalizeText(data.representant_prenom)) {
       errors.representant_prenom = "Le prénom du représentant légal est obligatoire"
     }
-    if (!normalizeText(data.representant_telephone)) {
+    if (!hasEnteredPhoneNumber(data.representant_telephone)) {
       errors.representant_telephone = "Le numéro de téléphone du représentant légal est obligatoire"
     } else if (!isValidPhone(data.representant_telephone)) {
       errors.representant_telephone = "Le numéro de téléphone du représentant légal n'est pas valide"
@@ -316,33 +358,7 @@ export function AdvertiserSignupForm({
         return
       }
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password: formData.password!,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (authError) {
-        if (isHandledAuthError(authError.message)) {
-          console.warn("Erreur d'authentification annonceur traitée:", authError.message)
-        } else {
-          console.error("Erreur d'authentification:", authError)
-        }
-        setError(translateAuthErrorMessage(authError.message, "signup"))
-        setIsLoading(false)
-        return
-      }
-
-      if (!authData.user) {
-        setError("Erreur lors de la création du compte")
-        setIsLoading(false)
-        return
-      }
-
-      const profileData: Database["public"]["Tables"]["annonceurs"]["Insert"] = {
-        auth_user_id: authData.user.id,
+      const profileData: Omit<Database["public"]["Tables"]["annonceurs"]["Insert"], "auth_user_id"> = {
         email: normalizedEmail,
         type_annonceur: "entreprise",
         telephone: normalizedPhone || null,
@@ -360,6 +376,7 @@ export function AdvertiserSignupForm({
         type_piece_identite: null,
         piece_identite_url: null,
         nom_entreprise: normalizeHumanText(formData.nom_entreprise) || null,
+        site_internet: normalizeWebsiteUrl(formData.site_internet) || null,
         type_juridique: formData.type_juridique || null,
         pays_entreprise: normalizeCountry(formData.pays_entreprise || "France") || "France",
         numero_legal: normalizeBusinessId(formData.numero_legal) || null,
@@ -386,20 +403,21 @@ export function AdvertiserSignupForm({
         representant_type_piece_identite: null,
       }
 
-      const { error: profileError } = await supabase
-        .from("annonceurs")
-        .insert(profileData as unknown as never)
+      const signupResponse = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "advertiser",
+          email: normalizedEmail,
+          password: formData.password,
+          redirectTo: `${window.location.origin}/auth/callback`,
+          profile: profileData,
+        }),
+      })
+      const signupData = await signupResponse.json().catch(() => null) as { error?: string } | null
 
-      if (profileError) {
-        console.error("Erreur lors de la création du profil:", profileError)
-        if (
-          profileError.message.toLowerCase().includes("duplicate") ||
-          profileError.message.toLowerCase().includes("unique")
-        ) {
-          setError("Un compte existe déjà avec cet email")
-        } else {
-          setError("Le compte a été créé côté authentification, mais le profil annonceur n'a pas pu être finalisé. Contactez le support avant de réessayer.")
-        }
+      if (!signupResponse.ok) {
+        setError(signupData?.error || "Impossible de créer le compte. Veuillez réessayer.")
         setIsLoading(false)
         return
       }
@@ -505,6 +523,22 @@ export function AdvertiserSignupForm({
                   {showFieldError("nom_entreprise") && <FieldError>{fieldErrors.nom_entreprise}</FieldError>}
                 </Field>
 
+                <Field>
+                  <FieldLabel htmlFor="site_internet">Site internet de l&apos;entreprise</FieldLabel>
+                  <Input
+                    id="site_internet"
+                    type="text"
+                    placeholder="www.votre-site.fr"
+                    value={formData.site_internet || ""}
+                    onChange={(e) => updateWebsiteField(e.target.value)}
+                    onBlur={() => updateFormData({ site_internet: formatWebsiteInput(formData.site_internet) })}
+                    aria-invalid={showFieldError("site_internet")}
+                    className={getFieldClassName("site_internet")}
+                  />
+                  {showFieldError("site_internet") && <FieldError>{fieldErrors.site_internet}</FieldError>}
+                  <FieldDescription>Utilisé pour pré-remplir le site public dans Stripe</FieldDescription>
+                </Field>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field>
                     <FieldLabel htmlFor="type_juridique">Statut juridique <span className="text-red-500">*</span></FieldLabel>
@@ -553,7 +587,7 @@ export function AdvertiserSignupForm({
                     type="tel"
                     placeholder="+33 1 XX XX XX XX"
                     value={formData.telephone || ""}
-                    onChange={(e) => updateFormData({ telephone: e.target.value })}
+                    onChange={(e) => updatePhoneField("telephone", e.target.value)}
                     onBlur={() => updateFormData({ telephone: normalizePhone(formData.telephone) })}
                     aria-invalid={showFieldError("telephone")}
                     className={getFieldClassName("telephone")}
@@ -661,7 +695,7 @@ export function AdvertiserSignupForm({
                     type="tel"
                     placeholder="+33 6 XX XX XX XX"
                     value={formData.representant_telephone || ""}
-                    onChange={(e) => updateFormData({ representant_telephone: e.target.value })}
+                    onChange={(e) => updatePhoneField("representant_telephone", e.target.value)}
                     onBlur={() => updateFormData({ representant_telephone: normalizePhone(formData.representant_telephone) })}
                     aria-invalid={showFieldError("representant_telephone")}
                     className={getFieldClassName("representant_telephone")}

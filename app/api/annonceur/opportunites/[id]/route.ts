@@ -1,47 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireAdvertiser } from '@/app/server/auth'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
 import { countOpportunityViews } from '@/app/lib/opportunity-views'
-import { Annonceur, Achat } from '@/app/types'
+import { Achat, Opportunite } from '@/app/types'
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createServerSupabaseClient()
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Récupérer le profil annonceur
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('*')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json(
-        { error: 'Profil annonceur introuvable' },
-        { status: 404 }
-      )
-    }
-
-    const annonceur = annonceurData as Annonceur
+    const auth = await requireAdvertiser()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: annonceur } = auth
 
     // Récupérer les paramètres
     const { id } = await context.params
 
     // Récupérer l'opportunité (doit appartenir à cet annonceur)
-    const { data: opportunite, error: opportuniteError } = await supabase
+    const { data: opportuniteData, error: opportuniteError } = await supabase
       .from('opportunites')
       .select('*')
       .eq('id', id)
@@ -56,12 +32,14 @@ export async function GET(
       )
     }
 
-    if (!opportunite) {
+    if (!opportuniteData) {
       return NextResponse.json(
         { error: 'Opportunité introuvable ou vous n\'avez pas les droits d\'accès' },
         { status: 404 }
       )
     }
+
+    const opportunite = opportuniteData as Opportunite
 
     const reconciledOpportunity = await reconcileOpportunityPlaces(supabase as never, id)
     if (reconciledOpportunity) {
@@ -89,7 +67,12 @@ export async function GET(
     }
 
     return NextResponse.json({
-      opportunite,
+      opportunite: {
+        ...opportunite,
+        annonceur: {
+          nom_formation: annonceur.nom_formation,
+        },
+      },
       stats
     })
 
@@ -107,22 +90,9 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
-    }
-
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json({ error: 'Profil annonceur introuvable' }, { status: 404 })
-    }
+    const auth = await requireAdvertiser()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: annonceur } = auth
 
     const { id } = await context.params
 
@@ -130,7 +100,7 @@ export async function DELETE(
       .from('opportunites')
       .select('id, statut')
       .eq('id', id)
-      .eq('annonceur_id', (annonceurData as { id: string }).id)
+      .eq('annonceur_id', annonceur.id)
       .single()
 
     if (opportuniteError || !opportunite) {
@@ -148,7 +118,7 @@ export async function DELETE(
         statut_qualifie_at: new Date().toISOString(),
       } as never)
       .eq('id', id)
-      .eq('annonceur_id', (annonceurData as { id: string }).id)
+      .eq('annonceur_id', annonceur.id)
 
     if (updateError) {
       console.error('Erreur suppression logique opportunité:', updateError)

@@ -3,7 +3,7 @@ import { buildPublicOpportunityPath } from "@/app/lib/public-opportunity-url"
 import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
 import { createServerSupabaseClient } from "@/app/lib/supabase"
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://scenio.fr"
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://formations-artistiques.fr"
 
 async function getSupabase() {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {

@@ -1,6 +1,6 @@
 # 🔐 Guide : Créer un compte Administrateur
 
-Ce guide explique comment créer votre premier compte admin sur Scenio.
+Ce guide explique comment créer votre premier compte admin sur formations-artistiques.fr.
 
 ---
 
@@ -63,7 +63,7 @@ ADMIN_CREATION_SECRET_KEY=MyS3cr3tK3y!2024#Admin
 curl -X POST http://localhost:3000/api/admin/create \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@scenio.com",
+    "email": "admin@formations-artistiques.fr",
     "password": "VotreMotDePasseAdmin123!",
     "nom": "Super Admin",
     "secretKey": "MyS3cr3tK3y!2024#Admin"
@@ -79,7 +79,7 @@ curl -X POST http://localhost:3000/api/admin/create \
 4. Body (raw JSON) :
 ```json
 {
-  "email": "admin@scenio.com",
+  "email": "admin@formations-artistiques.fr",
   "password": "VotreMotDePasseAdmin123!",
   "nom": "Super Admin",
   "secretKey": "MyS3cr3tK3y!2024#Admin"
@@ -95,7 +95,7 @@ fetch('http://localhost:3000/api/admin/create', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    email: 'admin@scenio.com',
+    email: 'admin@formations-artistiques.fr',
     password: 'VotreMotDePasseAdmin123!',
     nom: 'Super Admin',
     secretKey: 'MyS3cr3tK3y!2024#Admin'
@@ -118,7 +118,7 @@ Si tout s'est bien passé, vous verrez :
   "message": "Compte admin créé avec succès !",
   "admin": {
     "id": "uuid-de-l-admin",
-    "email": "admin@scenio.com",
+    "email": "admin@formations-artistiques.fr",
     "nom": "Super Admin",
     "auth_user_id": "uuid-auth"
   }
@@ -136,7 +136,7 @@ Si tout s'est bien passé, vous verrez :
 
 1. Allez sur `http://localhost:3000/connexion`
 2. Connectez-vous avec :
-   - Email : `admin@scenio.com`
+   - Email : `admin@formations-artistiques.fr`
    - Mot de passe : `VotreMotDePasseAdmin123!`
 3. Vous serez redirigé vers `/admin` 🎉
 

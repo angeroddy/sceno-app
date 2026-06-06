@@ -69,6 +69,8 @@ const completePersonalInfoStep = async (
   })
 }
 
+const getPasswordInput = () => screen.getByLabelText('Mot de passe')
+
 describe('Flow d\'authentification complet', () => {
   let mockSupabase: any
 
@@ -130,6 +132,10 @@ describe('Flow d\'authentification complet', () => {
     })
 
     ;(createBrowserSupabaseClient as jest.Mock).mockReturnValue(mockSupabase)
+    ;(global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, userId: 'test-user-id-123' }),
+    })
 
     // window.location.origin is set in jest.setup.ts
   })
@@ -148,12 +154,6 @@ describe('Flow d\'authentification complet', () => {
         id: mockUserId,
         email: testUser.email,
       }
-
-      // Configuration des mocks pour l'inscription
-      mockSupabase.auth.signUp.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
 
       const comedianMaybeSingle = jest.fn()
         .mockResolvedValueOnce({
@@ -214,14 +214,28 @@ describe('Flow d\'authentification complet', () => {
       const submitButton = screen.getByRole('button', { name: /Créer mon compte/i })
       await user.click(submitButton)
 
-      // Vérifier que l'inscription a réussi
+      // Vérifier que l'inscription a réussi via l'API applicative
       await waitFor(() => {
-        expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
-          email: testUser.email,
-          password: testUser.password,
-          options: expect.any(Object),
-        })
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/auth/signup',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"role":"comedian"'),
+          })
+        )
       })
+
+      const signupBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+      expect(signupBody).toEqual(expect.objectContaining({
+        email: testUser.email,
+        password: testUser.password,
+        redirectTo: `${window.location.origin}/auth/callback`,
+      }))
+      expect(signupBody.profile).toEqual(expect.objectContaining({
+        nom: testUser.lastName,
+        prenom: testUser.firstName,
+        preferences_opportunites: expect.arrayContaining(['stages_ateliers']),
+      }))
 
       await waitFor(() => {
         expect(screen.getByText(/Compte créé avec succès/i)).toBeInTheDocument()
@@ -243,7 +257,7 @@ describe('Flow d\'authentification complet', () => {
       })
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const loginButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, testUser.email)
@@ -262,9 +276,9 @@ describe('Flow d\'authentification complet', () => {
 
   describe('Scénario d\'échec : Email déjà utilisé', () => {
     it('devrait afficher une erreur si l\'email est déjà enregistré', async () => {
-      mockSupabase.auth.signUp.mockResolvedValue({
-        data: { user: null },
-        error: { message: 'User already registered' },
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Un compte existe déjà avec cet email.' }),
       })
 
       const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
@@ -301,7 +315,7 @@ describe('Flow d\'authentification complet', () => {
       const user = userEvent.setup()
 
       const emailInput = screen.getByLabelText(/Adresse e-mail/i)
-      const passwordInput = screen.getByLabelText(/Mot de passe/i)
+      const passwordInput = getPasswordInput()
       const loginButton = screen.getByRole('button', { name: /Se connecter/i })
 
       await user.type(emailInput, 'user@example.com')
@@ -337,7 +351,7 @@ describe('Flow d\'authentification complet', () => {
       })
 
       // Vérifier que l'appel API n'a pas été fait
-      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+      expect(global.fetch).not.toHaveBeenCalled()
     })
 
     it('devrait valider que les mots de passe correspondent', async () => {
@@ -361,7 +375,7 @@ describe('Flow d\'authentification complet', () => {
         expect(screen.getByText(/Les mots de passe ne correspondent pas/i)).toBeInTheDocument()
       })
 
-      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+      expect(global.fetch).not.toHaveBeenCalled()
     })
 
     it('devrait valider la longueur minimale du mot de passe', async () => {
@@ -385,22 +399,12 @@ describe('Flow d\'authentification complet', () => {
         expect(screen.getByText(/Le mot de passe doit contenir au moins 8 caractères/i)).toBeInTheDocument()
       })
 
-      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+      expect(global.fetch).not.toHaveBeenCalled()
     })
   })
 
   describe('Préférences d\'opportunités', () => {
     it('devrait enregistrer correctement les préférences multiples', async () => {
-      const mockUser = {
-        id: 'test-user-id',
-        email: 'test@example.com',
-      }
-
-      mockSupabase.auth.signUp.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
-
       const mockInsert = jest.fn().mockReturnValue({
         select: jest.fn().mockResolvedValue({
           data: [{ id: 1, auth_user_id: 'test-user-id' }],
@@ -444,16 +448,17 @@ describe('Flow d\'authentification complet', () => {
       await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))
 
       await waitFor(() => {
-        expect(mockInsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            preferences_opportunites: expect.arrayContaining([
-              'stages_ateliers',
-              'ecoles_formations',
-              'coachs_independants'
-            ]),
-          })
-        )
+        expect(global.fetch).toHaveBeenCalled()
       })
+
+      const signupBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+      expect(signupBody.profile).toEqual(expect.objectContaining({
+        preferences_opportunites: expect.arrayContaining([
+          'stages_ateliers',
+          'ecoles_formations',
+          'coachs_independants',
+        ]),
+      }))
     })
   })
 })

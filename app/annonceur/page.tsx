@@ -28,6 +28,13 @@ interface Stats {
   revenuTotal: number
 }
 
+function formatPlacesLabel(remaining: number, total: number) {
+  const purchased = Math.max(total - remaining, 0)
+  const purchasedLabel = purchased > 1 ? "places achetées" : "place achetée"
+  const totalLabel = total > 1 ? "places" : "place"
+  return `${purchased} ${purchasedLabel} sur ${total} ${totalLabel}`
+}
+
 export default function AnnonceurPage() {
   const router = useRouter()
   const [stats, setStats] = useState<Stats>({
@@ -281,7 +288,7 @@ export default function AnnonceurPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4 flex-shrink-0" />
-                          <span>{opportunite.places_restantes}/{opportunite.nombre_places} places</span>
+                          <span>{formatPlacesLabel(opportunite.places_restantes, opportunite.nombre_places)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Euro className="w-4 h-4 flex-shrink-0" />

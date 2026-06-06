@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
-import { sendMail } from '@/app/lib/mailer'
+import { sendOpportunityAlertEmail } from '@/app/lib/email-notifications'
 import type { Admin, Annonceur, Opportunite } from '@/app/types'
 
 type OpportuniteForValidation = Opportunite & {
@@ -12,14 +12,6 @@ type OpportuniteForValidation = Opportunite & {
     | 'stripe_charges_enabled'
     | 'stripe_payouts_enabled'
   > | null
-}
-
-function getAppUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '')
 }
 
 export async function POST(request: Request) {
@@ -139,15 +131,21 @@ export async function POST(request: Request) {
         const opportunityType = opportunite.type
         const annonceurId = opportunite.annonceur_id
         const annonceurNom = opportunite.annonceur?.nom_formation || 'Un organisme'
-        const appUrl = getAppUrl()
 
         const { data: comediens } = await supabase
           .from('comediens')
-          .select('id, email, preferences_opportunites')
+          .select('id, email, preferences_opportunites, email_verifie, compte_supprime')
           .contains('preferences_opportunites', [opportunityType])
 
-        type ComedienRow = { id: string; email: string; preferences_opportunites: string[] }
-        const comediensList = (comediens || []) as ComedienRow[]
+        type ComedienRow = {
+          id: string
+          email: string
+          preferences_opportunites: string[]
+          email_verifie?: boolean
+          compte_supprime?: boolean
+        }
+        const comediensList = ((comediens || []) as ComedienRow[])
+          .filter((comedien) => comedien.email_verifie !== false && !comedien.compte_supprime)
         const comedienIds = comediensList.map((c) => c.id)
 
         const { data: blockedRows } = await supabase
@@ -161,27 +159,17 @@ export async function POST(request: Request) {
 
         const recipients = comediensList.filter((c) => !blockedSet.has(c.id))
 
-        const opportunityUrl = `${appUrl}/dashboard/opportunites/${opportunite.id}`
-        const dateLabel = opportunite.date_evenement
-          ? new Date(opportunite.date_evenement).toLocaleString('fr-FR')
-          : ''
-
         for (const recipient of recipients) {
-          const subject = `Nouvelle opportunité ${opportunite.modele === 'derniere_minute' ? 'Dernière minute' : 'Pré-vente'} : ${opportunite.titre}`
-          const html = `
-            <div style="font-family: Arial, sans-serif; color: #111;">
-              <h2 style="margin: 0 0 12px;">${opportunite.titre}</h2>
-              <p style="margin: 0 0 8px;">Nouvelle opportunité publiée par <strong>${annonceurNom}</strong>.</p>
-              <p style="margin: 0 0 8px;"><strong>Date:</strong> ${dateLabel}</p>
-              <p style="margin: 0 0 16px;"><strong>Prix:</strong> ${opportunite.prix_reduit}€ (au lieu de ${opportunite.prix_base}€)</p>
-              <a href="${opportunityUrl}" style="display: inline-block; padding: 10px 16px; background: #E63832; color: #fff; text-decoration: none; border-radius: 6px;">Voir l'opportunité</a>
-            </div>
-          `
-          await sendMail({
-            to: recipient.email,
-            subject,
-            html,
-            text: `${opportunite.titre} - ${opportunityUrl}`,
+          await sendOpportunityAlertEmail(recipient.email, {
+            id: opportunite.id,
+            titre: opportunite.titre,
+            type: opportunite.type,
+            modele: opportunite.modele,
+            prix_base: opportunite.prix_base,
+            prix_reduit: opportunite.prix_reduit,
+            reduction_pourcentage: opportunite.reduction_pourcentage,
+            date_evenement: opportunite.date_evenement,
+            annonceurNom,
           })
         }
       } catch (emailError) {

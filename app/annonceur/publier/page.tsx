@@ -17,6 +17,7 @@ import Cropper from "react-easy-crop"
 import { getCroppedImage } from "@/app/lib/crop-image"
 import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
 import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { getWebsiteInputWithoutWww, normalizeWebsiteUrlWithWwwPrefix } from "@/app/lib/signup-validation"
 import { cn } from "@/lib/utils"
 
 interface FormData {
@@ -38,6 +39,7 @@ interface FormData {
 
 interface PublishingEligibility {
   id: string
+  nom_formation: string
   identite_verifiee: boolean
   stripe_onboarding_complete: boolean
   stripe_account_id: string | null
@@ -138,7 +140,6 @@ export default function PublierOpportunitePage() {
   const maxSize = 1600
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null)
   const [autoZoomed, setAutoZoomed] = useState(false)
-  const [sizeWarning, setSizeWarning] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -146,6 +147,7 @@ export default function PublierOpportunitePage() {
   const [identityVerified, setIdentityVerified] = useState(false)
   const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false)
   const [stripeReady, setStripeReady] = useState(false)
+  const [advertiserName, setAdvertiserName] = useState("")
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit")
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [showPublishingPrinciplesModal, setShowPublishingPrinciplesModal] = useState(false)
@@ -216,7 +218,7 @@ export default function PublierOpportunitePage() {
 
         const { data: annonceur, error: annonceurError } = await supabase
           .from('annonceurs')
-          .select('id, identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
+          .select('id, nom_formation, identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
           .eq('auth_user_id', user.id)
           .single<PublishingEligibility>()
 
@@ -227,6 +229,7 @@ export default function PublierOpportunitePage() {
           return
         }
 
+        setAdvertiserName(annonceur.nom_formation)
         setIdentityVerified(annonceur.identite_verifiee)
         setStripeOnboardingComplete(Boolean(annonceur.stripe_onboarding_complete))
         const isStripeReady = Boolean(
@@ -315,7 +318,6 @@ export default function PublierOpportunitePage() {
         setCrop({ x: 0, y: 0 })
         setCroppedAreaPixels(null)
         setImageInfo(null)
-        setSizeWarning("")
         setAutoZoomed(false)
       }
       reader.readAsDataURL(file)
@@ -353,7 +355,7 @@ export default function PublierOpportunitePage() {
   }
 
   const previewTitle = formData.titre.trim() || "Titre de l'opportunité"
-  const previewOrganizer = "Votre structure"
+  const previewOrganizer = (advertiserName || "").trim() || "Votre structure"
   const previewCategory = formData.type ? OPPORTUNITY_TYPE_LABELS[formData.type as OpportunityType] : "Catégorie"
   const previewImage = imagePreview || ""
   const previewDate = formData.date_evenement
@@ -550,24 +552,7 @@ export default function PublierOpportunitePage() {
     setZoom(1)
     setRotation(0)
     setCroppedAreaPixels(null)
-    setSizeWarning("")
   }
-
-  useEffect(() => {
-    if (!cropperContainerRef.current || !imageInfo) return
-    const containerWidth = cropperContainerRef.current.clientWidth
-    const containerHeight = cropperContainerRef.current.clientHeight
-    if (containerWidth === 0 || containerHeight === 0) return
-
-    const minWidth = Math.round(containerWidth * 2)
-    const minHeight = Math.round(containerHeight * 2)
-    if (imageInfo.width < minWidth || imageInfo.height < minHeight) {
-      setSizeWarning("Image un peu petite : le rendu peut paraître flou sur écran large.")
-    } else {
-      setSizeWarning("")
-    }
-  }, [imageInfo, isCropping])
-
 
   const uploadImage = async (file: File, annonceurId: string, folder = "opportunites"): Promise<string | null> => {
     try {
@@ -641,9 +626,10 @@ export default function PublierOpportunitePage() {
       return false
     }
     // Le lien_infos est optionnel, on vérifie juste le format si fourni
-    if (formData.lien_infos.trim()) {
+    const normalizedInfoLink = normalizeWebsiteUrlWithWwwPrefix(formData.lien_infos)
+    if (normalizedInfoLink) {
       try {
-        new URL(formData.lien_infos)
+        new URL(normalizedInfoLink)
       } catch {
         setError("Le lien fourni n'est pas une URL valide")
         return false
@@ -769,7 +755,7 @@ export default function PublierOpportunitePage() {
         resume: formData.resume,
         contenu_image_url: null,
         image_url: imageUrl,
-        lien_infos: formData.lien_infos.trim() || '',
+        lien_infos: normalizeWebsiteUrlWithWwwPrefix(formData.lien_infos),
         prix_base: prixBase,
         prix_reduit: prixReduit,
         nombre_places: parseInt(formData.nombre_places),
@@ -851,17 +837,8 @@ export default function PublierOpportunitePage() {
 
               <div className="bg-white border border-orange-200 rounded-lg p-6 max-w-xl mx-auto text-left">
                 <p className="text-sm text-orange-800">
-                  Votre compte doit être validé par l&apos;équipe avant l&apos;activation de la publication et des paiements.
+                  Votre compte doit être validé par notre équipe pour que vous puissiez publier une opportunité. Vous serez notifié par mail lorsque ça sera bon !
                 </p>
-              </div>
-
-              <div className="pt-4">
-                <Button
-                  onClick={() => openParametres('validation-compte')}
-                  className="bg-[#E63832] hover:bg-[#E63832]/90"
-                >
-                  Ouvrir mes paramètres
-                </Button>
               </div>
             </div>
           </CardContent>
@@ -890,13 +867,13 @@ export default function PublierOpportunitePage() {
                   <div className="group relative inline-flex">
                     <button
                       type="button"
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[#0b6f8f]/30 bg-white text-[#0b6f8f]"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#0b6f8f]/30 bg-white text-[#0b6f8f]"
                       aria-label="Pourquoi Stripe est requis"
                     >
                       <Info className="h-4 w-4" />
                     </button>
                     <div className="pointer-events-none absolute left-1/2 top-9 z-20 w-72 -translate-x-1/2 rounded-md border border-[#6dd0ff] bg-white p-3 text-left text-sm text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      Stripe est l&apos;intermédiaire que Scenio utilise pour vendre vos places en ligne et qui vérifie au passage votre bonne identité en tant que professionnel.
+                      Stripe est l&apos;intermédiaire que formations-artistiques.fr utilise pour vendre vos places en ligne et qui vérifie au passage votre bonne identité en tant que professionnel.
                     </div>
                   </div>
                 </div>
@@ -907,7 +884,7 @@ export default function PublierOpportunitePage() {
 
               <div className="bg-white border border-[#6dd0ff] rounded-lg p-6 max-w-xl mx-auto text-left">
                 <p className="text-sm text-[#0b4054]">
-                  Allez dans vos paramètres, créez ou synchronisez votre compte Stripe, puis terminez la configuration.
+                  Allez dans vos paramètres et configurez votre compte Stripe.
                 </p>
               </div>
 
@@ -916,7 +893,7 @@ export default function PublierOpportunitePage() {
                   onClick={() => openParametres('stripe-connect')}
                   className="bg-[#E63832] hover:bg-[#E63832]/90"
                 >
-                  Compléter l&apos;onboarding
+                  Ouvrir mes paramètres
                 </Button>
               </div>
             </div>
@@ -1286,7 +1263,20 @@ export default function PublierOpportunitePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lien_infos">Lien vers plus d&apos;informations <span className="text-gray-500 text-xs">(facultatif)</span></Label>
-                <Input id="lien_infos" type="url" placeholder="https://www.votre-site.fr/stage-comedie" value={formData.lien_infos} onChange={(e) => handleInputChange("lien_infos", e.target.value)} />
+                <div className="flex">
+                  <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-[#F5F0EB] px-3 text-sm font-medium text-gray-700">
+                    www.
+                  </span>
+                  <Input
+                    id="lien_infos"
+                    type="text"
+                    inputMode="url"
+                    placeholder="votre-site.fr/stage-comedie"
+                    value={getWebsiteInputWithoutWww(formData.lien_infos)}
+                    onChange={(e) => handleInputChange("lien_infos", e.target.value)}
+                    className="rounded-l-none"
+                  />
+                </div>
                 <p className="text-xs text-gray-500">URL vers votre site ou page avec plus de détails</p>
               </div>
 
@@ -1556,12 +1546,6 @@ export default function PublierOpportunitePage() {
                   </div>
                 </div>
               </div>
-
-              {sizeWarning && (
-                <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-md p-3">
-                  {sizeWarning}
-                </div>
-              )}
 
               <div className="flex gap-3">
                 <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>

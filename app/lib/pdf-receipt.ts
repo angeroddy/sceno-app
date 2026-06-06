@@ -314,26 +314,26 @@ export async function buildReceiptPdf(params: {
     opacity: 0.24,
   })
 
-  page.drawSvgPath(roundedRectPath(ticketX + 18, topY(mainTop + 18, 28), 116, 28, 14), {
+  page.drawSvgPath(roundedRectPath(ticketX + 18, topY(mainTop + 18, 28), 214, 28, 14), {
     color: rgb(0.06, 0.06, 0.06),
     opacity: 0.66,
   })
-  page.drawText('TICKET SCENIO', {
+  page.drawText('TICKET FORMATIONS-ARTISTIQUES.FR', {
     x: ticketX + 30,
     y: topY(mainTop + 26, 10),
-    size: 10,
+    size: 8,
     font: boldFont,
     color: CYAN,
   })
 
-  page.drawSvgPath(roundedRectPath(ticketX + ticketWidth - 150, topY(mainTop + 16, 40), 120, 40, 14), {
+  page.drawSvgPath(roundedRectPath(ticketX + ticketWidth - 220, topY(mainTop + 16, 40), 190, 40, 14), {
     color: rgb(0.06, 0.06, 0.06),
     opacity: 0.72,
   })
   if (logoImage) {
-    const logoDims = logoImage.scale(0.23)
+    const logoDims = logoImage.scale(0.18)
     page.drawImage(logoImage, {
-      x: ticketX + ticketWidth - 136,
+      x: ticketX + ticketWidth - 206,
       y: topY(mainTop + 27, logoDims.height),
       width: logoDims.width,
       height: logoDims.height,
@@ -513,7 +513,7 @@ export async function buildReceiptPdf(params: {
     color: TEXT_DARK,
   })
 
-  page.drawText('Scenio', {
+  page.drawText('formations-artistiques.fr', {
     x: 52,
     y: 44,
     size: 10,

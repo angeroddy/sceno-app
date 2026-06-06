@@ -48,6 +48,8 @@ export default function AnnonceurOpportuniteDetailsPage() {
     reservations: 0,
     revenu: 0,
   })
+  const [stripeDashboardLoading, setStripeDashboardLoading] = useState(false)
+  const [stripeDashboardError, setStripeDashboardError] = useState("")
   const mainImageRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -130,6 +132,29 @@ export default function AnnonceurOpportuniteDetailsPage() {
   const handleMainImageLoad = () => {
     setMainImageLoadFailed(false)
     setMainImageRetryCount(0)
+  }
+
+  const handleOpenStripeDashboard = async () => {
+    try {
+      setStripeDashboardLoading(true)
+      setStripeDashboardError("")
+
+      const response = await fetch("/api/stripe/connect/dashboard-link", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || "Impossible d'ouvrir le dashboard Stripe")
+      }
+
+      window.open(data.url as string, "_blank", "noopener,noreferrer")
+    } catch (actionError) {
+      console.error("Erreur ouverture dashboard Stripe:", actionError)
+      setStripeDashboardError(actionError instanceof Error ? actionError.message : "Erreur Stripe Connect")
+    } finally {
+      setStripeDashboardLoading(false)
+    }
   }
 
   if (loading) {
@@ -315,25 +340,25 @@ export default function AnnonceurOpportuniteDetailsPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-4 bg-[#F5F0EB] rounded-lg">
+                        <div className="flex items-start gap-3 rounded-lg border border-[#E63832]/20 bg-[#FEE] p-4">
                           <div className="bg-white p-2 rounded-lg">
                             <Users className="w-5 h-5 text-[#E63832]" />
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600">Profils acheteurs</p>
+                            <p className="text-sm text-[#B42318]">Profils acheteurs</p>
                             <div className="pt-1">
                               {stats.reservations > 0 ? (
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  className="h-auto border-[#E6DAD0] bg-white px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-[#FFF8F3]"
+                                  className="h-auto border-[#E63832]/20 bg-white px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-[#FFF8F3]"
                                   onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/participants`)}
                                 >
                                   Consulter les profils
                                 </Button>
                               ) : (
-                                <div className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-400">
-                                  Aucune place achetée
+                                <div className="inline-flex items-center rounded-full border border-[#E63832]/15 bg-white px-3 py-2 text-sm font-medium text-gray-400">
+                                  Aucune place achetée pour l&apos;instant
                                 </div>
                               )}
                             </div>
@@ -535,6 +560,37 @@ export default function AnnonceurOpportuniteDetailsPage() {
                         Voir le site
                       </a>
                     </Button>
+                  )}
+
+                  {stats.reservations > 0 && (
+                    <>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="outline"
+                        className="w-full border-[#635BFF]/30 text-[#635BFF] hover:bg-[#F7F5FF] hover:text-[#4F46E5]"
+                        onClick={handleOpenStripeDashboard}
+                        disabled={stripeDashboardLoading}
+                      >
+                        {stripeDashboardLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Ouverture de Stripe...
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Ouvrir le dashboard Stripe
+                          </>
+                        )}
+                      </Button>
+
+                      {stripeDashboardError && (
+                        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                          {stripeDashboardError}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 

@@ -13,7 +13,7 @@ export default function SignupPage() {
         <main className="grid min-h-screen lg:grid-cols-2">
             <div className="flex flex-col gap-4 p-6 md:p-10 min-h-screen">
                 <div className="flex justify-center gap-2 md:justify-start">
-                    <Image src={logoApp} alt="Scenio — Retour à l'accueil" height={100} width={100} onClick={() => router.push("/")} className="cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') router.push("/") }} />
+                    <Image src={logoApp} alt="formations-artistiques.fr — Retour à l'accueil" height={34} width={220} onClick={() => router.push("/")} className="h-auto cursor-pointer" role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') router.push("/") }} />
                 </div>
                 <div className="flex flex-1 items-center justify-center py-8">
                     <div className="w-full max-w-xl">
@@ -25,8 +25,8 @@ export default function SignupPage() {
                 <Image
                     src={logoApp}
                     alt=""
-                    width={500}
-                    height={500}
+                    width={620}
+                    height={95}
                     priority
                     style={{ width: 'auto', height: 'auto' }}
                 />

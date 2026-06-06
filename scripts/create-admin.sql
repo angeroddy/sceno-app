@@ -9,7 +9,7 @@
 -- 1. Allez dans Supabase Dashboard
 -- 2. Authentication → Users → Add User
 -- 3. Créez avec :
---    - Email : admin@scenio.com (ou votre email)
+--    - Email : admin@formations-artistiques.fr (ou votre email)
 --    - Password : VotreMotDePasseSecurisé123!
 --    - ✅ Cochez "Auto Confirm User"
 -- 4. Cliquez sur "Create User"
@@ -22,7 +22,7 @@
 INSERT INTO public.admins (auth_user_id, email, nom)
 VALUES (
   'UUID-COPIÉ-ICI',  -- ⚠️ REMPLACEZ PAR L'UUID RÉEL
-  'admin@scenio.com', -- ⚠️ MÊME EMAIL QUE LORS DE LA CRÉATION
+  'admin@formations-artistiques.fr', -- ⚠️ MÊME EMAIL QUE LORS DE LA CRÉATION
   'Super Admin'       -- Nom/Prénom de l'admin
 );
 
@@ -49,6 +49,6 @@ LEFT JOIN auth.users u ON a.auth_user_id = u.id;
 -- INSERT INTO public.admins (auth_user_id, email, nom)
 -- VALUES (
 --   '12345678-abcd-1234-abcd-123456789abc',
---   'admin@scenio.com',
+--   'admin@formations-artistiques.fr',
 --   'Super Admin'
 -- );

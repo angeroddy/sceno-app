@@ -25,6 +25,9 @@ export function normalizePhone(value: string | null | undefined): string {
 
   if (sanitized.startsWith("+")) {
     const digits = sanitized.slice(1).replace(/\D/g, "")
+    if (digits.startsWith("330") && digits.length === 12) {
+      return `+33${digits.slice(3)}`
+    }
     return digits ? `+${digits}` : ""
   }
 
@@ -62,6 +65,28 @@ export function normalizeIban(value: string | null | undefined): string {
 
 export function normalizeBic(value: string | null | undefined): string {
   return normalizeText(value).replace(/\s/g, "").toUpperCase()
+}
+
+export function normalizeWebsiteUrl(value: string | null | undefined): string {
+  const raw = normalizeText(value)
+  if (!raw || raw === "www.") return ""
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw
+  }
+
+  return `https://${raw}`
+}
+
+export function getWebsiteInputWithoutWww(value: string | null | undefined): string {
+  return normalizeText(value)
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+}
+
+export function normalizeWebsiteUrlWithWwwPrefix(value: string | null | undefined): string {
+  const withoutPrefix = getWebsiteInputWithoutWww(value)
+  return withoutPrefix ? normalizeWebsiteUrl(`www.${withoutPrefix}`) : ""
 }
 
 export function normalizeCountry(value: string | null | undefined): string {
@@ -152,6 +177,21 @@ export function isValidUrl(value: string | null | undefined): boolean {
   try {
     const parsed = new URL(url)
     return parsed.protocol === "http:" || parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
+export function isValidWebsiteUrl(value: string | null | undefined): boolean {
+  const url = normalizeWebsiteUrl(value)
+  if (!url) return true
+
+  try {
+    const parsed = new URL(url)
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      parsed.hostname.includes(".")
+    )
   } catch {
     return false
   }

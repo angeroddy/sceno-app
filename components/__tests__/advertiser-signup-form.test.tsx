@@ -219,13 +219,6 @@ describe('AdvertiserSignupForm', () => {
   })
 
   it('soumet et crée un annonceur entreprise avec le téléphone du représentant légal', async () => {
-    const mockUser = { id: 'user-2', email: 'contact@sceno.fr' }
-
-    mockSupabase.auth.signUp.mockResolvedValue({
-      data: { user: mockUser },
-      error: null,
-    })
-
     const insert = jest.fn().mockResolvedValue({ error: null })
     mockSupabase.from.mockImplementation(createAdvertiserFromMock(insert))
 
@@ -254,26 +247,29 @@ describe('AdvertiserSignupForm', () => {
     await user.click(screen.getByRole('button', { name: /Créer mon compte/i }))
 
     await waitFor(() => {
-      expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
-        email: 'contact@sceno.fr',
-        password: 'Password123',
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      })
-    })
-
-    await waitFor(() => {
-      expect(insert).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/auth/signup',
         expect.objectContaining({
-          type_annonceur: 'entreprise',
-          email: 'contact@sceno.fr',
-          telephone: '+33123456789',
-          numero_legal: '123456789',
-          representant_telephone: '+33698765432',
+          method: 'POST',
+          body: expect.stringContaining('"role":"advertiser"'),
         })
       )
     })
 
-    expect(global.fetch).not.toHaveBeenCalled()
+    const signupBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+    expect(signupBody).toEqual(expect.objectContaining({
+      email: 'contact@sceno.fr',
+      password: 'Password123',
+      redirectTo: `${window.location.origin}/auth/callback`,
+    }))
+    expect(signupBody.profile).toEqual(expect.objectContaining({
+      type_annonceur: 'entreprise',
+      email: 'contact@sceno.fr',
+      telephone: '+33123456789',
+      numero_legal: '123456789',
+      representant_telephone: '+33698765432',
+    }))
+    expect(insert).not.toHaveBeenCalled()
 
     await waitFor(() => {
       expect(screen.getByText(/Inscription réussie/i)).toBeInTheDocument()
@@ -281,9 +277,9 @@ describe('AdvertiserSignupForm', () => {
   }, 10000)
 
   it("affiche un message clair quand Supabase limite les e-mails de confirmation annonceur", async () => {
-    mockSupabase.auth.signUp.mockResolvedValue({
-      data: { user: null },
-      error: { message: 'email rate limit exceeded' },
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Trop de tentatives d'envoi d'e-mails ont été détectées. Patientez quelques minutes avant de réessayer." }),
     })
 
     render(<AdvertiserSignupForm />)

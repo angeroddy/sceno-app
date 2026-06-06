@@ -42,10 +42,23 @@ export async function POST(request: NextRequest) {
 
     const annonceur = annonceurData as Annonceur
     const stripe = getStripe()
-    const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
-      allowCreate: true,
-      persist: true,
-    })
+
+    let stripeAccountId = annonceur.stripe_account_id
+
+    if (!stripeAccountId) {
+      const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+        allowCreate: true,
+        persist: true,
+      })
+      stripeAccountId = snapshot.stripe_account_id
+    }
+
+    if (!stripeAccountId) {
+      return NextResponse.json(
+        { error: 'Impossible de trouver ou créer le compte Stripe' },
+        { status: 500 }
+      )
+    }
 
     let returnPath = '/annonceur/parametres?stripe=return'
     let refreshPath = '/annonceur/parametres?stripe=refresh'
@@ -58,17 +71,39 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = getBaseUrl(request)
-    const accountLink = await stripe.accountLinks.create({
-      account: snapshot.stripe_account_id!,
-      type: 'account_onboarding',
-      return_url: `${baseUrl}${returnPath}`,
-      refresh_url: `${baseUrl}${refreshPath}`,
-    })
-    await markStripeOnboardingStarted(stripe, snapshot.stripe_account_id!, annonceur)
+    const createAccountLink = (accountId: string) =>
+      stripe.accountLinks.create({
+        account: accountId,
+        type: 'account_onboarding',
+        return_url: `${baseUrl}${returnPath}`,
+        refresh_url: `${baseUrl}${refreshPath}`,
+      })
+
+    let accountLink
+    try {
+      accountLink = await createAccountLink(stripeAccountId)
+    } catch (error) {
+      if (!annonceur.stripe_account_id) {
+        throw error
+      }
+
+      const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+        allowCreate: true,
+        persist: true,
+      })
+
+      if (!snapshot.stripe_account_id) {
+        throw error
+      }
+
+      stripeAccountId = snapshot.stripe_account_id
+      accountLink = await createAccountLink(stripeAccountId)
+    }
+    await markStripeOnboardingStarted(stripe, stripeAccountId, annonceur)
 
     return NextResponse.json({
       url: accountLink.url,
-      stripe_account_id: snapshot.stripe_account_id,
+      stripe_account_id: stripeAccountId,
     })
   } catch (error) {
     console.error('Erreur creation lien onboarding Stripe:', error)

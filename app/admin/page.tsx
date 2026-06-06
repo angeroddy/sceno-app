@@ -151,7 +151,7 @@ export default function AdminDashboard() {
           Tableau de bord Administrateur
         </h1>
         <p className="text-gray-600 text-lg">
-          Vue d&apos;ensemble de la plateforme Scenio
+          Vue d&apos;ensemble de la plateforme formations-artistiques.fr
         </p>
       </div>
 

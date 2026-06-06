@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase'
 import { getReadableStripeError } from '@/app/lib/stripe-error-message'
 import { getStripe } from '@/app/lib/stripe'
 import {
+  buildStoredStripeConnectSnapshot,
   StripeConnectSyncError,
   syncStripeConnectForAnnonceur,
 } from '@/app/lib/stripe-connect'
@@ -34,10 +35,15 @@ export async function POST() {
 
     const annonceur = annonceurData as Annonceur
     const stripe = getStripe()
-    const { snapshot } = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
-      allowCreate: false,
-      persist: true,
-    })
+    let snapshot = buildStoredStripeConnectSnapshot(annonceur)
+
+    if (!snapshot.stripe_dashboard_ready) {
+      const syncResult = await syncStripeConnectForAnnonceur(supabase, stripe, annonceur, {
+        allowCreate: false,
+        persist: true,
+      })
+      snapshot = syncResult.snapshot
+    }
 
     if (
       !snapshot.stripe_account_id ||

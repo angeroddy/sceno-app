@@ -26,7 +26,7 @@ function getOrigin() {
 
 export function ShareOpportunityUrlButton({
   opportunityId,
-  title = "Opportunité Scenio",
+  title = "Opportunité formations-artistiques.fr",
   text,
   label = "Partager",
   sharedLabel = "Lien copié",

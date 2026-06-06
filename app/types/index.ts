@@ -105,6 +105,7 @@ export interface Annonceur {
 
   // Champs entreprise
   nom_entreprise: string | null
+  site_internet?: string | null
   type_juridique: TypeJuridique | null
   pays_entreprise: string | null
   numero_legal: string | null
@@ -279,6 +280,7 @@ export interface InscriptionAnnonceurForm {
   // Informations entreprise
   nom_formation?: string
   nom_entreprise?: string
+  site_internet?: string
   type_juridique?: TypeJuridique
   telephone?: string
   pays_entreprise?: string
@@ -313,6 +315,7 @@ export interface InscriptionEntrepriseForm {
   type_annonceur: 'entreprise'
   nom_formation: string
   nom_entreprise: string
+  site_internet?: string
   type_juridique: TypeJuridique
   pays_entreprise: string
   numero_legal: string

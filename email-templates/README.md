@@ -1,4 +1,4 @@
-# 📧 Templates d'emails Scenio
+# 📧 Templates d'emails formations-artistiques.fr
 
 Ce dossier contient les templates HTML pour tous les emails envoyés par Supabase Auth.
 
@@ -51,7 +51,7 @@ Les templates utilisent ces variables Supabase :
 
 ### Changer les couleurs
 
-Le template utilise la couleur principale de Scenio : `#E63832` (rouge)
+Le template utilise la couleur principale de formations-artistiques.fr : `#E63832` (rouge)
 
 Pour changer la couleur principale, remplacez toutes les occurrences de :
 - `#E63832` → Votre couleur principale
@@ -64,14 +64,14 @@ Actuellement, le logo est affiché en texte. Pour utiliser une image :
 Remplacez cette section :
 ```html
 <h1 style="margin: 0; color: #ffffff; font-size: 32px;">
-    Scenio
+    formations-artistiques.fr
 </h1>
 ```
 
 Par :
 ```html
 <img src="https://votre-domaine.com/logo-blanc.png"
-     alt="Scenio"
+     alt="formations-artistiques.fr"
      width="150"
      style="display: block; margin: 0 auto;">
 ```
@@ -82,10 +82,10 @@ Dans le footer, ajoutez :
 
 ```html
 <div style="margin: 16px 0;">
-    <a href="https://facebook.com/scenio" style="display: inline-block; margin: 0 8px;">
+    <a href="https://facebook.com/formations-artistiques.fr" style="display: inline-block; margin: 0 8px;">
         <img src="https://votre-cdn.com/facebook-icon.png" alt="Facebook" width="24" height="24">
     </a>
-    <a href="https://instagram.com/scenio" style="display: inline-block; margin: 0 8px;">
+    <a href="https://instagram.com/formations-artistiques.fr" style="display: inline-block; margin: 0 8px;">
         <img src="https://votre-cdn.com/instagram-icon.png" alt="Instagram" width="24" height="24">
     </a>
 </div>
@@ -199,7 +199,7 @@ Pour suivre les ouvertures d'emails, ajoutez avant la fermeture du `</body>` :
 ## 🆘 Support
 
 Pour toute question ou personnalisation :
-- Email : support@scenio.com
+- Email : support@formations-artistiques.fr
 - Documentation Supabase : https://supabase.com/docs/guides/auth/auth-email-templates
 
 ---

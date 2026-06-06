@@ -98,7 +98,7 @@ export async function GET(
       eventImageUrl: achat.opportunite.image_url,
     })
 
-    const filename = `recu-scenio-${receiptReference.toLowerCase()}.pdf`
+    const filename = `recu-formations-artistiques-${receiptReference.toLowerCase()}.pdf`
 
     return new NextResponse(pdf, {
       status: 200,

@@ -6,9 +6,11 @@ import {
   normalizeCountry,
   normalizeHumanText,
   normalizePostalCode,
+  normalizeWebsiteUrl,
 } from '@/app/lib/signup-validation'
 
 const STRIPE_ONBOARDING_STARTED_METADATA_KEY = 'scenio_onboarding_started'
+const EVENT_TICKETING_MCC = '7922'
 
 export interface StripeAccountStatus {
   stripe_onboarding_complete: boolean
@@ -415,6 +417,27 @@ function buildCompanyPayload(
   }
 }
 
+function buildBusinessProfileCreatePayload(
+  annonceur: Annonceur
+): Stripe.AccountCreateParams.BusinessProfile {
+  const websiteUrl = normalizeWebsiteUrl(annonceur.site_internet)
+
+  return {
+    name: cleanString(annonceur.nom_formation),
+    mcc: EVENT_TICKETING_MCC,
+    ...(websiteUrl ? { url: websiteUrl, support_url: websiteUrl } : {}),
+  }
+}
+
+function buildBusinessProfileUpdatePayload(
+  annonceur: Annonceur
+): Stripe.AccountUpdateParams.BusinessProfile {
+  return {
+    ...buildBusinessProfileCreatePayload(annonceur),
+    product_description: undefined,
+  }
+}
+
 function buildRepresentativePersonPayload(
   annonceur: Annonceur
 ): Stripe.AccountCreatePersonParams | Stripe.AccountUpdatePersonParams {
@@ -452,9 +475,7 @@ function buildAccountPayload(annonceur: Annonceur): Stripe.AccountCreateParams {
       card_payments: { requested: true },
       transfers: { requested: true },
     },
-    business_profile: {
-      name: cleanString(annonceur.nom_formation),
-    },
+    business_profile: buildBusinessProfileCreatePayload(annonceur),
     company: buildCompanyPayload(annonceur) as Stripe.AccountCreateParams.Company,
   }
 
@@ -472,9 +493,7 @@ function buildSafeAccountUpdatePayload(
 ): Stripe.AccountUpdateParams {
   const payload: Stripe.AccountUpdateParams = {
     metadata: buildStripeMetadata(annonceur, onboardingStarted),
-    business_profile: {
-      name: cleanString(annonceur.nom_formation),
-    },
+    business_profile: buildBusinessProfileUpdatePayload(annonceur),
   }
 
   if (shouldSyncStripeAccountEmail(onboardingStarted)) {
@@ -522,20 +541,31 @@ function omitStripeAccountEmail(
   return payloadWithoutEmail
 }
 
-async function updateStripeAccountWithEmailFallback(
+async function updateStripeAccountWithFallbacks(
   stripe: Stripe,
   accountId: string,
   payload: Stripe.AccountUpdateParams
 ): Promise<void> {
-  try {
-    await stripe.accounts.update(accountId, payload)
-  } catch (error) {
-    if (typeof payload.email === 'undefined' || !isStripeUnauthorizedEmailUpdateError(error)) {
+  let nextPayload = payload
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await stripe.accounts.update(accountId, nextPayload)
+      return
+    } catch (error) {
+      if (isStripeUnauthorizedEmailUpdateError(error) && typeof nextPayload.email !== 'undefined') {
+        nextPayload = omitStripeAccountEmail(nextPayload)
+        continue
+      }
+
       throw error
     }
-
-    await stripe.accounts.update(accountId, omitStripeAccountEmail(payload))
   }
+
+  throw new StripeConnectSyncError(
+    'stripe_account_update_retry_exhausted',
+    'Impossible de synchroniser le compte Stripe apres plusieurs tentatives'
+  )
 }
 
 async function syncRepresentativePersonForAnnonceur(
@@ -615,7 +645,7 @@ export async function syncExpressAccountForAnnonceur(
     : buildSafeAccountUpdatePayload(annonceur, onboardingStarted)
 
   try {
-    await updateStripeAccountWithEmailFallback(stripe, accountId, accountPayload)
+    await updateStripeAccountWithFallbacks(stripe, accountId, accountPayload)
 
     if (syncKycPrefill) {
       await syncRepresentativePersonForAnnonceur(stripe, accountId, annonceur)
@@ -625,7 +655,7 @@ export async function syncExpressAccountForAnnonceur(
       throw error
     }
 
-    await updateStripeAccountWithEmailFallback(
+    await updateStripeAccountWithFallbacks(
       stripe,
       accountId,
       buildSafeAccountUpdatePayload(annonceur, onboardingStarted)

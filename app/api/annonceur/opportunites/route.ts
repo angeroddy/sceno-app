@@ -1,37 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { requireAdvertiser } from '@/app/server/auth'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import type { Annonceur, Database } from '@/app/types'
+import { notifyAdminOpportunityPending } from '@/app/lib/email-notifications'
+import type { Database } from '@/app/types'
 import { createOpportunitySchema } from '@/app/lib/opportunity-validation'
 
 type OpportunitesTableInsert = {
   insert: (
     values: Database["public"]["Tables"]["opportunites"]["Insert"]
-  ) => Promise<{ error: { message?: string } | null }>
+  ) => {
+    select: (columns: string) => {
+      single: () => Promise<{
+        data: {
+          id: string
+          titre: string
+          type: Database["public"]["Enums"]["opportunity_type"]
+          modele: Database["public"]["Enums"]["opportunity_model"]
+          prix_base: number
+          prix_reduit: number
+          reduction_pourcentage: number
+          date_evenement: string
+        } | null
+        error: { message?: string } | null
+      }>
+    }
+  }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json({ error: 'Profil annonceur introuvable' }, { status: 404 })
-    }
+    const auth = await requireAdvertiser()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: annonceur } = auth
 
     const searchParams = request.nextUrl.searchParams
     const statut = searchParams.get('statut')
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('opportunites')
       .select('*', { count: 'exact' })
-      .eq('annonceur_id', (annonceurData as { id: string }).id)
+      .eq('annonceur_id', annonceur.id)
 
     if (statut && statut !== 'all') {
       query = query.eq('statut', statut)
@@ -91,35 +92,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
-    }
-
-    const { data: annonceurData, error: annonceurError } = await supabase
-      .from('annonceurs')
-      .select('id, identite_verifiee, stripe_onboarding_complete, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (annonceurError || !annonceurData) {
-      return NextResponse.json({ error: 'Profil annonceur introuvable' }, { status: 404 })
-    }
-
-    const annonceur = annonceurData as Pick<
-      Annonceur,
-      | 'id'
-      | 'identite_verifiee'
-      | 'stripe_onboarding_complete'
-      | 'stripe_account_id'
-      | 'stripe_charges_enabled'
-      | 'stripe_payouts_enabled'
-    >
+    const auth = await requireAdvertiser()
+    if (!auth.ok) return auth.response
+    const { supabase, profile: annonceur } = auth
 
     if (!annonceur.identite_verifiee) {
       return NextResponse.json(
@@ -163,7 +138,7 @@ export async function POST(request: NextRequest) {
       statut: 'en_attente' as const,
     }
 
-    let writeClient: Pick<Awaited<ReturnType<typeof createServerSupabaseClient>>, 'from'> = supabase
+    let writeClient: Pick<typeof supabase, 'from'> = supabase
 
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
@@ -174,10 +149,13 @@ export async function POST(request: NextRequest) {
     }
 
     const opportunitesTable = writeClient.from('opportunites') as unknown as OpportunitesTableInsert
-    const { error: insertError } = await opportunitesTable.insert({
-      ...insertPayload,
-      annonceur_id: annonceur.id,
-    })
+    const { data: insertedOpportunity, error: insertError } = await opportunitesTable
+      .insert({
+        ...insertPayload,
+        annonceur_id: annonceur.id,
+      })
+      .select('id, titre, type, modele, prix_base, prix_reduit, reduction_pourcentage, date_evenement')
+      .single()
 
     if (insertError) {
       console.error('Erreur insertion opportunite:', {
@@ -197,6 +175,14 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    if (insertedOpportunity) {
+      try {
+        await notifyAdminOpportunityPending(insertedOpportunity)
+      } catch (emailError) {
+        console.error('Erreur envoi email opportunité en attente:', emailError)
+      }
     }
 
     return NextResponse.json({ success: true }, { status: 201 })

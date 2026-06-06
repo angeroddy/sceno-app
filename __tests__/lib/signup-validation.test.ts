@@ -1,10 +1,12 @@
 import {
+  getWebsiteInputWithoutWww,
   isValidPhone,
   normalizeBusinessId,
   normalizeCountry,
   normalizeHumanText,
   normalizePhone,
   normalizePostalCode,
+  normalizeWebsiteUrlWithWwwPrefix,
 } from '@/app/lib/signup-validation'
 
 describe('signup-validation phone normalization', () => {
@@ -19,12 +21,13 @@ describe('signup-validation phone normalization', () => {
 
   it('rejette les numéros français invalides une fois normalisés', () => {
     expect(isValidPhone('06 12 34 56 7')).toBe(false)
-    expect(isValidPhone('+330612345678')).toBe(false)
   })
 
   it('accepte les numéros français valides au format Stripe', () => {
     expect(isValidPhone('06 12 34 56 78')).toBe(true)
     expect(isValidPhone('+33612345678')).toBe(true)
+    expect(normalizePhone('+330612345678')).toBe('+33612345678')
+    expect(isValidPhone('+330612345678')).toBe(true)
   })
 
   it('normalise les textes identitaires et les pays', () => {
@@ -37,5 +40,11 @@ describe('signup-validation phone normalization', () => {
     expect(normalizePostalCode('75 001', 'France')).toBe('75001')
     expect(normalizePostalCode('h2z1a4', 'Canada')).toBe('H2Z 1A4')
     expect(normalizeBusinessId('123 456 789 00012')).toBe('12345678900012')
+  })
+
+  it('prépare les URLs affichées avec un préfixe www visible', () => {
+    expect(getWebsiteInputWithoutWww('https://www.ateliers-etincelles.fr/stage')).toBe('ateliers-etincelles.fr/stage')
+    expect(getWebsiteInputWithoutWww('www.ateliers-etincelles.fr')).toBe('ateliers-etincelles.fr')
+    expect(normalizeWebsiteUrlWithWwwPrefix('ateliers-etincelles.fr/stage')).toBe('https://www.ateliers-etincelles.fr/stage')
   })
 })
