@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { AdvertiserSignupForm } from "@/components/advertiser-signup-form"
+import { AdvertiserSignupForm } from "@/components/forms/advertiser-signup-form"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
 

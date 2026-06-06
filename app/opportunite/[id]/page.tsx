@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { JsonLd } from '@/components/json-ld'
+import { JsonLd } from '@/components/seo/json-ld'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -15,7 +15,7 @@ import {
   Ticket,
   Users,
 } from 'lucide-react'
-import { Footer } from '@/components/Footer'
+import { Footer } from '@/components/layout/Footer'
 import logoApp from '@/app/assets/images/logoApp.png'
 import {
   buildPublicOpportunityPath,
@@ -33,7 +33,7 @@ import {
   OPPORTUNITY_TYPE_LABELS,
   OpportunityType,
 } from '@/types'
-import { OpportunityBodyContent } from '@/components/opportunity-body-content'
+import { OpportunityBodyContent } from '@/components/opportunity/opportunity-body-content'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'

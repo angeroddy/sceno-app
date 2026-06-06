@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from "@/components/forms/login-form"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
 

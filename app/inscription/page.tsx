@@ -2,7 +2,7 @@
 import { GalleryVerticalEnd, Link } from "lucide-react"
 import mainImg2 from '@/app/assets/images/mainImg.webp'
 import { useRouter } from "next/navigation";
-import { ComedianSignupForm } from "@/components/comedian-signup-form"
+import { ComedianSignupForm } from "@/components/forms/comedian-signup-form"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
 

@@ -29,8 +29,8 @@ import {
   Building2
 } from "lucide-react"
 import { OpportuniteWithAnnonceur, OPPORTUNITY_MODEL_LABELS, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/types"
-import { OpportunityBodyContent } from "@/components/opportunity-body-content"
-import { ShareOpportunityUrlButton } from "@/components/share-opportunity-url-button"
+import { OpportunityBodyContent } from "@/components/opportunity/opportunity-body-content"
+import { ShareOpportunityUrlButton } from "@/components/opportunity/share-opportunity-url-button"
 
 export default function OpportuniteDetailsPage() {
   const params = useParams()

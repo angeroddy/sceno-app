@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { SafeRichText } from "@/components/safe-rich-text"
+import { SafeRichText } from "@/components/opportunity/safe-rich-text"
 import { cn } from "@/lib/utils"
 
 type OpportunityBodyContentProps = {

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AdvertiserSignupForm } from '../advertiser-signup-form'
+import { AdvertiserSignupForm } from '../forms/advertiser-signup-form'
 import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 

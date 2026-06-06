@@ -24,7 +24,7 @@ jest.mock('@/components/ui/shadcn-io/navbar-01', () => ({
   ),
 }))
 
-jest.mock('@/components/Footer', () => ({
+jest.mock('@/components/layout/Footer', () => ({
   Footer: () => <div data-testid="footer">Footer</div>,
 }))
 

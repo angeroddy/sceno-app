@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react"
 import { OPPORTUNITY_TYPE_LABELS, type Opportunite, type OpportunityType } from "@/types"
-import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { OpportunityBodyContent } from "@/components/opportunity/opportunity-body-content"
 
 interface OpportuniteDetailTabsProps {
   opportunite: Opportunite

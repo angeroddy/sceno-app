@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Building2, Calendar, ExternalLink, Info, MapPin, Tag, Users } from "lucide-react"
-import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { OpportunityBodyContent } from "@/components/opportunity/opportunity-body-content"
 
 export interface OpportunityPreviewData {
   image: string

@@ -29,7 +29,7 @@ import {
   TrendingUp,
 } from "lucide-react"
 import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/types"
-import { OpportunityBodyContent } from "@/components/opportunity-body-content"
+import { OpportunityBodyContent } from "@/components/opportunity/opportunity-body-content"
 import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/lib/renderable-image"
 
 export default function AnnonceurOpportuniteDetailsPage() {

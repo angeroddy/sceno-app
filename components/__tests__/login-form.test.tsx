@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { LoginForm } from '../login-form'
+import { LoginForm } from '../forms/login-form'
 import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 

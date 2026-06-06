@@ -194,7 +194,7 @@ describe('Flow d\'authentification complet', () => {
 
       // ÉTAPE 1: INSCRIPTION
       // L'utilisateur remplit le formulaire d'inscription
-      const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
+      const { ComedianSignupForm } = await import('@/components/forms/comedian-signup-form')
       const { rerender } = render(<ComedianSignupForm />)
       const user = userEvent.setup()
 
@@ -249,7 +249,7 @@ describe('Flow d\'authentification complet', () => {
       })
 
       // Simuler que l'utilisateur navigue vers la page de connexion
-      const { LoginForm } = await import('@/components/login-form')
+      const { LoginForm } = await import('@/components/forms/login-form')
       rerender(<LoginForm />)
 
       await waitFor(() => {
@@ -281,7 +281,7 @@ describe('Flow d\'authentification complet', () => {
         json: async () => ({ error: 'Un compte existe déjà avec cet email.' }),
       })
 
-      const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
+      const { ComedianSignupForm } = await import('@/components/forms/comedian-signup-form')
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
 
@@ -310,7 +310,7 @@ describe('Flow d\'authentification complet', () => {
         error: { message: 'Invalid login credentials' },
       })
 
-      const { LoginForm } = await import('@/components/login-form')
+      const { LoginForm } = await import('@/components/forms/login-form')
       render(<LoginForm />)
       const user = userEvent.setup()
 
@@ -330,7 +330,7 @@ describe('Flow d\'authentification complet', () => {
 
   describe('Validation des données', () => {
     it('devrait valider le format de l\'email lors de l\'inscription', async () => {
-      const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
+      const { ComedianSignupForm } = await import('@/components/forms/comedian-signup-form')
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
 
@@ -355,7 +355,7 @@ describe('Flow d\'authentification complet', () => {
     })
 
     it('devrait valider que les mots de passe correspondent', async () => {
-      const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
+      const { ComedianSignupForm } = await import('@/components/forms/comedian-signup-form')
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
 
@@ -379,7 +379,7 @@ describe('Flow d\'authentification complet', () => {
     })
 
     it('devrait valider la longueur minimale du mot de passe', async () => {
-      const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
+      const { ComedianSignupForm } = await import('@/components/forms/comedian-signup-form')
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
 
@@ -426,7 +426,7 @@ describe('Flow d\'authentification complet', () => {
         }
       })
 
-      const { ComedianSignupForm } = await import('@/components/comedian-signup-form')
+      const { ComedianSignupForm } = await import('@/components/forms/comedian-signup-form')
       render(<ComedianSignupForm />)
       const user = userEvent.setup()
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { JsonLd } from "@/components/json-ld";
+import { JsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
 
 const ttFirsNeue = localFont({
