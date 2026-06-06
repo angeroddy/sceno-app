@@ -2,10 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import ForgotPasswordPage from '../page'
-import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-jest.mock('@/app/lib/supabase-client', () => ({
+jest.mock('@/lib/supabase-client', () => ({
   createBrowserSupabaseClient: jest.fn(),
 }))
 

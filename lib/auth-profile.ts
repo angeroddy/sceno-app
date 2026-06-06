@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js"
 
-import { normalizeEmail } from "@/app/lib/signup-validation"
+import { normalizeEmail } from "@/lib/signup-validation"
 
 export type UserType = "comedian" | "advertiser" | "admin" | "deleted" | null
 export type SignupProfileType = "comedian" | "advertiser"

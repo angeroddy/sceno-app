@@ -1,19 +1,19 @@
 import { GET } from '@/app/api/admin/opportunites/[id]/route'
-import { createServerSupabaseClient, getAdminProfile, getUser } from '@/app/lib/supabase'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { countOpportunityViews } from '@/app/lib/opportunity-views'
+import { createServerSupabaseClient, getAdminProfile, getUser } from '@/lib/supabase'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
+import { countOpportunityViews } from '@/lib/opportunity-views'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
   getUser: jest.fn(),
   getAdminProfile: jest.fn(),
 }))
 
-jest.mock('@/app/lib/opportunity-availability', () => ({
+jest.mock('@/lib/opportunity-availability', () => ({
   reconcileOpportunityPlaces: jest.fn(),
 }))
 
-jest.mock('@/app/lib/opportunity-views', () => ({
+jest.mock('@/lib/opportunity-views', () => ({
   countOpportunityViews: jest.fn(),
 }))
 

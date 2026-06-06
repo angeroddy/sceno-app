@@ -1,17 +1,17 @@
 import { POST } from '@/app/api/checkout/session/route'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
-import { getStripe } from '@/app/lib/stripe'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { createServerSupabaseClient } from '@/lib/supabase'
+import { getStripe } from '@/lib/stripe'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
 }))
 
-jest.mock('@/app/lib/stripe', () => ({
+jest.mock('@/lib/stripe', () => ({
   getStripe: jest.fn(),
 }))
 
-jest.mock('@/app/lib/opportunity-availability', () => ({
+jest.mock('@/lib/opportunity-availability', () => ({
   reconcileOpportunityPlaces: jest.fn(),
 }))
 

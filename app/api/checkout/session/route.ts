@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireComedian } from '@/app/server/auth'
-import { getStripe } from '@/app/lib/stripe'
-import { createCheckoutSession } from '@/app/lib/checkout/create-checkout-session'
+import { getStripe } from '@/lib/stripe'
+import { createCheckoutSession } from '@/lib/checkout/create-checkout-session'
 
 export const runtime = 'nodejs'
 

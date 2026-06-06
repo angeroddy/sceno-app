@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireComedian } from '@/app/server/auth'
-import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
-import { getStripe } from '@/app/lib/stripe'
+import { createAdminSupabaseClient } from '@/lib/supabase-admin'
+import { getStripe } from '@/lib/stripe'
 import type { Achat } from '@/app/types'
 
 export async function GET(request: NextRequest) {

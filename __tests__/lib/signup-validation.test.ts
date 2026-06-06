@@ -7,7 +7,7 @@ import {
   normalizePhone,
   normalizePostalCode,
   normalizeWebsiteUrlWithWwwPrefix,
-} from '@/app/lib/signup-validation'
+} from '@/lib/signup-validation'
 
 describe('signup-validation phone normalization', () => {
   it('normalise un numéro français local vers le format international', () => {

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdvertiser } from '@/app/server/auth'
-import { getReadableStripeError } from '@/app/lib/stripe-error-message'
-import { getStripe } from '@/app/lib/stripe'
+import { getReadableStripeError } from '@/lib/stripe-error-message'
+import { getStripe } from '@/lib/stripe'
 import {
   buildStoredStripeConnectSnapshot,
   getDisconnectedStripeConnectSnapshot,
   StripeConnectSyncError,
   syncStripeConnectForAnnonceur,
-} from '@/app/lib/stripe-connect'
+} from '@/lib/stripe-connect'
 
 export const runtime = 'nodejs'
 

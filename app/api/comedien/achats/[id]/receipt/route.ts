@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireComedian } from '@/app/server/auth'
-import { buildReceiptPdf, formatReceiptReference } from '@/app/lib/pdf-receipt'
+import { buildReceiptPdf, formatReceiptReference } from '@/lib/pdf-receipt'
 import type { Achat } from '@/app/types'
 
 export const runtime = 'nodejs'

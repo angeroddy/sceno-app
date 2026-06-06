@@ -1,5 +1,5 @@
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { deriveOpportunityStatus } from '@/app/lib/opportunity-status'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
+import { deriveOpportunityStatus } from '@/lib/opportunity-status'
 import type { Annonceur, Opportunite } from '@/app/types'
 
 export type PublicOpportunityDetails = Opportunite & {

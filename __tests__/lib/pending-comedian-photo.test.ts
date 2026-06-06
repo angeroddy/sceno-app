@@ -4,7 +4,7 @@ import {
   savePendingComedianSignupPhoto,
   syncPendingComedianSignupPhoto,
   type PendingComedianPhotoSupabase,
-} from '@/app/lib/pending-comedian-photo'
+} from '@/lib/pending-comedian-photo'
 
 describe('pending-comedian-photo helpers', () => {
   beforeEach(() => {

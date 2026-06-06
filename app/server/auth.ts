@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { User } from "@supabase/supabase-js"
 
-import { createServerSupabaseClient } from "@/app/lib/supabase"
+import { createServerSupabaseClient } from "@/lib/supabase"
 import type { Admin, Annonceur, Comedien } from "@/app/types"
 
 export type ServerSupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>

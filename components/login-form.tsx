@@ -12,15 +12,15 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@/components/ui/field"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import {
   syncEmailVerificationForAuthUser,
   type AuthProfileSupabase,
-} from "@/app/lib/auth-profile"
+} from "@/lib/auth-profile"
 import {
   isHandledAuthError,
   translateAuthErrorMessage,
-} from "@/app/lib/auth-error-message"
+} from "@/lib/auth-error-message"
 
 export function LoginForm({
   className,

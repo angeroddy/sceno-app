@@ -30,7 +30,7 @@ import {
 } from "lucide-react"
 import { Opportunite, OPPORTUNITY_TYPE_LABELS, OpportunityType } from "@/app/types"
 import { OpportunityBodyContent } from "@/components/opportunity-body-content"
-import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/app/lib/renderable-image"
+import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/lib/renderable-image"
 
 export default function AnnonceurOpportuniteDetailsPage() {
   const params = useParams()

@@ -4,7 +4,7 @@ import {
   toStripeCents,
   fromStripeCents,
   calculatePlatformFee,
-} from '@/app/lib/pricing'
+} from '@/lib/pricing'
 
 describe('pricing', () => {
   describe('calculateDiscountPercent', () => {

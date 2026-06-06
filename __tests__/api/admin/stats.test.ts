@@ -1,7 +1,7 @@
 import { GET } from '@/app/api/admin/stats/route'
-import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
   getUser: jest.fn(),
   getAdminProfile: jest.fn(),

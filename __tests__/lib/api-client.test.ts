@@ -1,4 +1,4 @@
-import { apiFetch, ApiError } from '@/app/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {

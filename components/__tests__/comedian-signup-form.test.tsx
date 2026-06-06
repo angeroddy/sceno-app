@@ -1,11 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ComedianSignupForm } from '../comedian-signup-form'
-import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 
 // Mock du module supabase-client
-jest.mock('@/app/lib/supabase-client', () => ({
+jest.mock('@/lib/supabase-client', () => ({
   createBrowserSupabaseClient: jest.fn(),
 }))
 

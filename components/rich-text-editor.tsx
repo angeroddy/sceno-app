@@ -24,7 +24,7 @@ import {
   Heading3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
+import { sanitizeOpportunityHtml } from "@/lib/opportunity-html"
 
 interface RichTextEditorProps {
   value: string

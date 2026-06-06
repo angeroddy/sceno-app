@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 
-import { sendSignupConfirmationEmail } from "@/app/lib/email-notifications"
-import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
-import { isValidEmail, isStrongEnoughPassword, normalizeEmail } from "@/app/lib/signup-validation"
+import { sendSignupConfirmationEmail } from "@/lib/email-notifications"
+import { createAdminSupabaseClient } from "@/lib/supabase-admin"
+import { isValidEmail, isStrongEnoughPassword, normalizeEmail } from "@/lib/signup-validation"
 
 type SignupRole = "advertiser" | "comedian"
 

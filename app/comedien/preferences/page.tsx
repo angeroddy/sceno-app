@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Bell, ArrowLeft, Loader2, CheckCircle, ShieldOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client";
+import { createBrowserSupabaseClient } from "@/lib/supabase-client";
 import type { OpportunityType } from "@/app/types";
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types";
 

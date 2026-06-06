@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import Link from "next/link"
-import { deriveOpportunityStatus } from "@/app/lib/opportunity-status"
+import { deriveOpportunityStatus } from "@/lib/opportunity-status"
 import {
   OpportuniteWithAnnonceur,
   OPPORTUNITY_TYPE_LABELS,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUser, getAdminProfile } from '@/app/lib/supabase'
-import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
-import { getStripe } from '@/app/lib/stripe'
+import { getUser, getAdminProfile } from '@/lib/supabase'
+import { createAdminSupabaseClient } from '@/lib/supabase-admin'
+import { getStripe } from '@/lib/stripe'
 import type { Achat } from '@/app/types'
 
 export const runtime = 'nodejs'

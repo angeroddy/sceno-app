@@ -7,7 +7,7 @@ import {
   normalizeHumanText,
   normalizePostalCode,
   normalizeWebsiteUrl,
-} from '@/app/lib/signup-validation'
+} from '@/lib/signup-validation'
 import { EVENT_TICKETING_MCC, STRIPE_ONBOARDING_STARTED_METADATA_KEY } from './types'
 
 export function toStripeCountryCode(rawCountry: string | null | undefined): string {

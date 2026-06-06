@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   deriveOpportunityStatus,
   isOpportunityReservableByComedian,
-} from "@/app/lib/opportunity-status"
+} from "@/lib/opportunity-status"
 import {
   MapPin,
   Calendar,

@@ -1,4 +1,4 @@
-import { countOpportunityViewsForIds } from '@/app/lib/opportunity-views'
+import { countOpportunityViewsForIds } from '@/lib/opportunity-views'
 
 describe('countOpportunityViewsForIds', () => {
   it('retourne 0 si aucun id n est fourni', async () => {

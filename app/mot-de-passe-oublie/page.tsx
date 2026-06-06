@@ -5,12 +5,12 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import {
   isHandledAuthError,
   translateAuthErrorMessage,
-} from "@/app/lib/auth-error-message"
-import { isStrongEnoughPassword, isValidEmail, normalizeEmail } from "@/app/lib/signup-validation"
+} from "@/lib/auth-error-message"
+import { isStrongEnoughPassword, isValidEmail, normalizeEmail } from "@/lib/signup-validation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"

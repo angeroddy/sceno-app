@@ -1,15 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ProfilPage from '../page'
 import { useAuth } from '@/app/hooks/useAuth'
-import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
-import { PENDING_COMEDIAN_SIGNUP_PHOTO_SYNCED_EVENT } from '@/app/lib/pending-comedian-photo'
+import { PENDING_COMEDIAN_SIGNUP_PHOTO_SYNCED_EVENT } from '@/lib/pending-comedian-photo'
 
 jest.mock('@/app/hooks/useAuth', () => ({
   useAuth: jest.fn(),
 }))
 
-jest.mock('@/app/lib/supabase-client', () => ({
+jest.mock('@/lib/supabase-client', () => ({
   createBrowserSupabaseClient: jest.fn(),
 }))
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
-import { createServerSupabaseClient } from "@/app/lib/supabase"
+import { createAdminSupabaseClient } from "@/lib/supabase-admin"
+import { createServerSupabaseClient } from "@/lib/supabase"
 
 type AnnonceurDeletionRecord = {
   id: string

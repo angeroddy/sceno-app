@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { translateAuthErrorMessage } from '@/app/lib/auth-error-message'
+import { translateAuthErrorMessage } from '@/lib/auth-error-message'
 
 /**
  * Route API pour créer un nouveau compte administrateur

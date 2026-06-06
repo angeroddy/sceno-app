@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import MobileBottomNav from "@/components/navigation/MobileBottomNav"

@@ -1,6 +1,6 @@
 "use client"
 
-import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
+import { sanitizeOpportunityHtml } from "@/lib/opportunity-html"
 
 type SafeRichTextProps = {
   html: string | null | undefined

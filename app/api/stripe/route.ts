@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
-import { getStripe } from '@/app/lib/stripe'
-import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { getStripe } from '@/lib/stripe'
+import { createAdminSupabaseClient } from '@/lib/supabase-admin'
 import {
   markStripeEventError,
   markStripeEventProcessed,
   registerStripeEvent,
-} from '@/app/lib/stripe-webhooks/events'
+} from '@/lib/stripe-webhooks/events'
 import {
   handleAccountUpdated,
   handleChargeRefunded,
   handleCheckoutCancelled,
   handleCheckoutCompleted,
-} from '@/app/lib/stripe-webhooks/handlers'
+} from '@/lib/stripe-webhooks/handlers'
 
 export const runtime = 'nodejs'
 

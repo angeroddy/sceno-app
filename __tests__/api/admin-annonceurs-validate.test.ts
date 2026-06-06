@@ -1,7 +1,7 @@
 import { POST } from '@/app/api/admin/annonceurs/validate/route'
-import { createServerSupabaseClient, getAdminProfile, getUser } from '@/app/lib/supabase'
+import { createServerSupabaseClient, getAdminProfile, getUser } from '@/lib/supabase'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
   getUser: jest.fn(),
   getAdminProfile: jest.fn(),

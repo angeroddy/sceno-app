@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
-import { sendOpportunityAlertEmail } from '@/app/lib/email-notifications'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
+import { sendOpportunityAlertEmail } from '@/lib/email-notifications'
 import type { Admin, Annonceur, Opportunite } from '@/app/types'
 
 type OpportuniteForValidation = Opportunite & {

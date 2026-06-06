@@ -1,12 +1,12 @@
 import { GET } from "@/app/api/annonceur/opportunites/[id]/participants/route"
-import { createServerSupabaseClient } from "@/app/lib/supabase"
-import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
+import { createServerSupabaseClient } from "@/lib/supabase"
+import { createAdminSupabaseClient } from "@/lib/supabase-admin"
 
-jest.mock("@/app/lib/supabase", () => ({
+jest.mock("@/lib/supabase", () => ({
   createServerSupabaseClient: jest.fn(),
 }))
 
-jest.mock("@/app/lib/supabase-admin", () => ({
+jest.mock("@/lib/supabase-admin", () => ({
   createAdminSupabaseClient: jest.fn(),
 }))
 

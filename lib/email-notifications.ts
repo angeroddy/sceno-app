@@ -1,5 +1,5 @@
-import { sendMail } from "@/app/lib/mailer"
-import { calculateRoundedDiscountPercent } from "@/app/lib/pricing"
+import { sendMail } from "@/lib/mailer"
+import { calculateRoundedDiscountPercent } from "@/lib/pricing"
 import {
   OPPORTUNITY_MODEL_LABELS,
   OPPORTUNITY_TYPE_LABELS,

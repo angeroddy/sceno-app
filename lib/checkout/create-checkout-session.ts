@@ -4,9 +4,9 @@ import {
   deriveOpportunityStatus,
   isOpportunityReservableByComedian,
   isOpportunityVisibleToComedian,
-} from '@/app/lib/opportunity-status'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { toStripeCents, calculatePlatformFee } from '@/app/lib/pricing'
+} from '@/lib/opportunity-status'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
+import { toStripeCents, calculatePlatformFee } from '@/lib/pricing'
 import type { Achat, Annonceur, Opportunite } from '@/app/types'
 
 export interface CreateCheckoutSessionParams {

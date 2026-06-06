@@ -20,14 +20,14 @@ import logoApp from '@/app/assets/images/logoApp.png'
 import {
   buildPublicOpportunityPath,
   extractOpportunityIdFromPublicParam,
-} from '@/app/lib/public-opportunity-url'
-import { getPublicOpportunityDetails } from '@/app/lib/public-opportunities'
+} from '@/lib/public-opportunity-url'
+import { getPublicOpportunityDetails } from '@/lib/public-opportunities'
 import {
   getAuthenticatedUserContext,
   createServerSupabaseClient,
   type UserType,
-} from '@/app/lib/supabase'
-import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+} from '@/lib/supabase'
+import { createAdminSupabaseClient } from '@/lib/supabase-admin'
 import {
   OPPORTUNITY_MODEL_LABELS,
   OPPORTUNITY_TYPE_LABELS,

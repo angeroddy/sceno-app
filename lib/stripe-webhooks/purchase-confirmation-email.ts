@@ -1,7 +1,7 @@
 import {
   sendAdvertiserPurchaseEmail,
   sendComedianPurchaseEmail,
-} from '@/app/lib/email-notifications'
+} from '@/lib/email-notifications'
 import type { SupabaseAdmin } from './events'
 
 function formatReceiptReference(achatId: string): string {

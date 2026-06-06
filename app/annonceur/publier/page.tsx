@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Calendar, Info, Clock3, ChevronLeft, ChevronRight } from "lucide-react"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import type { OpportunityType, OpportunityModel } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
-import { getCroppedImage } from "@/app/lib/crop-image"
+import { getCroppedImage } from "@/lib/crop-image"
 import { OpportunityImageCropper } from "./_components/opportunity-image-cropper"
 import { PublishingPrinciplesModal } from "./_components/publishing-principles-modal"
 import {
@@ -21,8 +21,8 @@ import {
   OpportunityPreviewDetail,
   type OpportunityPreviewData,
 } from "./_components/opportunity-preview"
-import { sanitizeOpportunityHtml } from "@/app/lib/opportunity-html"
-import { getWebsiteInputWithoutWww, normalizeWebsiteUrlWithWwwPrefix } from "@/app/lib/signup-validation"
+import { sanitizeOpportunityHtml } from "@/lib/opportunity-html"
+import { getWebsiteInputWithoutWww, normalizeWebsiteUrlWithWwwPrefix } from "@/lib/signup-validation"
 import { cn } from "@/lib/utils"
 import {
   FRENCH_WEEKDAYS,

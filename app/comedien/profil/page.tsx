@@ -10,16 +10,16 @@ import {
 } from "lucide-react"
 
 import { useAuth } from "../../hooks/useAuth"
-import { translateAuthErrorMessage } from "@/app/lib/auth-error-message"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
-import { PENDING_COMEDIAN_SIGNUP_PHOTO_SYNCED_EVENT } from "@/app/lib/pending-comedian-photo"
+import { translateAuthErrorMessage } from "@/lib/auth-error-message"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
+import { PENDING_COMEDIAN_SIGNUP_PHOTO_SYNCED_EVENT } from "@/lib/pending-comedian-photo"
 import {
   getAgeFromDate,
   isPastOrToday,
   isStrongEnoughPassword,
   isValidUrl,
   normalizeText,
-} from "@/app/lib/signup-validation"
+} from "@/lib/signup-validation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProfileEditCard } from "./_components/profile-edit-card"

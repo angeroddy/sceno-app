@@ -1,4 +1,4 @@
-import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from '@/app/lib/renderable-image'
+import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from '@/lib/renderable-image'
 
 describe('renderable-image', () => {
   it('ajoute un cache-buster aux urls distantes', () => {

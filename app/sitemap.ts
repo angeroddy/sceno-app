@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next"
-import { buildPublicOpportunityPath } from "@/app/lib/public-opportunity-url"
-import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
-import { createServerSupabaseClient } from "@/app/lib/supabase"
+import { buildPublicOpportunityPath } from "@/lib/public-opportunity-url"
+import { createAdminSupabaseClient } from "@/lib/supabase-admin"
+import { createServerSupabaseClient } from "@/lib/supabase"
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://formations-artistiques.fr"
 

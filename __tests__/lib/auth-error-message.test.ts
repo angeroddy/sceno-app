@@ -2,7 +2,7 @@ import {
   isHandledAuthError,
   isRateLimitAuthError,
   translateAuthErrorMessage,
-} from '@/app/lib/auth-error-message'
+} from '@/lib/auth-error-message'
 
 describe('auth-error-message helpers', () => {
   it("reconnaît les erreurs de rate limit envoyées par Supabase", () => {

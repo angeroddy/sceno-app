@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import type { createAdminSupabaseClient } from '@/lib/supabase-admin'
 
 export type SupabaseAdmin = ReturnType<typeof createAdminSupabaseClient>
 

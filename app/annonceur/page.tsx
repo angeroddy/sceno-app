@@ -13,8 +13,8 @@ import {
   PlusCircle,
   Eye
 } from "lucide-react"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
-import { countOpportunityViewsForIds } from "@/app/lib/opportunity-views"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
+import { countOpportunityViewsForIds } from "@/lib/opportunity-views"
 import { useRouter } from "next/navigation"
 import type { Opportunite, Annonceur, Achat } from "@/app/types"
 

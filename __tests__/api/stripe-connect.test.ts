@@ -3,25 +3,25 @@ import { POST as postAccount } from '@/app/api/stripe/connect/account/route'
 import { GET as getStatus } from '@/app/api/stripe/connect/status/route'
 import { POST as postOnboarding } from '@/app/api/stripe/connect/onboarding-link/route'
 import { POST as postDashboard } from '@/app/api/stripe/connect/dashboard-link/route'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
-import { getStripe } from '@/app/lib/stripe'
+import { createServerSupabaseClient } from '@/lib/supabase'
+import { getStripe } from '@/lib/stripe'
 import {
   buildStoredStripeConnectSnapshot,
   getDisconnectedStripeConnectSnapshot,
   markStripeOnboardingStarted,
   StripeConnectSyncError,
   syncStripeConnectForAnnonceur,
-} from '@/app/lib/stripe-connect'
+} from '@/lib/stripe-connect'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
 }))
 
-jest.mock('@/app/lib/stripe', () => ({
+jest.mock('@/lib/stripe', () => ({
   getStripe: jest.fn(),
 }))
 
-jest.mock('@/app/lib/stripe-connect', () => ({
+jest.mock('@/lib/stripe-connect', () => ({
   buildStoredStripeConnectSnapshot: jest.fn(),
   getDisconnectedStripeConnectSnapshot: jest.fn(),
   markStripeOnboardingStarted: jest.fn(),

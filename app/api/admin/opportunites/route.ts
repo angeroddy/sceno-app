@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 
 export async function GET(request: Request) {
   try {

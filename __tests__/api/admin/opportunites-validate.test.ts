@@ -1,14 +1,14 @@
 import { POST } from '@/app/api/admin/opportunites/validate/route'
-import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
-import { sendMail } from '@/app/lib/mailer'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
+import { sendMail } from '@/lib/mailer'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
   getUser: jest.fn(),
   getAdminProfile: jest.fn(),
 }))
 
-jest.mock('@/app/lib/mailer', () => ({
+jest.mock('@/lib/mailer', () => ({
   sendMail: jest.fn(),
 }))
 

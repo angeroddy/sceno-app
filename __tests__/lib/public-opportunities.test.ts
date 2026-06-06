@@ -1,7 +1,7 @@
-import { getPublicOpportunityDetails } from '@/app/lib/public-opportunities'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { getPublicOpportunityDetails } from '@/lib/public-opportunities'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 
-jest.mock('@/app/lib/opportunity-availability', () => ({
+jest.mock('@/lib/opportunity-availability', () => ({
   reconcileOpportunityPlaces: jest.fn(),
 }))
 

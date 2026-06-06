@@ -18,18 +18,18 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import {
   getSignupEmailConflictForProfile,
   type AuthProfileSupabase,
-} from "@/app/lib/auth-profile"
+} from "@/lib/auth-profile"
 import {
   clearPendingComedianSignupPhoto,
   savePendingComedianSignupPhoto,
-} from "@/app/lib/pending-comedian-photo"
+} from "@/lib/pending-comedian-photo"
 import Cropper from "react-easy-crop"
 import type { OpportunityType, ComedianGender } from "@/app/types"
-import { getCroppedImage } from "@/app/lib/crop-image"
+import { getCroppedImage } from "@/lib/crop-image"
 import {
   getAgeFromDate,
   isPastOrToday,
@@ -38,8 +38,8 @@ import {
   isValidUrl,
   normalizeEmail,
   normalizeText,
-} from "@/app/lib/signup-validation"
-import { getDemoComedianData } from "@/app/lib/dev-signup-fixtures"
+} from "@/lib/signup-validation"
+import { getDemoComedianData } from "@/lib/dev-signup-fixtures"
 
 const STEPS = [
   "Préférences",

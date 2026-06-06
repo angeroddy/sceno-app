@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import type { MouseEvent } from "react"
 import { Check, Share2 } from "lucide-react"
 
-import { buildPublicOpportunityPath } from "@/app/lib/public-opportunity-url"
+import { buildPublicOpportunityPath } from "@/lib/public-opportunity-url"
 import { Button } from "@/components/ui/button"
 
 type ShareOpportunityUrlButtonProps = {

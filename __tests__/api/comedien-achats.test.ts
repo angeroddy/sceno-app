@@ -1,7 +1,7 @@
 import { GET } from '@/app/api/comedien/achats/route'
-import { createServerSupabaseClient } from '@/app/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/supabase'
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   createServerSupabaseClient: jest.fn(),
 }))
 

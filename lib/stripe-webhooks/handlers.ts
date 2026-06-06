@@ -2,7 +2,7 @@ import type Stripe from 'stripe'
 import {
   buildStripeConnectSnapshot,
   persistStripeConnectSnapshot,
-} from '@/app/lib/stripe-connect'
+} from '@/lib/stripe-connect'
 import type { SupabaseAdmin } from './events'
 import { sendPurchaseConfirmationEmail } from './purchase-confirmation-email'
 

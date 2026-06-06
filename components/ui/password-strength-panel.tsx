@@ -3,7 +3,7 @@
 import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { getPasswordChecks, getPasswordStrength } from "@/app/lib/signup-validation"
+import { getPasswordChecks, getPasswordStrength } from "@/lib/signup-validation"
 
 interface PasswordStrengthPanelProps {
   password: string

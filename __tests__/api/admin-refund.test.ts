@@ -1,18 +1,18 @@
 import { POST } from '@/app/api/admin/achats/[id]/refund/route'
 import { createClient } from '@supabase/supabase-js'
-import { getUser, getAdminProfile } from '@/app/lib/supabase'
-import { getStripe } from '@/app/lib/stripe'
+import { getUser, getAdminProfile } from '@/lib/supabase'
+import { getStripe } from '@/lib/stripe'
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }))
 
-jest.mock('@/app/lib/supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   getUser: jest.fn(),
   getAdminProfile: jest.fn(),
 }))
 
-jest.mock('@/app/lib/stripe', () => ({
+jest.mock('@/lib/stripe', () => ({
   getStripe: jest.fn(),
 }))
 

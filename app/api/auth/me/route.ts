@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthenticatedUserContext } from "@/app/lib/supabase"
+import { getAuthenticatedUserContext } from "@/lib/supabase"
 
 export async function GET() {
   const { user, userType } = await getAuthenticatedUserContext()

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUser, getAdminProfile } from '@/app/lib/supabase'
+import { getUser, getAdminProfile } from '@/lib/supabase'
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {

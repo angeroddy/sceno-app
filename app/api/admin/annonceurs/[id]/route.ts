@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
 import type { Annonceur } from '@/app/types'
 
 export async function GET(

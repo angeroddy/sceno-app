@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdvertiser } from '@/app/server/auth'
-import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { notifyAdminOpportunityPending } from '@/app/lib/email-notifications'
+import { createAdminSupabaseClient } from '@/lib/supabase-admin'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
+import { notifyAdminOpportunityPending } from '@/lib/email-notifications'
 import type { Database } from '@/app/types'
-import { createOpportunitySchema } from '@/app/lib/opportunity-validation'
+import { createOpportunitySchema } from '@/lib/opportunity-validation'
 
 type OpportunitesTableInsert = {
   insert: (

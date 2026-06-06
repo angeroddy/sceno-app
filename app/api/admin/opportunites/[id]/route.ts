@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, getUser, getAdminProfile } from '@/app/lib/supabase'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
-import { countOpportunityViews } from '@/app/lib/opportunity-views'
+import { createServerSupabaseClient, getUser, getAdminProfile } from '@/lib/supabase'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
+import { countOpportunityViews } from '@/lib/opportunity-views'
 import { Achat } from '@/app/types'
 
 export async function GET(

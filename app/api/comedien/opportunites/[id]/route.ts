@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireComedian } from '@/app/server/auth'
-import { reconcileOpportunityPlaces } from '@/app/lib/opportunity-availability'
+import { reconcileOpportunityPlaces } from '@/lib/opportunity-availability'
 import {
   deriveOpportunityStatus,
   isOpportunityConsultableByComedian,
   isOpportunityVisibleToComedian,
-} from '@/app/lib/opportunity-status'
-import { trackOpportunityView } from '@/app/lib/opportunity-views'
+} from '@/lib/opportunity-status'
+import { trackOpportunityView } from '@/lib/opportunity-views'
 
 export async function GET(
   request: NextRequest,

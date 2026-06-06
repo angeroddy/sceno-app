@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/app/types'
-import { resolveUserTypeForAuthUser } from '@/app/lib/supabase'
+import { resolveUserTypeForAuthUser } from '@/lib/supabase'
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({

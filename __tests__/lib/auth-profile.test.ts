@@ -3,7 +3,7 @@ import {
   resolveUserTypeForAuthUser,
   syncEmailVerificationForAuthUser,
   type AuthProfileSupabase,
-} from '@/app/lib/auth-profile'
+} from '@/lib/auth-profile'
 
 function createMockSupabase({
   admin = null,

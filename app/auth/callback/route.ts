@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   syncEmailVerificationForAuthUser,
   type AuthProfileSupabase,
-} from '@/app/lib/auth-profile'
-import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+} from '@/lib/auth-profile'
+import { createAdminSupabaseClient } from '@/lib/supabase-admin'
 import {
   notifyAdminAdvertiserPending,
   sendAdvertiserWelcomeEmail,
   sendComedianWelcomeEmail,
-} from '@/app/lib/email-notifications'
+} from '@/lib/email-notifications'
 
 type EmailVerificationAdvertiser = {
   id: string

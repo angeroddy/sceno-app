@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserSupabaseClient } from '../lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 import type { User } from '@supabase/supabase-js'
 import {
   syncPendingComedianSignupPhoto,
   type PendingComedianPhotoSupabase,
-} from '../lib/pending-comedian-photo'
-import type { UserType } from '../lib/auth-profile'
+} from '@/lib/pending-comedian-photo'
+import type { UserType } from '@/lib/auth-profile'
 
 export function useAuth() {
   const router = useRouter()

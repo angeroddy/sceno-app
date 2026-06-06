@@ -8,7 +8,7 @@ import { AppModal } from "@/components/ui/app-modal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { getAgeFromDate } from "@/app/lib/signup-validation"
+import { getAgeFromDate } from "@/lib/signup-validation"
 
 type Participant = {
   achat_id: string

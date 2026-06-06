@@ -1,26 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 import { POST } from '@/app/api/stripe/route'
-import { getStripe } from '@/app/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import {
   buildStripeConnectSnapshot,
   persistStripeConnectSnapshot,
-} from '@/app/lib/stripe-connect'
-import { sendMail } from '@/app/lib/mailer'
+} from '@/lib/stripe-connect'
+import { sendMail } from '@/lib/mailer'
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }))
 
-jest.mock('@/app/lib/stripe', () => ({
+jest.mock('@/lib/stripe', () => ({
   getStripe: jest.fn(),
 }))
 
-jest.mock('@/app/lib/stripe-connect', () => ({
+jest.mock('@/lib/stripe-connect', () => ({
   buildStripeConnectSnapshot: jest.fn(),
   persistStripeConnectSnapshot: jest.fn(),
 }))
 
-jest.mock('@/app/lib/mailer', () => ({
+jest.mock('@/lib/mailer', () => ({
   sendMail: jest.fn(),
 }))
 

@@ -10,10 +10,10 @@
 
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createBrowserSupabaseClient } from '@/app/lib/supabase-client'
+import { createBrowserSupabaseClient } from '@/lib/supabase-client'
 
 // Mock du module supabase-client
-jest.mock('@/app/lib/supabase-client', () => ({
+jest.mock('@/lib/supabase-client', () => ({
   createBrowserSupabaseClient: jest.fn(),
 }))
 

@@ -15,11 +15,11 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import {
   getSignupEmailConflictForProfile,
   type AuthProfileSupabase,
-} from "@/app/lib/auth-profile"
+} from "@/lib/auth-profile"
 import type {
   Database,
   InscriptionAnnonceurForm,
@@ -46,8 +46,8 @@ import {
   normalizePostalCode,
   normalizeText,
   normalizeWebsiteUrl,
-} from "@/app/lib/signup-validation"
-import { getDemoAdvertiserData } from "@/app/lib/dev-signup-fixtures"
+} from "@/lib/signup-validation"
+import { getDemoAdvertiserData } from "@/lib/dev-signup-fixtures"
 
 const STEPS = ["Informations entreprise", "Compte et paiement"]
 

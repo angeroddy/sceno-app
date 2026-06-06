@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 
-import { sendPasswordResetEmail } from "@/app/lib/email-notifications"
-import { createAdminSupabaseClient } from "@/app/lib/supabase-admin"
-import { isValidEmail, normalizeEmail } from "@/app/lib/signup-validation"
+import { sendPasswordResetEmail } from "@/lib/email-notifications"
+import { createAdminSupabaseClient } from "@/lib/supabase-admin"
+import { isValidEmail, normalizeEmail } from "@/lib/signup-validation"
 
 type PasswordResetRequestBody = {
   email?: string

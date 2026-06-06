@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AppModal } from "@/components/ui/app-modal"
 import { Loader2, Save, CheckCircle2, Trash2 } from "lucide-react"
-import { createBrowserSupabaseClient } from "@/app/lib/supabase-client"
+import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import type { Annonceur } from "@/app/types"
 import {
   getAgeFromDate,
@@ -28,7 +28,7 @@ import {
   normalizePostalCode,
   normalizeText,
   normalizeWebsiteUrl,
-} from "@/app/lib/signup-validation"
+} from "@/lib/signup-validation"
 import { StripeConnectSection } from "./_components/stripe-connect-section"
 import { AdvertiserProfileForm } from "./_components/advertiser-profile-form"
 import type { AnnonceurSettingsForm, StripeConnectStatus } from "./_lib/types"

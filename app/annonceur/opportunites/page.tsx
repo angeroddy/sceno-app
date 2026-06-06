@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import type { Opportunite } from "@/app/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/app/types"
-import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/app/lib/renderable-image"
+import { buildRenderableImageSrc, IMAGE_RETRY_LIMIT } from "@/lib/renderable-image"
 
 function formatPlacesLabel(remaining: number, total: number) {
   const purchased = Math.max(total - remaining, 0)

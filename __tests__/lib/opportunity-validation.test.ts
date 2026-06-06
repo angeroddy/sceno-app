@@ -1,4 +1,4 @@
-import { createOpportunitySchema } from '@/app/lib/opportunity-validation'
+import { createOpportunitySchema } from '@/lib/opportunity-validation'
 
 describe('createOpportunitySchema', () => {
   const basePayload = {
