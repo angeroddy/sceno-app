@@ -52,7 +52,15 @@
       "Bash(sed -i \"s#from '\\\\.\\\\./comedian-signup-form'#from '../forms/comedian-signup-form'#\" components/__tests__/comedian-signup-form.test.tsx)",
       "Bash(sed -i \"s#from '\\\\.\\\\./advertiser-signup-form'#from '../forms/advertiser-signup-form'#\" components/__tests__/advertiser-signup-form.test.tsx)",
       "Bash(git --no-pager log --oneline -7)",
-      "Bash(git --no-pager log --oneline -8)"
+      "Bash(git --no-pager log --oneline -8)",
+      "Bash(git --no-pager diff .claude/settings.local.json)",
+      "Bash(git --no-pager log --oneline main..refacto/phases-0-3)",
+      "Bash(git --no-pager log --oneline refacto/phases-0-3..main)",
+      "Bash(git --no-pager show --stat e0ac343)",
+      "Bash(git --no-pager log --oneline -1 main)",
+      "Bash(echo \"commit exit $?\")",
+      "Bash(git merge *)",
+      "Bash(echo \"merge exit $?\")"
     ],
     "deny": [],
     "ask": []
