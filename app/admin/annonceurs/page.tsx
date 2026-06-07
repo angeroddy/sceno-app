@@ -221,9 +221,9 @@ export default function AnnonceursPage() {
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                            <Mail className="w-4 h-4" />
-                            <span>{annonceur.email}</span>
+                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 min-w-0">
+                            <Mail className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{annonceur.email}</span>
                           </div>
                         </div>
                       </div>

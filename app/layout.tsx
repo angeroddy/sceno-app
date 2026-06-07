@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { JsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
@@ -99,6 +99,14 @@ const ttFirsNeue = localFont({
   variable: "--font-tt-firs-neue",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Permet à env(safe-area-inset-*) de renvoyer les marges des encoches iOS,
+  // utilisé par la nav mobile fixée en bas (.pb-safe).
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: {

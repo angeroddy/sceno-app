@@ -168,13 +168,13 @@ export function LoginForm({
                   setPassword(e.target.value)
                   setError("")
                 }}
-                className="pr-10"
+                className="pr-11"
                 required
                 disabled={isLoading}
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => setShowPassword((value) => !value)}
                 disabled={isLoading}
                 aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}

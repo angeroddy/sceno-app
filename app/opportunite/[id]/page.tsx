@@ -216,7 +216,7 @@ export default async function OpportunitePage({
               alt="formations-artistiques.fr"
               width={220}
               height={34}
-              className="h-auto w-[220px] max-w-full"
+              className="h-auto w-[180px] max-w-full sm:w-[220px]"
               priority
             />
           </Link>

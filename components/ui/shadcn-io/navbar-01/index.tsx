@@ -6,8 +6,7 @@ import { LogOut } from 'lucide-react'
 
 import { Button } from '../../button';
 
-import { useEffect, useState, useRef } from 'react';
-import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '../../navigation-menu';
+import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from '../../navigation-menu';
 
 import { Popover, PopoverContent, PopoverTrigger } from '../../popover';
 
@@ -121,45 +120,13 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
     ref
   ) => {
     const router = useRouter();
-    const [isMobile, setIsMobile] = useState(false);
-    const containerRef = useRef<HTMLElement>(null);
     const showAuthenticatedReturnButton =
       isAuthenticated &&
       (signInText !== 'Se connecter' || signInHref !== '/connexion');
 
-    useEffect(() => {
-      const checkWidth = () => {
-        if (containerRef.current) {
-          const width = containerRef.current.offsetWidth;
-          setIsMobile(width < 768); // 768px is md breakpoint
-        }
-      };
-
-      checkWidth();
-
-      const resizeObserver = new ResizeObserver(checkWidth);
-      if (containerRef.current) {
-        resizeObserver.observe(containerRef.current);
-      }
-
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }, []);
-
-    // Combine refs
-    const combinedRef = React.useCallback((node: HTMLElement | null) => {
-      containerRef.current = node;
-      if (typeof ref === 'function') {
-        ref(node);
-      } else if (ref) {
-        ref.current = node;
-      }
-    }, [ref]);
-
     return (
       <header
-        ref={combinedRef}
+        ref={ref}
         className={cn(
           'sticky top-0 z-50 w-full backdrop-blur **:no-underline',
           className
@@ -169,12 +136,12 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
         <div className="container mx-auto px-4 flex h-28 items-center justify-between gap-4">
           {/* Left side */}
           <div className="flex items-center gap-2">
-            {/* Mobile menu trigger */}
-            {isMobile && !hideHamburger && (
+            {/* Mobile menu trigger (caché à partir de md via CSS) */}
+            {!hideHamburger && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    className="group h-9 w-9 hover:bg-accent hover:text-accent-foreground"
+                    className="group h-9 w-9 md:hidden hover:bg-accent hover:text-accent-foreground"
                     variant="ghost"
                     size="icon"
                   >
@@ -212,13 +179,13 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                   "flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
                 )}
               >
-                <div className={cn(hideHamburger && isMobile ? "text-5xl sm:text-6xl" : "text-2xl")}>
+                <div className={cn(hideHamburger ? "text-5xl sm:text-6xl md:text-2xl" : "text-2xl")}>
                   {logo}
                 </div>
               </button>
-              {/* Navigation menu */}
-              {!isMobile && (
-                <NavigationMenu className="flex">
+              {/* Navigation menu (affiché à partir de md via CSS) */}
+              {navigationLinks.length > 0 && (
+                <NavigationMenu className="hidden md:flex">
                   <NavigationMenuList className="gap-1">
                     {navigationLinks.map((link, index) => (
                       <NavigationMenuItem key={index}>
@@ -295,10 +262,12 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 )}
                 {userType === 'comedian' && (
                   <>
+                    {/* Sur mobile, ces accès sont fournis par la barre de navigation
+                        du bas (MobileBottomNav) → masqués en dessous de md. */}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
+                      className="hidden md:inline-flex cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
                       onClick={() => router.push('/comedien/profil')}
                     >
                       Mon profil
@@ -306,7 +275,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
+                      className="hidden md:inline-flex cursor-pointer px-2 sm:px-4 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-[#E6DAD0] whitespace-nowrap shrink-0"
                       onClick={() => router.push('/comedien/preferences')}
                     >
                       Préférences

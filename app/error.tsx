@@ -8,8 +8,8 @@ export default function Error({
 }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#F5F0EB] px-4 text-center">
-      <h1 className="text-6xl font-bold text-gray-900">Erreur</h1>
-      <p className="mt-4 text-xl text-gray-600">
+      <h1 className="text-5xl sm:text-6xl font-bold text-gray-900">Erreur</h1>
+      <p className="mt-4 text-lg sm:text-xl text-gray-600">
         Une erreur inattendue s&apos;est produite.
       </p>
       <button

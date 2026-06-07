@@ -68,7 +68,7 @@ export const Footer = ({
     <footer className="bg-black text-white py-16" role="contentinfo">
       <div className="container mx-auto px-5">
         <div>
-          <div className="grid grid-cols-2 gap-8 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:gap-8 lg:grid-cols-6">
             <div className="col-span-2 mb-8 lg:mb-0">
               <div className="flex items-center gap-2 lg:justify-start">
                 <Image
@@ -76,10 +76,10 @@ export const Footer = ({
                   alt="formations-artistiques.fr"
                   width={260}
                   height={40}
-                  className="h-auto object-contain"
+                  className="h-auto max-w-full object-contain"
                 />
               </div>
-              <p className="mt-4 text-[#E6DAD0] text-lg">{tagline}</p>
+              <p className="mt-4 text-[#E6DAD0] text-base sm:text-lg">{tagline}</p>
             </div>
             {menuItems.map((section, sectionIdx) => (
               <nav key={sectionIdx} aria-label={section.title}>
@@ -99,7 +99,7 @@ export const Footer = ({
           </div>
           <div className="mt-16 flex flex-col justify-between gap-4 border-t border-gray-700 pt-8 text-sm font-medium md:flex-row md:items-center">
             <p className="text-gray-400">{copyright}</p>
-            <ul className="flex gap-6">
+            <ul className="flex flex-wrap gap-x-6 gap-y-2">
               {bottomLinks.map((link, linkIdx) => (
                 <li key={linkIdx} className="hover:text-[#E63832] text-gray-400 transition-colors">
                   <Link href={link.url}>{link.text}</Link>

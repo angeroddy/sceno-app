@@ -733,12 +733,12 @@ export function ComedianSignupForm({
                 Photo portrait <span className="text-muted-foreground text-xs">(facultatif, recommandé)</span>
               </FieldLabel>
               <div className="space-y-3">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   <label
                     htmlFor="photo"
                     className="cursor-pointer flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-accent transition-colors"
                   >
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-4 w-4 shrink-0" />
                     <span className="text-sm">Choisir une photo</span>
                   </label>
                   <input
@@ -749,7 +749,7 @@ export function ComedianSignupForm({
                     onChange={handlePhotoChange}
                   />
                   {personalInfo.photo && (
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground truncate max-w-full">
                       {personalInfo.photo.name}
                     </span>
                   )}
@@ -1037,7 +1037,7 @@ export function ComedianSignupForm({
                       step={0.1}
                       value={zoom}
                       onChange={(e) => setZoom(Number(e.target.value))}
-                      className="w-40"
+                      className="min-w-0 flex-1"
                     />
                     <span className="text-xs text-gray-500">{zoom.toFixed(1)}x</span>
                   </div>
@@ -1059,7 +1059,7 @@ export function ComedianSignupForm({
                       step={1}
                       value={rotation}
                       onChange={(e) => setRotation(Number(e.target.value))}
-                      className="w-40"
+                      className="min-w-0 flex-1"
                     />
                     <span className="text-xs text-gray-500">{rotation}°</span>
                   </div>

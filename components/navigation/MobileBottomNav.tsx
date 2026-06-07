@@ -22,9 +22,10 @@ export default function MobileBottomNav({ items }: MobileBottomNavProps) {
     // Exact match
     if (href === pathname) return true
 
-    // Pour les routes "racines" de dashboard (/admin ou /annonceur)
+    // Pour les routes "racines" de dashboard (/admin, /annonceur, /comedien)
     // On ne veut PAS qu'elles matchent leurs sous-routes
-    const isDashboardRoot = href === "/admin" || href === "/annonceur"
+    const isDashboardRoot =
+      href === "/admin" || href === "/annonceur" || href === "/comedien"
     if (isDashboardRoot) {
       return false // Uniquement match exact (déjà vérifié ci-dessus)
     }
@@ -38,9 +39,19 @@ export default function MobileBottomNav({ items }: MobileBottomNavProps) {
     return false
   }
 
+  // Le nombre de colonnes suit le nombre d'items (3, 4 ou 5) pour éviter
+  // qu'un 5e item ne passe sur une 2e ligne (classes statiques pour Tailwind).
+  const colsClass =
+    {
+      2: "grid-cols-2",
+      3: "grid-cols-3",
+      4: "grid-cols-4",
+      5: "grid-cols-5",
+    }[items.length] ?? "grid-cols-4"
+
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-t border-gray-200 pb-safe">
-      <div className="grid grid-cols-4 items-stretch gap-1 px-2 py-2 max-w-lg mx-auto">
+      <div className={cn("grid items-stretch gap-1 px-2 py-2 max-w-lg mx-auto", colsClass)}>
         {items.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)

@@ -872,7 +872,7 @@ export function AdvertiserSignupForm({
                       const formatted = cleaned.match(/.{1,4}/g)?.join(" ") || cleaned
                       updateFormData({ iban: formatted })
                     }}
-                    className={cn("font-mono", getFieldClassName("iban"))}
+                    className={cn("font-mono text-xs sm:text-sm", getFieldClassName("iban"))}
                     aria-invalid={showFieldError("iban")}
                     required
                     maxLength={34}
@@ -888,7 +888,7 @@ export function AdvertiserSignupForm({
                     placeholder="BNPAFRPP"
                     value={formData.bic_swift || ""}
                     onChange={(e) => updateFormData({ bic_swift: normalizeBic(e.target.value) })}
-                    className={cn("font-mono", getFieldClassName("bic_swift"))}
+                    className={cn("font-mono text-xs sm:text-sm", getFieldClassName("bic_swift"))}
                     aria-invalid={showFieldError("bic_swift")}
                     required
                     maxLength={11}

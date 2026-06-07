@@ -913,13 +913,13 @@ export default function PublierOpportunitePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="image">Image de présentation <span className="text-gray-500 text-xs">(facultatif, recommandé)</span></Label>
-                <div className="flex items-start gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   <label htmlFor="image" className="cursor-pointer flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-accent transition-colors">
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-4 w-4 shrink-0" />
                     <span className="text-sm">Choisir une image</span>
                   </label>
                   <input id="image" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                  {formData.image && <span className="text-sm text-gray-600">{formData.image.name}</span>}
+                  {formData.image && <span className="text-sm text-gray-600 truncate max-w-full">{formData.image.name}</span>}
                 </div>
                 {imagePreview && (
                   <div className="space-y-4">

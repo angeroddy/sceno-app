@@ -41,7 +41,7 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
                 {/* Step label */}
                 <span
                   className={cn(
-                    "mt-2 text-xs font-medium text-center max-w-[100px]",
+                    "mt-2 text-[11px] sm:text-xs font-medium text-center leading-tight break-words max-w-[72px] sm:max-w-[100px]",
                     isCurrent && "text-primary",
                     !isCurrent && "text-gray-500"
                   )}

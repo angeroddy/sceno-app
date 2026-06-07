@@ -11,6 +11,7 @@ jest.mock('@/hooks/useAuth', () => ({
 // Mock de next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  usePathname: jest.fn(() => '/comedien'),
 }))
 
 // Mock des composants enfants

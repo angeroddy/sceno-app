@@ -2,9 +2,11 @@
 
 import { Navbar01 } from "@/components/ui/shadcn-io/navbar-01";
 import { Footer } from "@/components/layout/Footer";
+import MobileBottomNav from "@/components/navigation/MobileBottomNav";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Home, User, SlidersHorizontal } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -35,6 +37,13 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Navigation mobile (cohérente avec les espaces annonceur/admin).
+  const mobileNavItems = [
+    { href: "/comedien", icon: Home, label: "Accueil" },
+    { href: "/comedien/profil", icon: User, label: "Profil" },
+    { href: "/comedien/preferences", icon: SlidersHorizontal, label: "Préférences" },
+  ];
+
   return (
     <>
       {/* Navbar partagée - ne se recharge pas lors de la navigation */}
@@ -48,11 +57,16 @@ export default function DashboardLayout({
         />
       </div>
 
-      {/* Contenu des pages enfants */}
-      {children}
+      {/* Contenu + footer ; padding bas sur mobile pour ne pas passer sous la nav fixe */}
+      <div className="pb-20 lg:pb-0">
+        {children}
 
-      {/* Footer partagé */}
-      <Footer />
+        {/* Footer partagé */}
+        <Footer />
+      </div>
+
+      {/* Navigation mobile en bas (lg:hidden gérée dans le composant) */}
+      <MobileBottomNav items={mobileNavItems} />
     </>
   );
 }
