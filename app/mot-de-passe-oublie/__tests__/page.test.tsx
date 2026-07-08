@@ -153,8 +153,9 @@ describe('ForgotPasswordPage', () => {
     })
 
     expect(mockSupabase.auth.signOut).toHaveBeenCalled()
-    expect(screen.getByText(/Votre mot de passe a bien été mis à jour/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Mettre à jour le mot de passe/i })).not.toBeInTheDocument()
+    expect(mockRouter.replace).toHaveBeenCalledWith('/connexion')
+    expect(screen.queryByText(/Votre mot de passe a bien été mis à jour/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Se connecter maintenant/i })).not.toBeInTheDocument()
   })
 
   it("ne montre pas d'erreur si le nouveau mot de passe est identique à l'ancien", async () => {
@@ -174,9 +175,11 @@ describe('ForgotPasswordPage', () => {
     await user.type(screen.getByLabelText(/Confirmer le mot de passe/i), 'Password123')
     await user.click(screen.getByRole('button', { name: /Mettre à jour le mot de passe/i }))
 
-    expect(await screen.findByText(/Votre mot de passe a bien été mis à jour/i)).toBeInTheDocument()
-    expect(mockSupabase.auth.signOut).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled()
+    })
+    expect(mockRouter.replace).toHaveBeenCalledWith('/connexion')
     expect(screen.queryByText(/Impossible de mettre à jour le mot de passe/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Mettre à jour le mot de passe/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Se connecter maintenant/i })).not.toBeInTheDocument()
   })
 })

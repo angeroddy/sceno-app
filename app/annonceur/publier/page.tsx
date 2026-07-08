@@ -852,7 +852,7 @@ export default function PublierOpportunitePage() {
           </h1>
           <button
             type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E6DAD0] bg-white text-[#E63832] shadow-sm transition-colors hover:bg-[#F5F0EB] focus:outline-none focus:ring-2 focus:ring-[#E63832]/30"
+            className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#E6DAD0] bg-white text-[#E63832] shadow-sm transition-colors hover:bg-[#F5F0EB] focus:outline-none focus:ring-2 focus:ring-[#E63832]/30"
             aria-label="Revoir les règles de publication"
             title="Revoir les règles de publication"
             onClick={() => {

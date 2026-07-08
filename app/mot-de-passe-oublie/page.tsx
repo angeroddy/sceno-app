@@ -126,6 +126,14 @@ function ForgotPasswordContent() {
     }
   }
 
+  const finishPasswordUpdate = async () => {
+    const supabase = createBrowserSupabaseClient()
+    setPassword("")
+    setConfirmPassword("")
+    await supabase.auth.signOut().catch(() => undefined)
+    router.replace(loginHref)
+  }
+
   const handleUpdatePassword = async (event: React.FormEvent) => {
     event.preventDefault()
     setError("")
@@ -159,11 +167,7 @@ function ForgotPasswordContent() {
 
       if (updateError) {
         if (isSamePasswordUpdateError(updateError.message)) {
-          setSuccessMessage("Votre mot de passe a bien été mis à jour. Vous pouvez maintenant vous connecter.")
-          setPassword("")
-          setConfirmPassword("")
-          void supabase.auth.signOut().catch(() => undefined)
-          setIsSubmitting(false)
+          await finishPasswordUpdate()
           return
         }
 
@@ -177,11 +181,7 @@ function ForgotPasswordContent() {
         return
       }
 
-      setSuccessMessage("Votre mot de passe a bien été mis à jour. Vous pouvez maintenant vous connecter.")
-      setPassword("")
-      setConfirmPassword("")
-      void supabase.auth.signOut().catch(() => undefined)
-      setIsSubmitting(false)
+      await finishPasswordUpdate()
     } catch (submitError) {
       console.error("Erreur inattendue mise à jour mot de passe:", submitError)
       setError("Une erreur inattendue s'est produite. Veuillez réessayer.")
