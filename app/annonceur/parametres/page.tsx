@@ -1,10 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { AppModal } from "@/components/ui/app-modal"
 import { Loader2, Save, CheckCircle2, Trash2 } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/lib/supabase-client"
@@ -169,6 +167,21 @@ export default function ParametresPage() {
       scrollToHashSection()
     }
   }, [loading, stripeLoading])
+
+  useEffect(() => {
+    const refreshAfterExternalNavigation = () => {
+      setStripeAction(null)
+      void fetchStripeStatus(true, { showLoading: false })
+    }
+
+    window.addEventListener("pageshow", refreshAfterExternalNavigation)
+    window.addEventListener("focus", refreshAfterExternalNavigation)
+
+    return () => {
+      window.removeEventListener("pageshow", refreshAfterExternalNavigation)
+      window.removeEventListener("focus", refreshAfterExternalNavigation)
+    }
+  }, [])
 
   const fetchAnnonceurData = async () => {
     try {
@@ -550,7 +563,7 @@ export default function ParametresPage() {
 
       const supabase = createBrowserSupabaseClient()
       await supabase.auth.signOut().catch(() => undefined)
-      window.location.href = "/connexion"
+      window.location.href = "/connexion?type=annonceur"
     } catch (deleteAccountError) {
       console.error("Erreur suppression compte annonceur:", deleteAccountError)
       setDeleteError(

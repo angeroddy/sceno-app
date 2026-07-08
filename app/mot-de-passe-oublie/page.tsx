@@ -18,10 +18,27 @@ import { Input } from "@/components/ui/input"
 import { PasswordStrengthPanel } from "@/components/ui/password-strength-panel"
 
 type ResetMode = "request" | "update"
+type PasswordResetAccountType = "advertiser" | "default"
+
+function isSamePasswordUpdateError(errorMessage: string) {
+  const normalizedMessage = errorMessage.trim().toLowerCase()
+
+  return (
+    normalizedMessage.includes("different from the old password") ||
+    normalizedMessage.includes("different from old password") ||
+    normalizedMessage.includes("same password")
+  )
+}
 
 function ForgotPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const accountType: PasswordResetAccountType = searchParams.get("type") === "annonceur" ? "advertiser" : "default"
+  const isAdvertiserFlow = accountType === "advertiser"
+  const loginHref = isAdvertiserFlow ? "/connexion?type=annonceur" : "/connexion"
+  const resetPath = isAdvertiserFlow
+    ? "/mot-de-passe-oublie?mode=reset&type=annonceur"
+    : "/mot-de-passe-oublie?mode=reset"
   const [mode, setMode] = useState<ResetMode>(() => {
     const recoveryFromSearch =
       searchParams.get("mode") === "reset" || searchParams.get("type") === "recovery"
@@ -34,6 +51,13 @@ function ForgotPasswordContent() {
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const buildRecoveryRedirectUrl = () => {
+    const callbackUrl = new URL("/auth/callback", window.location.origin)
+    callbackUrl.searchParams.set("type", "recovery")
+    callbackUrl.searchParams.set("next", resetPath)
+    return callbackUrl.toString()
+  }
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -80,7 +104,7 @@ function ForgotPasswordContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: normalizeEmail(email),
-          redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/mot-de-passe-oublie?mode=reset`,
+          redirectTo: buildRecoveryRedirectUrl(),
         }),
       })
       const data = await response.json().catch(() => null) as { error?: string } | null
@@ -134,6 +158,15 @@ function ForgotPasswordContent() {
       const { error: updateError } = await supabase.auth.updateUser({ password })
 
       if (updateError) {
+        if (isSamePasswordUpdateError(updateError.message)) {
+          setSuccessMessage("Votre mot de passe a bien été mis à jour. Vous pouvez maintenant vous connecter.")
+          setPassword("")
+          setConfirmPassword("")
+          void supabase.auth.signOut().catch(() => undefined)
+          setIsSubmitting(false)
+          return
+        }
+
         if (isHandledAuthError(updateError.message)) {
           console.warn("Erreur mise à jour mot de passe traitée:", updateError.message)
         } else {
@@ -147,6 +180,7 @@ function ForgotPasswordContent() {
       setSuccessMessage("Votre mot de passe a bien été mis à jour. Vous pouvez maintenant vous connecter.")
       setPassword("")
       setConfirmPassword("")
+      void supabase.auth.signOut().catch(() => undefined)
       setIsSubmitting(false)
     } catch (submitError) {
       console.error("Erreur inattendue mise à jour mot de passe:", submitError)
@@ -161,11 +195,17 @@ function ForgotPasswordContent() {
         <Card>
           <CardHeader className="text-center">
             <CardTitle>
-              {mode === "request" ? "Mot de passe oublié" : "Nouveau mot de passe"}
+              {mode === "request"
+                ? isAdvertiserFlow
+                  ? "Mot de passe oublié annonceur"
+                  : "Mot de passe oublié"
+                : "Nouveau mot de passe"}
             </CardTitle>
             <CardDescription>
               {mode === "request"
-                ? "Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation."
+                ? isAdvertiserFlow
+                  ? "Saisissez l'adresse e-mail de votre compte annonceur pour recevoir un lien de réinitialisation."
+                  : "Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation."
                 : "Choisissez votre nouveau mot de passe pour finaliser la récupération de votre compte."}
             </CardDescription>
           </CardHeader>
@@ -239,29 +279,31 @@ function ForgotPasswordContent() {
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full bg-[#E63832] hover:bg-[#E63832]/90"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {mode === "request" ? "Envoi en cours..." : "Mise à jour en cours..."}
-                    </>
-                  ) : mode === "request" ? (
-                    "Envoyer le lien"
-                  ) : (
-                    "Mettre à jour le mot de passe"
-                  )}
-                </Button>
+                {!(mode === "update" && successMessage) && (
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#E63832] hover:bg-[#E63832]/90"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {mode === "request" ? "Envoi en cours..." : "Mise à jour en cours..."}
+                      </>
+                    ) : mode === "request" ? (
+                      "Envoyer le lien"
+                    ) : (
+                      "Mettre à jour le mot de passe"
+                    )}
+                  </Button>
+                )}
               </FieldGroup>
             </form>
           </CardContent>
         </Card>
 
         <div className="text-center text-sm text-muted-foreground">
-          <Link href="/connexion" className="font-medium underline underline-offset-4 hover:text-primary">
+          <Link href={loginHref} className="font-medium underline underline-offset-4 hover:text-primary">
             Retour à la connexion
           </Link>
           {mode === "update" && successMessage && (
@@ -270,7 +312,7 @@ function ForgotPasswordContent() {
               <button
                 type="button"
                 className="font-medium underline underline-offset-4 hover:text-primary"
-                onClick={() => router.push("/connexion")}
+                onClick={() => router.push(loginHref)}
               >
                 Se connecter maintenant
               </button>

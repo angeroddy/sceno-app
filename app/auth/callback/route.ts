@@ -101,16 +101,24 @@ async function sendFirstEmailVerificationNotifications(userId: string) {
   }
 }
 
+function getPasswordRecoveryRedirectPath(nextPath: string | null) {
+  if (!nextPath) return '/mot-de-passe-oublie?mode=reset'
+
+  return nextPath.startsWith('/mot-de-passe-oublie')
+    ? nextPath
+    : '/mot-de-passe-oublie?mode=reset'
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const tokenHash = requestUrl.searchParams.get('token_hash')
   const callbackType = requestUrl.searchParams.get('type')
   const nextPath = requestUrl.searchParams.get('next')
+  const passwordRecoveryRedirectPath = getPasswordRecoveryRedirectPath(nextPath)
   const isPasswordRecovery =
     callbackType === 'recovery' ||
-    nextPath === '/mot-de-passe-oublie' ||
-    nextPath === '/mot-de-passe-oublie?mode=reset'
+    Boolean(nextPath?.startsWith('/mot-de-passe-oublie'))
 
   if (tokenHash) {
     const supabase = await createCallbackSupabaseClient()
@@ -122,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     if (!error && data.user) {
       if (isPasswordRecovery) {
-        return NextResponse.redirect(`${requestUrl.origin}/mot-de-passe-oublie?mode=reset`)
+        return NextResponse.redirect(`${requestUrl.origin}${passwordRecoveryRedirectPath}`)
       }
 
       await sendFirstEmailVerificationNotifications(data.user.id)
@@ -148,7 +156,7 @@ export async function GET(request: NextRequest) {
 
     if (!error && data.user) {
       if (isPasswordRecovery) {
-        return NextResponse.redirect(`${requestUrl.origin}/mot-de-passe-oublie?mode=reset`)
+        return NextResponse.redirect(`${requestUrl.origin}${passwordRecoveryRedirectPath}`)
       }
 
       await sendFirstEmailVerificationNotifications(data.user.id)

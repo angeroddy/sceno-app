@@ -4,7 +4,7 @@ import type { Dispatch, RefObject, SetStateAction } from "react"
 import Cropper from "react-easy-crop"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Crop, RefreshCcw, RotateCcw, RotateCw } from "lucide-react"
+import { Crop, RefreshCcw, RotateCcw, RotateCw, Upload } from "lucide-react"
 
 type CropArea = { width: number; height: number; x: number; y: number }
 
@@ -22,6 +22,7 @@ interface OpportunityImageCropperProps {
   onCropComplete: (_: unknown, croppedPixels: CropArea) => void
   applyCrop: () => void
   resetCropper: () => void
+  onChooseImage: () => void
 }
 
 /**
@@ -42,6 +43,7 @@ export function OpportunityImageCropper({
   onCropComplete,
   applyCrop,
   resetCropper,
+  onChooseImage,
 }: OpportunityImageCropperProps) {
   if (!open || !rawImageSrc) return null
 
@@ -140,6 +142,10 @@ export function OpportunityImageCropper({
         </div>
 
         <div className="p-4 border-t flex flex-wrap justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onChooseImage}>
+            <Upload className="w-4 h-4 mr-2" />
+            Choisir une image
+          </Button>
           <Button type="button" variant="outline" onClick={resetCropper}>
             Annuler
           </Button>

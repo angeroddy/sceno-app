@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RichTextEditor } from "@/components/opportunity/rich-text-editor"
-import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Calendar, Info, Clock3, ChevronLeft, ChevronRight } from "lucide-react"
+import { Upload, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Calendar, Clock3, ChevronLeft, ChevronRight, CircleQuestionMark } from "lucide-react"
 import { createBrowserSupabaseClient } from "@/lib/supabase-client"
 import type { OpportunityType, OpportunityModel } from "@/types"
 import { OPPORTUNITY_TYPE_LABELS } from "@/types"
@@ -17,7 +17,6 @@ import { getCroppedImage } from "@/lib/crop-image"
 import { OpportunityImageCropper } from "./_components/opportunity-image-cropper"
 import { PublishingPrinciplesModal } from "./_components/publishing-principles-modal"
 import {
-  OpportunityPreviewCard,
   OpportunityPreviewDetail,
   type OpportunityPreviewData,
 } from "./_components/opportunity-preview"
@@ -92,6 +91,7 @@ export default function PublierOpportunitePage() {
   } | null>(null)
   const [isCropping, setIsCropping] = useState(false)
   const cropperContainerRef = useRef<HTMLDivElement | null>(null)
+  const coverImageInputRef = useRef<HTMLInputElement | null>(null)
   const cropAspect = 16 / 9
   const outputType: "image/webp" | "image/jpeg" = "image/webp"
   const quality = 0.85
@@ -146,7 +146,7 @@ export default function PublierOpportunitePage() {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-          router.push('/connexion')
+          router.push('/connexion?type=annonceur')
           return
         }
 
@@ -258,6 +258,12 @@ export default function PublierOpportunitePage() {
     }
   }
 
+  const chooseCoverImage = () => {
+    if (!coverImageInputRef.current) return
+    coverImageInputRef.current.value = ""
+    coverImageInputRef.current.click()
+  }
+
   const onCropComplete = (_: unknown, croppedPixels: { width: number; height: number; x: number; y: number }) => {
     setCroppedAreaPixels(croppedPixels)
   }
@@ -352,6 +358,7 @@ export default function PublierOpportunitePage() {
     reducedPrice: previewReducedPrice,
     places: previewPlaces,
     resume: previewResume,
+    infoLink: normalizeWebsiteUrlWithWwwPrefix(formData.lien_infos),
   }
 
   const resetCropper = () => {
@@ -606,7 +613,12 @@ export default function PublierOpportunitePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateForm()) return
-    setViewMode("preview")
+    switchViewMode("preview")
+  }
+
+  const switchViewMode = (nextViewMode: "edit" | "preview") => {
+    setViewMode(nextViewMode)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   // Affichage du loader pendant la vérification
@@ -641,7 +653,7 @@ export default function PublierOpportunitePage() {
                   Vérification du compte requise
                 </h2>
                 <p className="text-orange-800 text-lg max-w-2xl mx-auto">
-                  Votre compte est actuellement en cours de vérification par notre équipe.
+                  Compte actuellement en cours de vérification.
                 </p>
               </div>
 
@@ -680,10 +692,10 @@ export default function PublierOpportunitePage() {
                       className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#0b6f8f]/30 bg-white text-[#0b6f8f]"
                       aria-label="Pourquoi Stripe est requis"
                     >
-                      <Info className="h-4 w-4" />
+                      <CircleQuestionMark className="h-4 w-4" />
                     </button>
                     <div className="pointer-events-none absolute left-1/2 top-9 z-20 w-72 -translate-x-1/2 rounded-md border border-[#6dd0ff] bg-white p-3 text-left text-sm text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      Stripe est l&apos;intermédiaire que formations-artistiques.fr utilise pour vendre vos places en ligne et qui vérifie au passage votre bonne identité en tant que professionnel.
+                      Stripe est l&apos;intermédiaire que Scenio utilise pour vendre vos places en ligne et qui vérifie, dans le même temps, votre identité en tant que professionnel.
                     </div>
                   </div>
                 </div>
@@ -779,6 +791,13 @@ export default function PublierOpportunitePage() {
   if (viewMode === "preview") {
     return (
       <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="mb-6">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => switchViewMode("edit")} disabled={loading}>
+            <ChevronLeft className="h-4 w-4" />
+            Revenir à l&apos;édition de l&apos;opportunité
+          </Button>
+        </div>
+
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             Aperçu avant publication
@@ -788,28 +807,19 @@ export default function PublierOpportunitePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode vignette</h2>
-            <OpportunityPreviewCard preview={preview} />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode détails</h2>
-            <OpportunityPreviewDetail preview={preview} />
-          </div>
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Aperçu en mode détails</h2>
+          <OpportunityPreviewDetail preview={preview} />
         </div>
 
         {error && (
           <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>
         )}
 
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-6">
-          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setViewMode("edit")} disabled={loading}>
-            Revenir à l&apos;édition de l&apos;opportunité
-          </Button>
+        <div className="mx-auto max-w-3xl pt-6">
           <Button
             type="button"
-            className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90"
+            className="w-full bg-[#E63832] hover:bg-[#E63832]/90"
             onClick={submitOpportunity}
             disabled={loading}
           >
@@ -850,7 +860,7 @@ export default function PublierOpportunitePage() {
               setShowPublishingPrinciplesModal(true)
             }}
           >
-            <Info className="h-4 w-4" />
+            <CircleQuestionMark className="h-4 w-4" />
           </button>
         </div>
         <p className="text-gray-600 text-base sm:text-lg">
@@ -869,7 +879,7 @@ export default function PublierOpportunitePage() {
                   id="type"
                   value={formData.type}
                   onChange={(e) => handleInputChange("type", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E63832] bg-white"
+                  className="border-input h-9 w-full rounded-md border bg-white px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
                 >
                   <option value="" disabled hidden>
                     Sélectionner type d&apos;opportunité
@@ -918,7 +928,14 @@ export default function PublierOpportunitePage() {
                     <Upload className="h-4 w-4 shrink-0" />
                     <span className="text-sm">Choisir une image</span>
                   </label>
-                  <input id="image" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                  <input
+                    ref={coverImageInputRef}
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
                   {formData.image && <span className="text-sm text-gray-600 truncate max-w-full">{formData.image.name}</span>}
                 </div>
                 {imagePreview && (
@@ -962,7 +979,7 @@ export default function PublierOpportunitePage() {
                     id="lien_infos"
                     type="text"
                     inputMode="url"
-                    placeholder="votre-site.fr/stage-comedie"
+                    placeholder="votre-site.fr"
                     value={getWebsiteInputWithoutWww(formData.lien_infos)}
                     onChange={(e) => handleInputChange("lien_infos", e.target.value)}
                     className="rounded-l-none"
@@ -1150,7 +1167,7 @@ export default function PublierOpportunitePage() {
                   className="w-full sm:flex-1 whitespace-normal text-left sm:text-center bg-[#E63832] hover:bg-[#E63832]/90"
                   onClick={() => {
                     if (!validateForm()) return
-                    setViewMode("preview")
+                    switchViewMode("preview")
                   }}
                   disabled={loading}
                 >
@@ -1176,6 +1193,7 @@ export default function PublierOpportunitePage() {
         onCropComplete={onCropComplete}
         applyCrop={applyCrop}
         resetCropper={resetCropper}
+        onChooseImage={chooseCoverImage}
         onResetAdjustments={() => {
           setCrop({ x: 0, y: 0 })
           setZoom(1)
@@ -1186,4 +1204,3 @@ export default function PublierOpportunitePage() {
     </div>
   )
 }
-

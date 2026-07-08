@@ -67,4 +67,13 @@ describe('createOpportunitySchema', () => {
 
     expect(result.success).toBe(true)
   })
+
+  it("accepte un titre court", () => {
+    const result = createOpportunitySchema.safeParse({
+      ...basePayload,
+      titre: 'Test',
+    })
+
+    expect(result.success).toBe(true)
+  })
 })

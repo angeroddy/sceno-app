@@ -18,6 +18,7 @@ export interface OpportunityPreviewData {
   reducedPrice: number
   places: number
   resume: string
+  infoLink: string
 }
 
 /** Vignette d'aperçu (format carte de liste) de l'opportunité en cours de saisie. */
@@ -92,7 +93,7 @@ export function OpportunityPreviewDetail({ preview }: { preview: OpportunityPrev
             alt="Preview détail"
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 768px) 100vw, 768px"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#E6DAD0] to-[#F5F0EB]">
@@ -107,12 +108,12 @@ export function OpportunityPreviewDetail({ preview }: { preview: OpportunityPrev
           </div>
         )}
       </div>
-      <CardContent className="p-5 space-y-4">
+      <CardContent className="space-y-4 p-4 sm:p-5">
         <div className="flex items-center gap-2 text-xs text-gray-600">
           <span className="rounded-full bg-[#E6DAD0] px-2 py-0.5">{preview.category}</span>
           <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5">Aperçu</span>
         </div>
-        <h3 className="text-xl font-bold">{preview.title}</h3>
+        <h3 className="text-lg font-bold sm:text-xl">{preview.title}</h3>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Building2 className="w-4 h-4" />
           <span>{preview.organizer}</span>
@@ -136,11 +137,11 @@ export function OpportunityPreviewDetail({ preview }: { preview: OpportunityPrev
         <div className="border-y border-gray-200 py-3">
           {preview.discount > 0 ? (
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-[#E63832]">{preview.reducedPrice || preview.price}€</span>
+              <span className="text-xl font-bold text-[#E63832] sm:text-2xl">{preview.reducedPrice || preview.price}€</span>
               <span className="text-sm text-gray-400 line-through">{preview.price || 0}€</span>
             </div>
           ) : (
-            <span className="text-2xl font-bold text-gray-900">{preview.price || 0}€</span>
+            <span className="text-xl font-bold text-gray-900 sm:text-2xl">{preview.price || 0}€</span>
           )}
         </div>
 
@@ -154,10 +155,19 @@ export function OpportunityPreviewDetail({ preview }: { preview: OpportunityPrev
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
-          <Button size="sm" variant="outline" className="w-full sm:w-auto">
-            <ExternalLink className="w-4 h-4 mr-1" />
-            Voir le site
-          </Button>
+          {preview.infoLink ? (
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+              <a href={preview.infoLink} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-1" />
+                Voir le site
+              </a>
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled>
+              <ExternalLink className="w-4 h-4 mr-1" />
+              Voir le site
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

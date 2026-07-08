@@ -66,6 +66,7 @@ export async function GET(
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'Europe/Paris',
       }),
       purchaseDate: new Date(achat.created_at).toLocaleString('fr-FR', {
         day: '2-digit',
@@ -73,6 +74,7 @@ export async function GET(
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'Europe/Paris',
       }),
       amount: `${achat.prix_paye.toFixed(2)} EUR`,
       status: achat.statut === 'confirmee' ? 'Confirmee' : 'Remboursee',

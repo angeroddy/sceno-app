@@ -101,7 +101,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
   (
     {
       className,
-      logo = <Image src={Logo2} alt="formations-artistiques.fr" height={34} width={220} className="h-auto max-w-[220px]" />,
+      logo = <Image src={Logo2} alt="formations-artistiques.fr" height={46} width={300} className="h-auto w-[230px] max-w-full sm:w-[300px]" />,
       logoHref = '/',
       navigationLinks = defaultNavigationLinks,
       signInText = 'Se connecter',

@@ -10,7 +10,6 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
 } from "lucide-react"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
@@ -27,7 +26,7 @@ interface SidebarLinkProps {
   onClick: () => void
 }
 
-const SidebarLink = ({ href, icon, label, active, onClick }: SidebarLinkProps) => {
+const SidebarLink = ({ icon, label, active, onClick }: SidebarLinkProps) => {
   return (
     <button
       onClick={onClick}
@@ -63,7 +62,7 @@ export default function AnnonceurLayout({
   // Redirection si l'utilisateur n'est pas un annonceur
   useEffect(() => {
     if (!loading && userType !== 'advertiser') {
-      router.push('/connexion')
+      router.push('/connexion?type=annonceur')
     }
   }, [loading, userType, router])
 

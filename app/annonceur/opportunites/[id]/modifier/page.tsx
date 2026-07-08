@@ -79,6 +79,7 @@ export default function ModifierOpportunitePage() {
   } | null>(null)
   const [isCropping, setIsCropping] = useState(false)
   const cropperContainerRef = useRef<HTMLDivElement | null>(null)
+  const coverImageInputRef = useRef<HTMLInputElement | null>(null)
   const cropAspect = 16 / 9
   const outputType: "image/webp" | "image/jpeg" = "image/webp"
   const quality = 0.85
@@ -214,6 +215,12 @@ export default function ModifierOpportunitePage() {
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const chooseCoverImage = () => {
+    if (!coverImageInputRef.current) return
+    coverImageInputRef.current.value = ""
+    coverImageInputRef.current.click()
   }
 
   const onCropComplete = (_: unknown, croppedPixels: { width: number; height: number; x: number; y: number }) => {
@@ -610,6 +617,7 @@ export default function ModifierOpportunitePage() {
     reducedPrice: previewReducedPrice,
     places: previewPlaces,
     resume: previewResume,
+    infoLink: normalizeWebsiteUrlWithWwwPrefix(formData.lien_infos),
   }
 
   if (viewMode === "preview") {
@@ -810,6 +818,7 @@ export default function ModifierOpportunitePage() {
                       {currentImageUrl ? 'Changer l\'image' : 'Cliquez pour télécharger une image'}
                     </span>
                     <input
+                      ref={coverImageInputRef}
                       id="image"
                       type="file"
                       className="hidden"
@@ -1060,6 +1069,7 @@ export default function ModifierOpportunitePage() {
           onCropComplete={onCropComplete}
           applyCrop={applyCrop}
           resetCropper={resetCropper}
+          onChooseImage={chooseCoverImage}
         />
       </div>
     </div>

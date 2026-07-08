@@ -1,12 +1,15 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { LoginForm } from "@/components/forms/login-form"
 import Image from "next/image"
 import logoApp from '@/app/assets/images/logoApp.png'
 
-export default function ConnexionPage() {
+function ConnexionContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const accountType = searchParams.get("type") === "annonceur" ? "advertiser" : undefined
 
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
@@ -26,7 +29,7 @@ export default function ConnexionPage() {
         </div>
         <div className="flex flex-1 items-center justify-center py-8">
           <div className="w-full max-w-xs">
-            <LoginForm />
+            <LoginForm accountType={accountType} />
           </div>
         </div>
       </div>
@@ -41,5 +44,13 @@ export default function ConnexionPage() {
         />
       </div>
     </main>
+  )
+}
+
+export default function ConnexionPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#F5F0EB]" />}>
+      <ConnexionContent />
+    </Suspense>
   )
 }

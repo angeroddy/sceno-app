@@ -49,6 +49,19 @@ describe('LoginForm', () => {
       expect(screen.getByText(/Pas encore de compte/i)).toBeInTheDocument()
       expect(screen.getByText(/Mot de passe oublié/i)).toBeInTheDocument()
     })
+
+    it("devrait pointer le mot de passe oublié vers le parcours annonceur", () => {
+      render(<LoginForm accountType="advertiser" />)
+
+      expect(screen.getByText(/Mot de passe oublié/i)).toHaveAttribute(
+        'href',
+        '/mot-de-passe-oublie?type=annonceur'
+      )
+      expect(screen.getByText(/Créer un compte/i)).toHaveAttribute(
+        'href',
+        '/inscription/annonceur'
+      )
+    })
   })
 
   describe('Validation du formulaire', () => {

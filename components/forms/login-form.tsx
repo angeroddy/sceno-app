@@ -22,16 +22,23 @@ import {
   translateAuthErrorMessage,
 } from "@/lib/auth-error-message"
 
+type LoginFormAccountType = "advertiser" | "comedian"
+
 export function LoginForm({
   className,
+  accountType,
   ...props
-}: React.ComponentProps<"form">) {
+}: React.ComponentProps<"form"> & { accountType?: LoginFormAccountType }) {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const forgotPasswordHref = accountType === "advertiser"
+    ? "/mot-de-passe-oublie?type=annonceur"
+    : "/mot-de-passe-oublie"
+  const signupHref = accountType === "advertiser" ? "/inscription/annonceur" : "/inscription"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -189,7 +196,7 @@ export function LoginForm({
             </div>
             <FieldDescription>
               <a 
-                href="/mot-de-passe-oublie" 
+                href={forgotPasswordHref}
                 className="text-sm underline hover:text-primary"
               >
                 Mot de passe oublié ?
@@ -221,7 +228,7 @@ export function LoginForm({
 
         <div className="text-center text-sm">
           Pas encore de compte ?{" "}
-          <a href="/inscription" className="font-semibold underline underline-offset-4 hover:text-primary">
+          <a href={signupHref} className="font-semibold underline underline-offset-4 hover:text-primary">
             Créer un compte
           </a>
         </div>

@@ -3,17 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import logoApp from '@/app/assets/images/logoApp2.png';
-interface MenuItem {
-  title: string;
-  links: {
-    text: string;
-    url: string;
-  }[];
-}
 
 interface FooterProps {
   tagline?: string;
-  menuItems?: MenuItem[];
   copyright?: string;
   bottomLinks?: {
     text: string;
@@ -22,82 +14,30 @@ interface FooterProps {
 }
 
 export const Footer = ({
-  tagline = "Les meilleures opportunités pour les comédiens",
-  menuItems = [
-    {
-      title: "Opportunités",
-      links: [
-        { text: "Stages", url: "#" },
-        { text: "Ateliers", url: "#" },
-        { text: "Formations", url: "#" },
-        { text: "Coaching", url: "#" },
-      ],
-    },
-    {
-      title: "À propos",
-      links: [
-        { text: "Qui sommes-nous", url: "#" },
-        { text: "Notre mission", url: "#" },
-        { text: "Contact", url: "#" },
-      ],
-    },
-    {
-      title: "Annonceurs",
-      links: [
-        { text: "Publier une offre", url: "#" },
-        { text: "Tarifs", url: "#" },
-        { text: "Avantages", url: "#" },
-      ],
-    },
-    {
-      title: "Suivez-nous",
-      links: [
-        { text: "Instagram", url: "#" },
-        { text: "Facebook", url: "#" },
-        { text: "LinkedIn", url: "#" },
-      ],
-    },
-  ],
+  tagline = "Une opportunité à prendre, maintenant, tout de suite.",
   copyright = "© 2026 formations-artistiques.fr. Tous droits réservés.",
   bottomLinks = [
+    { text: "Mentions légales", url: "#" },
     { text: "Conditions générales", url: "#" },
     { text: "Politique de confidentialité", url: "#" },
   ],
 }: FooterProps) => {
   return (
-    <footer className="bg-black text-white py-16" role="contentinfo">
+    <footer className="bg-black py-12 text-white" role="contentinfo">
       <div className="container mx-auto px-5">
-        <div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:gap-8 lg:grid-cols-6">
-            <div className="col-span-2 mb-8 lg:mb-0">
-              <div className="flex items-center gap-2 lg:justify-start">
-                <Image
-                  src={logoApp}
-                  alt="formations-artistiques.fr"
-                  width={260}
-                  height={40}
-                  className="h-auto max-w-full object-contain"
-                />
-              </div>
-              <p className="mt-4 text-[#E6DAD0] text-base sm:text-lg">{tagline}</p>
-            </div>
-            {menuItems.map((section, sectionIdx) => (
-              <nav key={sectionIdx} aria-label={section.title}>
-                <h3 className="mb-4 font-bold text-[#E6DAD0]">{section.title}</h3>
-                <ul className="space-y-3">
-                  {section.links.map((link, linkIdx) => (
-                    <li
-                      key={linkIdx}
-                      className="hover:text-[#E63832] font-medium text-gray-300 transition-colors"
-                    >
-                      <Link href={link.url}>{link.text}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ))}
+        <div className="flex flex-col items-start">
+          <div className="flex items-center">
+            <Image
+              src={logoApp}
+              alt="formations-artistiques.fr"
+              width={340}
+              height={52}
+              className="h-auto w-[260px] max-w-full object-contain sm:w-[340px]"
+            />
           </div>
-          <div className="mt-16 flex flex-col justify-between gap-4 border-t border-gray-700 pt-8 text-sm font-medium md:flex-row md:items-center">
+          <p className="mt-4 max-w-xl text-base text-[#E6DAD0] sm:text-lg">{tagline}</p>
+
+          <div className="mt-10 flex w-full flex-col justify-between gap-4 border-t border-gray-700 pt-8 text-sm font-medium md:flex-row md:items-center">
             <p className="text-gray-400">{copyright}</p>
             <ul className="flex flex-wrap gap-x-6 gap-y-2">
               {bottomLinks.map((link, linkIdx) => (

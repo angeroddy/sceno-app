@@ -322,11 +322,10 @@ function getOpportunityReduction(opportunity: OpportunityEmailData): number | nu
 
 export function buildOpportunityAlertSubject(opportunity: OpportunityEmailData): string {
   const modelLabel = getOpportunityAlertModelLabel(opportunity.modele)
-  const typeLabel = getOpportunityAlertTypeLabel(opportunity.type)
   const reduction = getOpportunityReduction(opportunity)
   const modelWithDiscount = reduction ? `${modelLabel} à - ${reduction} %` : modelLabel
 
-  return `${modelWithDiscount} / ${typeLabel} / ${opportunity.titre}`
+  return `${modelWithDiscount} / ${opportunity.titre}`
 }
 
 // ---------------------------------------------------------------------------

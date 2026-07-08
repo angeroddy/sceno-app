@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, ExternalLink, Info, Loader2 } from "lucide-react"
+import { AlertCircle, CircleQuestionMark, ExternalLink, Loader2 } from "lucide-react"
 import type { StripeConnectStatus } from "../_lib/types"
 
 interface StripeConnectSectionProps {
@@ -46,10 +46,10 @@ export function StripeConnectSection({
                   className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#635BFF]/25 bg-white text-[#635BFF] shadow-sm transition hover:bg-[#F7F5FF]"
                   aria-label="Pourquoi Stripe est requis"
                 >
-                  <Info className="h-4 w-4" />
+                  <CircleQuestionMark className="h-4 w-4" />
                 </button>
                 <div className="pointer-events-none absolute left-1/2 top-9 z-20 w-72 -translate-x-1/2 rounded-md border border-[#6dd0ff] bg-white p-3 text-left text-sm text-[#0b4054] opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 sm:left-0 sm:translate-x-0">
-                  Stripe est l&apos;intermédiaire que formations-artistiques.fr utilise pour vendre vos places en ligne et qui vérifie au passage votre bonne identité en tant que professionnel.
+                  Stripe est l&apos;intermédiaire que Scenio utilise pour vendre vos places en ligne et qui vérifie, dans le même temps, votre identité en tant que professionnel.
                 </div>
               </div>
             </div>

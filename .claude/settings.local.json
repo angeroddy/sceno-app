@@ -68,7 +68,12 @@
       "Bash(python3 -)",
       "Bash(git restore *)",
       "Bash(node -e \"console.log\\('node', process.version\\)\")",
-      "Bash(node scripts/_create-admin-tmp.mjs)"
+      "Bash(node scripts/_create-admin-tmp.mjs)",
+      "Bash(echo \"=== exit tsc: $? ===\")",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(echo \"=== eslint exit: $? ===\")",
+      "Bash(echo \"tsc=$?\")",
+      "Bash(git reset *)"
     ],
     "deny": [],
     "ask": []

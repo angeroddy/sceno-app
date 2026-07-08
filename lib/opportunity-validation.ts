@@ -59,7 +59,7 @@ export const createOpportunitySchema = z
   .object({
     type: opportunityTypeSchema,
     modele: opportunityModelSchema,
-    titre: z.string().trim().min(5, "Le titre est trop court").max(120, "Le titre est trop long"),
+    titre: z.string().trim().min(1, "Le titre est obligatoire").max(120, "Le titre est trop long"),
     contenu_mode: opportunityContentModeSchema.default("text"),
     resume: z
       .string()

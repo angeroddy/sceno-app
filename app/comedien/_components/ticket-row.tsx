@@ -11,15 +11,15 @@ import type { PurchasedTicket } from "../_lib/types"
 export function TicketRow({ ticket }: { ticket: PurchasedTicket }) {
   return (
     <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-linear-to-r from-[#E6DAD0]/10 to-white md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
-        <div className="relative h-40 w-full overflow-hidden rounded-md bg-[#E6DAD0] md:h-auto md:w-48 lg:w-56">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative aspect-video w-full overflow-hidden rounded-md bg-[#E6DAD0] md:h-48 md:w-80 md:shrink-0 lg:h-52 lg:w-96">
           {ticket.image ? (
             <Image
               src={ticket.image}
               alt={ticket.title}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 100vw, 224px"
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 320px, 384px"
             />
           ) : (
             <div className="flex h-full min-h-40 items-center justify-center">

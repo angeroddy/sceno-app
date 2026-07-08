@@ -40,6 +40,16 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export const dynamic = 'force-dynamic'
 
+function toAbsoluteUrl(value: string | null | undefined, baseUrl: string) {
+  if (!value) return null
+
+  try {
+    return new URL(value, baseUrl).toString()
+  } catch {
+    return null
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -61,7 +71,18 @@ export async function generateMetadata({
 
   const title = opportunite.titre
   const description = `${opportunite.titre} — proposée par ${opportunite.annonceur?.nom_formation || 'un organisme partenaire'} sur formations-artistiques.fr. Réservez votre place dès maintenant.`
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://formations-artistiques.fr'
   const publicOpportunityPath = buildPublicOpportunityPath(opportunite.titre, opportunite.id)
+  const publicOpportunityUrl = toAbsoluteUrl(publicOpportunityPath, siteUrl) || publicOpportunityPath
+  const imageUrl = toAbsoluteUrl(opportunite.image_url, siteUrl)
+  const previewImage = imageUrl
+    ? [{
+      url: imageUrl,
+      width: 1200,
+      height: 675,
+      alt: title,
+    }]
+    : undefined
 
   return {
     title,
@@ -70,14 +91,15 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
+      url: publicOpportunityUrl,
       type: 'article',
-      ...(opportunite.image_url ? { images: [{ url: opportunite.image_url }] } : {}),
+      ...(previewImage ? { images: previewImage } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      ...(opportunite.image_url ? { images: [opportunite.image_url] } : {}),
+      ...(imageUrl ? { images: [imageUrl] } : {}),
     },
   }
 }

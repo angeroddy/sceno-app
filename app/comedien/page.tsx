@@ -38,7 +38,6 @@ export default function DashboardPage() {
   const [hasPreferences, setHasPreferences] = useState(true)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
   const [blockingAnnonceurId, setBlockingAnnonceurId] = useState<string | null>(null)
-  const [bookingOpportunityId, setBookingOpportunityId] = useState<string | null>(null)
   const [checkoutMessage, setCheckoutMessage] = useState<{ tone: "success" | "warning" | "info"; text: string } | null>(null)
   const [feedbackModal, setFeedbackModal] = useState<{
     open: boolean
@@ -51,26 +50,6 @@ export default function DashboardPage() {
     description: "",
     tone: "info",
   })
-
-  useEffect(() => {
-    const resetCheckoutLoading = () => {
-      setBookingOpportunityId(null)
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        resetCheckoutLoading()
-      }
-    }
-
-    window.addEventListener("pageshow", resetCheckoutLoading)
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-
-    return () => {
-      window.removeEventListener("pageshow", resetCheckoutLoading)
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-    }
-  }, [])
 
   const formatReceiptReference = (achatId: string) => `SCN-${achatId.replace(/-/g, "").slice(0, 12).toUpperCase()}`
 
@@ -116,13 +95,18 @@ export default function DashboardPage() {
             weekday: "long",
             year: "numeric",
             month: "long",
-            day: "numeric"
+            day: "numeric",
+            timeZone: TICKET_TIME_ZONE,
           }),
-          dateDay: dateObj.getDate().toString().padStart(2, "0"),
-          dateMonth: dateObj.toLocaleDateString("fr-FR", { month: "short" }).toUpperCase(),
+          dateDay: new Intl.DateTimeFormat("fr-FR", { day: "2-digit", timeZone: TICKET_TIME_ZONE }).format(dateObj),
+          dateMonth: new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: TICKET_TIME_ZONE })
+            .format(dateObj)
+            .replace(".", "")
+            .toUpperCase(),
           time: dateObj.toLocaleTimeString("fr-FR", {
             hour: "2-digit",
-            minute: "2-digit"
+            minute: "2-digit",
+            timeZone: TICKET_TIME_ZONE,
           }),
           price: opp.prix_base,
           reducedPrice: opp.prix_reduit,
@@ -347,33 +331,6 @@ export default function DashboardPage() {
     }
   }
 
-  const handleCheckout = async (opportuniteId: string) => {
-    try {
-      setBookingOpportunityId(opportuniteId)
-      const response = await fetch("/api/checkout/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opportuniteId })
-      })
-
-      const data = await response.json()
-      if (!response.ok || !data?.url) {
-        throw new Error(data?.error || "Impossible de lancer le paiement")
-      }
-
-      window.location.href = data.url as string
-    } catch (err) {
-      console.error("Erreur checkout:", err)
-      setFeedbackModal({
-        open: true,
-        title: "Paiement indisponible",
-        description: err instanceof Error ? err.message : "Impossible de lancer le paiement.",
-        tone: "error",
-      })
-      setBookingOpportunityId(null)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F5F0EB] to-white">
       <div className="container mx-auto px-4 py-8 md:py-12">
@@ -478,10 +435,8 @@ export default function DashboardPage() {
                       imageHasError={imageErrors.has(opportunity.id)}
                       onImageError={handleImageError}
                       isConfirmed={confirmedOpportunityIds.has(opportunity.id)}
-                      isBooking={bookingOpportunityId === opportunity.id}
                       isBlocking={blockingAnnonceurId === opportunity.annonceurId}
                       onBlock={handleBlockAnnonceur}
-                      onCheckout={handleCheckout}
                     />
                   ))}
                 </div>
@@ -529,7 +484,7 @@ export default function DashboardPage() {
                       <div className="text-center py-12">
                         <Ticket className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                         <p className="text-gray-500 text-lg">
-                          Vous n&apos;avez pas encore acheté de places
+                          Vous n&apos;avez pas encore acheté de places.
                         </p>
                         <Button
                           className="mt-4 bg-[#E63832] hover:bg-[#E63832]/90"

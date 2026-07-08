@@ -340,24 +340,24 @@ export default function AnnonceurOpportuniteDetailsPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-start gap-3 rounded-lg border border-[#E63832]/20 bg-[#FEE] p-4">
+                        <div className="flex items-start gap-3 rounded-lg border border-[#635BFF]/20 bg-[#F7F5FF] p-4">
                           <div className="bg-white p-2 rounded-lg">
-                            <Users className="w-5 h-5 text-[#E63832]" />
+                            <Users className="w-5 h-5 text-[#635BFF]" />
                           </div>
                           <div>
-                            <p className="text-sm text-[#B42318]">Profils acheteurs</p>
+                            <p className="text-sm text-[#635BFF]">Profils des acheteurs</p>
                             <div className="pt-1">
                               {stats.reservations > 0 ? (
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  className="h-auto border-[#E63832]/20 bg-white px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-[#FFF8F3]"
+                                  className="h-auto border-[#635BFF]/30 bg-white px-3 py-2 text-sm font-semibold text-[#635BFF] hover:bg-[#F7F5FF] hover:text-[#4F46E5]"
                                   onClick={() => router.push(`/annonceur/opportunites/${opportunite.id}/participants`)}
                                 >
                                   Consulter les profils
                                 </Button>
                               ) : (
-                                <div className="inline-flex items-center rounded-full border border-[#E63832]/15 bg-white px-3 py-2 text-sm font-medium text-gray-400">
+                                <div className="inline-flex items-center rounded-full border border-[#635BFF]/15 bg-white px-3 py-2 text-sm font-medium text-gray-400">
                                   Aucune place achetée pour l&apos;instant
                                 </div>
                               )}

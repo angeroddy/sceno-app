@@ -115,4 +115,36 @@ describe('GET /auth/callback', () => {
       'http://localhost/mot-de-passe-oublie?mode=reset'
     )
   })
+
+  it('conserve le contexte annonceur pour un callback recovery', async () => {
+    ;(createServerClient as jest.Mock).mockReturnValue({
+      auth: {
+        exchangeCodeForSession: jest.fn().mockResolvedValue({
+          data: { user: { id: 'auth-1' } },
+          error: null,
+        }),
+      },
+      from: jest.fn((table: string) => {
+        if (table === 'admins' || table === 'annonceurs' || table === 'comediens') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              })),
+            })),
+          }
+        }
+        throw new Error(`Unexpected table ${table}`)
+      }),
+    })
+
+    const response = await GET({
+      url: 'http://localhost/auth/callback?code=abc123&type=recovery&next=%2Fmot-de-passe-oublie%3Fmode%3Dreset%26type%3Dannonceur',
+    } as any)
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/mot-de-passe-oublie?mode=reset&type=annonceur'
+    )
+  })
 })

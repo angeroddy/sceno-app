@@ -16,10 +16,8 @@ interface OpportunityCardProps {
   imageHasError: boolean
   onImageError: (opportunityId: string) => void
   isConfirmed: boolean
-  isBooking: boolean
   isBlocking: boolean
   onBlock: (annonceurId: string) => void
-  onCheckout: (opportuniteId: string) => void
 }
 
 /** Carte d'opportunité affichée dans l'onglet « Opportunités » de l'espace comédien. */
@@ -28,10 +26,8 @@ export function OpportunityCard({
   imageHasError,
   onImageError,
   isConfirmed,
-  isBooking,
   isBlocking,
   onBlock,
-  onCheckout,
 }: OpportunityCardProps) {
   const isExpired = opportunity.status === "expiree"
   const isComplete = opportunity.status === "complete"
@@ -45,18 +41,17 @@ export function OpportunityCard({
         ? "Complet"
         : null
   const bookingDisabled = isExpired || isComplete || isRemoved
+  const detailHref = `/comedien/opportunites/${opportunity.id}`
   const bookingLabel = bookingDisabled
     ? "Indisponible"
     : isConfirmed
       ? "Déjà réservé"
-      : isBooking
-        ? "Paiement..."
-        : "Réserver"
+      : "Réserver"
 
   return (
     <Card
       className="overflow-hidden group hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => { window.location.href = `/comedien/opportunites/${opportunity.id}` }}
+      onClick={() => { window.location.href = detailHref }}
     >
       <div className="relative">
         <div className="absolute top-4 left-4 z-10 bg-white rounded-lg p-2 shadow-md">
@@ -210,7 +205,7 @@ export function OpportunityCard({
         </div>
 
         <div className="grid grid-cols-2 gap-2 pt-2">
-          <Link href={`/comedien/opportunites/${opportunity.id}`} onClick={(e) => e.stopPropagation()}>
+          <Link href={detailHref} onClick={(e) => e.stopPropagation()}>
             <Button variant="outline" className="w-full">
               Voir détails
             </Button>
@@ -228,17 +223,17 @@ export function OpportunityCard({
               onClick={(event) => event.stopPropagation()}
             />
           )}
-          <Button
-            className="col-span-2 bg-[#E63832] hover:bg-[#E63832]/90"
-            disabled={bookingDisabled || isBooking || isConfirmed}
-            onClick={(e) => {
-              e.stopPropagation()
-              if (bookingDisabled || isConfirmed) return
-              void onCheckout(opportunity.id)
-            }}
-          >
-            {bookingLabel}
-          </Button>
+          {bookingDisabled || isConfirmed ? (
+            <Button className="col-span-2 bg-[#E63832] hover:bg-[#E63832]/90" disabled>
+              {bookingLabel}
+            </Button>
+          ) : (
+            <Link href={detailHref} className="col-span-2" onClick={(e) => e.stopPropagation()}>
+              <Button className="w-full bg-[#E63832] hover:bg-[#E63832]/90">
+                {bookingLabel}
+              </Button>
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>

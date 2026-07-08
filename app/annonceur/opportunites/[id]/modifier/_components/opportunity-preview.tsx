@@ -18,6 +18,7 @@ export interface OpportunityPreviewData {
   reducedPrice: number
   places: number
   resume: string
+  infoLink: string
 }
 
 /** Vignette d'aperçu (format carte de liste) de l'opportunité en cours de modification. */
@@ -145,10 +146,19 @@ export function OpportunityPreviewDetail({ preview }: { preview: OpportunityPrev
         />
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button size="sm" className="w-full sm:w-auto bg-[#E63832] hover:bg-[#E63832]/90">Réserver</Button>
-          <Button size="sm" variant="outline" className="w-full sm:w-auto">
-            <ExternalLink className="w-4 h-4 mr-1" />
-            Voir le site
-          </Button>
+          {preview.infoLink ? (
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+              <a href={preview.infoLink} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-1" />
+                Voir le site
+              </a>
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled>
+              <ExternalLink className="w-4 h-4 mr-1" />
+              Voir le site
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

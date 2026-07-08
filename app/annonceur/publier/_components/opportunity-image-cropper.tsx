@@ -3,7 +3,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react"
 import Cropper from "react-easy-crop"
 import { Button } from "@/components/ui/button"
-import { Crop, RefreshCcw, RotateCcw, RotateCw } from "lucide-react"
+import { Crop, RefreshCcw, RotateCcw, RotateCw, Upload } from "lucide-react"
 
 type CropArea = { width: number; height: number; x: number; y: number }
 
@@ -22,6 +22,7 @@ interface OpportunityImageCropperProps {
   applyCrop: () => void
   resetCropper: () => void
   onResetAdjustments: () => void
+  onChooseImage: () => void
 }
 
 /**
@@ -43,6 +44,7 @@ export function OpportunityImageCropper({
   applyCrop,
   resetCropper,
   onResetAdjustments,
+  onChooseImage,
 }: OpportunityImageCropperProps) {
   if (!open || !rawImageSrc) return null
 
@@ -122,7 +124,11 @@ export function OpportunityImageCropper({
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={onChooseImage}>
+              <Upload className="w-4 h-4 mr-2" />
+              Choisir une image
+            </Button>
             <Button type="button" className="bg-[#E63832] hover:bg-[#E63832]/90" onClick={applyCrop}>
               <Crop className="w-4 h-4 mr-2" />
               Appliquer le recadrage
